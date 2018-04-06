@@ -7,8 +7,7 @@ Research projects in Machine Learning
 ```
 conda create -n ml-research
 source activate ml-research
-conda install pytorch torchvision -c pytorch
-conda install pandas matplotlib ipython seaborn
+make deps
 ```
 
 # Projects
