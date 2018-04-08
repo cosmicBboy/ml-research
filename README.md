@@ -10,6 +10,16 @@ source activate ml-research
 make deps
 ```
 
+Install [`OpenML`](https://github.com/openml/openml-python)
+
+```
+git clone https://github.com/openml/openml-python
+cd openml-python
+python setup.py install
+cd ..
+rm -rf openml-python
+```
+
 # Projects
 
 ## Generative Adversarial Networks for Gaussian Distributions
