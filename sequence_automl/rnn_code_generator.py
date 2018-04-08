@@ -37,7 +37,7 @@ plot_every = 1000
 all_losses = []
 
 # these data assume that all imports have been made
-automl_data = [
+automl_dummy_data = [
     "sklearn",
     "sklearn.ensemble",
     "sklearn.gaussian_process",
@@ -109,7 +109,7 @@ def random_datum(data):
 
 def random_training_example():
     """Sample a random input, target pair."""
-    datum = random_datum(automl_data)
+    datum = random_datum(automl_dummy_data)
     input_tensor = Variable(create_input_tensor(datum))
     target_tensor = Variable(create_target_tensor(datum))
     return input_tensor, target_tensor
