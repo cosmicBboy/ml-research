@@ -32,10 +32,19 @@ HyperparameterSpec = namedtuple(
 
 
 def create_algorithm_env():
-    classifiers = get_classifiers()
-    regressors = get_regressors()
-    transformers = get_transformers()
+    """Create Algorithm Environment, used to sample algorithms, hyperparameters
 
+    TODO: This should probably implemented as a class so that methods can be
+    better organized around this concept.
+
+    Returns
+    -------
+    namedtuple AlgorithmEnv containing dictionaries specifying the structure
+        of the environment.
+    """
+    classifiers = get_estimators("classifier")
+    regressors = get_estimators("regressor")
+    transformers = get_estimators("transformer")
     classifier_hyperparams = {
         c[0]: get_hyperparams(c[1]) for c in classifiers.items()}
     regressor_hyperparams = {
@@ -47,31 +56,24 @@ def create_algorithm_env():
         classifier_hyperparams, regressor_hyperparams, transformer_hyperparams)
 
 
-def get_classifiers():
+def get_estimators(estimator_type):
+    """Get estimators of a particular type.
+
+    Parameters
+    ----------
+    estimator_type: string {'classifier', 'regressor', 'transformer'}
+
+    Returns
+    -------
+    dict[str -> object] where keys are the name of the estimator and values
+        are the corresponding class.
+    """
     with warnings.catch_warnings():
         # catch deprecation warning for modules to be removed in 0.20 in favor
         # of the model_selection module: cross_validation, grid_search, and
         # learning_curve
         warnings.simplefilter("ignore")
-        return dict(all_estimators(type_filter="classifier"))
-
-
-def get_regressors():
-    with warnings.catch_warnings():
-        # catch deprecation warning for modules to be removed in 0.20 in favor
-        # of the model_selection module: cross_validation, grid_search, and
-        # learning_curve
-        warnings.simplefilter("ignore")
-        return dict(all_estimators(type_filter="regressor"))
-
-
-def get_transformers():
-    with warnings.catch_warnings():
-        # catch deprecation warning for modules to be removed in 0.20 in favor
-        # of the model_selection module: cross_validation, grid_search, and
-        # learning_curve
-        warnings.simplefilter("ignore")
-        return dict(all_estimators(type_filter="transformer"))
+        return dict(all_estimators(type_filter=estimator_type))
 
 
 def get_hyperparams(EstimatorTransformer):
