@@ -1,10 +1,17 @@
 """An RNN to generated sklearn code.
 
 TODO:
-- use a “start of sentence” <SOS> token so that sampling can be done without
-  choosing a start letter
+- write module to evaluate the samples
+- write an experiment harness
+- use a “start of sequence <SOS> token so that sampling can be done without
+  choosing a start letter.
+- implement beam search for the sampling step.
+
+IDEAS:
 - instead of sampling the max probability prediction, sample based on the
   probability distribution of the softmax.
+- use skip connections i.e. resnets.
+- use an attention model to generate code.
 """
 
 import math
@@ -19,6 +26,8 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
+from algorithm_env import create_algorithm_env
+
 
 metafeature_categories = (
     ["not_executable", "executable"],
@@ -27,29 +36,22 @@ metafeature_categories = (
 n_metafeatures = sum([len(m) for m in metafeature_categories])
 characters = string.ascii_letters + string.digits + " .,;'-_()[]{}="
 n_characters = len(characters) + 1  # add one for <EOS> token
-n_hidden = 128  # number of hidden layers
+eos_index = n_characters - 1
+
+# model hyperparameters
+dropout_rate = 0.3
+n_rnn_layers = 2  # number of hidden layers
+n_hidden = 128  # number of units in hidden layer
 criterion = nn.NLLLoss()  # negative log likelihood loss
-learning_rate = 0.0005
+learning_rate = 0.0001
 
 # training parameters
-n_iters = 5000
-print_every = 500
-plot_every = 500
+n_training_samples = 40000
+n_iters = 50000
+print_every = 1000
+plot_every = 1000
 all_losses = []
 
-# dummy data for learning the sklearn API
-# ["executable", "creates_estimator", "algorithm_string"]
-automl_dummy_data = [
-    (["executable", "not_creates_estimator"], "sklearn"),
-    (["executable", "not_creates_estimator"], "sklearn.ensemble"),
-    (["executable", "not_creates_estimator"], "sklearn.gaussian_process"),
-    (["executable", "not_creates_estimator"], "sklearn.linear_model"),
-    (["executable", "not_creates_estimator"], "sklearn.naive_bayes"),
-    (["executable", "not_creates_estimator"], "sklearn.neighbors"),
-    (["executable", "not_creates_estimator"], "sklearn.neural_network"),
-    (["executable", "not_creates_estimator"], "sklearn.svm"),
-    (["executable", "not_creates_estimator"], "sklearn.tree"),
-]
 
 class CodeGeneratorRNN(nn.Module):
 
@@ -95,12 +97,15 @@ def create_metafeature_tensor(metafeatures, seq):
     """Convert a metafeature vector into a tensor.
 
     For now this will be a single category indicating `is_executable`.
+
+    :returns Tensor: dim <string_length x 1 x total_num_categories>, where
+        total_num_categories accounts for all categorical values of the
+        metafeatures.
     """
     m = []
     for i, f in enumerate(metafeatures):
-        categories = metafeature_categories[i]
-        t = torch.zeros(len(seq), 1, len(categories))
-        cat_index = categories.index(f)
+        t = torch.zeros(len(seq), 1, len(metafeature_categories[i]))
+        cat_index = metafeature_categories[i].index(f)
         for j, _ in enumerate(seq):
             t[j][0][cat_index] = 1
         m.append(t)
@@ -121,22 +126,29 @@ def create_input_tensor(seq):
 def create_target_tensor(seq):
     """Convert a string of character to a target tensor."""
     char_indices = [characters.find(seq[i]) for i in range(1, len(seq))]
-    char_indices.append(n_characters - 1)  # add <EOS> token
+    char_indices.append(eos_index)  # add <EOS> token
     return torch.LongTensor(char_indices)
 
 
-def random_datum(data):
-    return data[random.randint(0, len(data) - 1)]
-
-
-def random_training_example():
+def random_training_example(metafeatures, datum):
     """Sample a random input, target pair."""
-    metafeatures, datum = random_datum(automl_dummy_data)
     metafeature_tensor = Variable(
         create_metafeature_tensor(metafeatures, datum))
     input_tensor = Variable(create_input_tensor(datum))
     target_tensor = Variable(create_target_tensor(datum))
     return metafeature_tensor, input_tensor, target_tensor
+
+
+def create_training_data(algorithm_env, n=5):
+    training_data = []
+    for i in range(n):
+        sample_data = algorithm_env.sample_algorithm_code()
+        training_data.extend([
+            sample_data,
+            algorithm_env.algorithm_obj_to_instance(sample_data),
+            algorithm_env.mutate_sample(sample_data),
+            algorithm_env.mutate_sample(sample_data, mutate_all=False)])
+    return training_data
 
 
 def train(rnn, optim, metafeature_tensor, input_tensor, target_tensor):
@@ -163,7 +175,7 @@ def time_since(since):
     return "%dm %ds" % (m, s)
 
 
-def sample(rnn, start_char, metafeatures, max_length=20):
+def sample(rnn, start_char, metafeatures, max_length=100):
     """Sample from generator given a starting character."""
     metafeature_tensor = Variable(
         create_metafeature_tensor(metafeatures, start_char))
@@ -176,7 +188,7 @@ def sample(rnn, start_char, metafeatures, max_length=20):
         output, hidden = rnn(metafeature_tensor, input_tensor, hidden)
         topv, topi = output.data.topk(1)
         topi = topi[0][0]
-        if topi == n_characters - 1:  # <EOS> token
+        if topi == eos_index:  # <EOS> token
             break
         else:
             char = characters[topi]
@@ -187,23 +199,28 @@ def sample(rnn, start_char, metafeatures, max_length=20):
 
 
 def samples(rnn, start_chars="ssssss"):
-    metafeatures = [["executable", "not_creates_estimator"]
-                    for _ in range(len(start_chars))]
+    metafeatures = [
+        ["executable", "not_creates_estimator"]
+         for _ in range(len(start_chars))]
     return [sample(rnn, c, m) for c, m in zip(start_chars, metafeatures)]
 
 
 def main():
+    algorithm_env = create_algorithm_env()
     rnn = CodeGeneratorRNN(
-        n_metafeatures, n_characters, n_hidden, n_characters, num_rnn_layers=1)
+        n_metafeatures, n_characters, n_hidden, n_characters,
+        dropout_rate=dropout_rate, num_rnn_layers=n_rnn_layers)
     optim = torch.optim.Adam(rnn.parameters(), lr=learning_rate)
+    training_data = create_training_data(algorithm_env, n=n_training_samples)
     total_loss = 0
 
     start = time.time()
 
     run_metadata = []
-
     for i in range(1, n_iters + 1):
-        output, loss = train(rnn, optim, *random_training_example())
+        train_index = i % len(training_data)  # loop over training data
+        output, loss = train(
+            rnn, optim, *random_training_example(*training_data[train_index]))
         total_loss += loss
 
         if i % print_every == 0:
