@@ -32,7 +32,7 @@ from collections import namedtuple
 from sklearn.utils.testing import all_estimators
 
 
-CHARACTERS = string.ascii_letters + string.digits + " .,;'-_()[]{}="
+CHARACTERS = string.ascii_letters + string.digits + " .,'-_()[]{}="
 # These estimators have been deprecated
 EXCLUDE_ESTIMATORS = [
     "RandomizedLogisticRegression",
@@ -246,9 +246,9 @@ if __name__ == "__main__":
 
     print("\nGenerating sample data from environment:")
     for _ in range(5):
-        print(algorithm_env.sample_algorithm_code())
-        print(algorithm_env.sample_algorithm_code(mutate=True))
-        print(algorithm_env.sample_algorithm_code(eval_to_instance=True))
-        print(algorithm_env.sample_algorithm_code(
-            eval_to_instance=True, mutate=True))
+        sample_data = algorithm_env.sample_algorithm_code()
+        print(sample_data)
+        print(algorithm_env.algorithm_obj_to_instance(sample_data))
+        print(algorithm_env.mutate_sample(sample_data))
+        print(algorithm_env.mutate_sample(sample_data, mutate_all=False))
         print("")

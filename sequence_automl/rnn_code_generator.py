@@ -3,8 +3,6 @@
 TODO:
 - write module to evaluate the samples
 - write an experiment harness
-- use a “start of sequence <SOS> token so that sampling can be done without
-  choosing a start letter.
 - implement beam search for the sampling step.
 
 IDEAS:
@@ -26,7 +24,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-from algorithm_env import create_algorithm_env
+from algorithm_env import create_algorithm_env, CHARACTERS
 
 
 metafeature_categories = (
@@ -34,20 +32,23 @@ metafeature_categories = (
     ["not_creates_estimator", "creates_estimator"],
 )
 n_metafeatures = sum([len(m) for m in metafeature_categories])
-characters = string.ascii_letters + string.digits + " .,;'-_()[]{}="
-n_characters = len(characters) + 1  # add one for <EOS> token
-eos_index = n_characters - 1
+sos_token = "^"  # start of sentence token, like regex
+eos_token = "$"  # end of sentence token, like regex
+characters = CHARACTERS + sos_token + eos_token
+n_characters = len(characters)
+eos_index = characters.find(eos_token)  # end of sequence index
+sos_index = characters.find(sos_token)  # start of sequence index
 
 # model hyperparameters
 dropout_rate = 0.3
-n_rnn_layers = 2  # number of hidden layers
+n_rnn_layers = 3  # number of hidden layers
 n_hidden = 128  # number of units in hidden layer
 criterion = nn.NLLLoss()  # negative log likelihood loss
-learning_rate = 0.0001
+learning_rate = 0.0005
 
 # training parameters
-n_training_samples = 40000
-n_iters = 50000
+n_training_samples = 50000
+n_iters = 100000
 print_every = 1000
 plot_every = 1000
 all_losses = []
@@ -88,9 +89,24 @@ class CodeGeneratorRNN(nn.Module):
         return Variable(torch.zeros(self.num_rnn_layers, 1, self.hidden_size))
 
 
-def character_to_index(c):
-    """Get index of a character based on integer encoding."""
-    return characters.find(c)
+def create_training_data(algorithm_env, n=5):
+    """Samples from algorithm env and creates 4 variants per sample.
+
+    - executable code sample (Estimator class)
+    - executable code sample (Estimator instance)
+    - non-executable partially randomized code
+    - non-executable fully randomized code
+    """
+    training_data = []
+    for i in range(n):
+        sample_data = algorithm_env.sample_algorithm_code()
+        training_data.extend([
+            sample_data,
+            algorithm_env.algorithm_obj_to_instance(sample_data),
+            # algorithm_env.mutate_sample(sample_data),
+            # algorithm_env.mutate_sample(sample_data, mutate_all=False)
+        ])
+    return training_data
 
 
 def create_metafeature_tensor(metafeatures, seq):
@@ -119,7 +135,7 @@ def create_input_tensor(seq):
     Returns tensor of dim <string_length x 1 x n_characters>."""
     t = torch.zeros(len(seq), 1, n_characters)
     for i, c in enumerate(seq):
-        t[i][0][character_to_index(c)] = 1
+        t[i][0][characters.find(c)] = 1
     return t
 
 
@@ -130,25 +146,19 @@ def create_target_tensor(seq):
     return torch.LongTensor(char_indices)
 
 
-def random_training_example(metafeatures, datum):
+def _prepend_sos_token(input_seq):
+    """Add sos token to the beginning of sequence."""
+    return sos_token + input_seq
+
+
+def random_training_example(metafeatures, input_seq):
     """Sample a random input, target pair."""
+    input_seq = _prepend_sos_token(input_seq)
     metafeature_tensor = Variable(
-        create_metafeature_tensor(metafeatures, datum))
-    input_tensor = Variable(create_input_tensor(datum))
-    target_tensor = Variable(create_target_tensor(datum))
+        create_metafeature_tensor(metafeatures, input_seq))
+    input_tensor = Variable(create_input_tensor(input_seq))
+    target_tensor = Variable(create_target_tensor(input_seq))
     return metafeature_tensor, input_tensor, target_tensor
-
-
-def create_training_data(algorithm_env, n=5):
-    training_data = []
-    for i in range(n):
-        sample_data = algorithm_env.sample_algorithm_code()
-        training_data.extend([
-            sample_data,
-            algorithm_env.algorithm_obj_to_instance(sample_data),
-            algorithm_env.mutate_sample(sample_data),
-            algorithm_env.mutate_sample(sample_data, mutate_all=False)])
-    return training_data
 
 
 def train(rnn, optim, metafeature_tensor, input_tensor, target_tensor):
@@ -158,8 +168,11 @@ def train(rnn, optim, metafeature_tensor, input_tensor, target_tensor):
     loss = 0
 
     output, hidden = rnn(metafeature_tensor, input_tensor, hidden)
-    output = output.view(output.shape[0], -1)
-    loss += criterion(output, target_tensor)
+    try:
+        output = output.view(output.shape[0], -1)
+        loss += criterion(output, target_tensor)
+    except:
+        import ipdb; ipdb.set_trace()
 
     loss.backward()
     optim.step()
@@ -175,14 +188,14 @@ def time_since(since):
     return "%dm %ds" % (m, s)
 
 
-def sample(rnn, start_char, metafeatures, max_length=100):
+def sample_rnn(rnn, start_char, metafeatures, max_length=100):
     """Sample from generator given a starting character."""
     metafeature_tensor = Variable(
         create_metafeature_tensor(metafeatures, start_char))
     input_tensor = Variable(create_input_tensor(start_char))
     hidden = rnn.initHidden()
 
-    output_sample = start_char
+    output_sample = ""
 
     for i in range(max_length):
         output, hidden = rnn(metafeature_tensor, input_tensor, hidden)
@@ -198,11 +211,13 @@ def sample(rnn, start_char, metafeatures, max_length=100):
     return output_sample
 
 
-def samples(rnn, start_chars="ssssss"):
-    metafeatures = [
-        ["executable", "not_creates_estimator"]
-         for _ in range(len(start_chars))]
-    return [sample(rnn, c, m) for c, m in zip(start_chars, metafeatures)]
+def generate_samples(rnn, start_chars=sos_token * 3, metafeatures=None):
+    """"""
+    if metafeatures is None:
+        metafeatures = [
+            ["executable", "not_creates_estimator"]
+             for _ in range(len(start_chars))]
+    return [sample_rnn(rnn, c, m) for c, m in zip(start_chars, metafeatures)]
 
 
 def main():
@@ -224,7 +239,7 @@ def main():
         total_loss += loss
 
         if i % print_every == 0:
-            samples_string = ", ".join(samples(rnn))
+            samples_string = ", ".join(generate_samples(rnn))
             print("%s (%d %d%%) %.4f" % (
                 time_since(start), i, i / n_iters * 100, loss))
             print("samples: %s\n" % samples_string)
@@ -236,7 +251,7 @@ def main():
     run_metadata = pd.DataFrame(
         run_metadata, columns=["iteration", "loss", "samples"])
 
-    print("final samples: %s" % ", ".join(samples(rnn)))
+    print("final samples: %s" % ", ".join(generate_samples(rnn)))
     torch.save(rnn.state_dict(), "rnn_code_generator_model.pt")
     run_metadata.to_csv("rnn_code_generator_metadata.csv")
     fig = plt.figure()
