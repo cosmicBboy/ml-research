@@ -1,4 +1,4 @@
-# Sequence-model AutoML (SeqAutoML)
+# DeepCASH
 
 **Using a Sequence Models to Propose Machine Learning Frameworks for AutoML**
 
@@ -31,27 +31,29 @@ the best architecture proposal policy.
 
 # Contributions
 
-The contributions of the SeqAutoML project are two-fold: it builds on the neural
+The contributions of the DeepCASH project are two-fold: it builds on the neural
 architecture search paradigm by formalating the output space of the Controller
-as a sequence of characters conditioned on the space of possible executable
-`frameworks`. The scope of this project is to define a `framework`, a piece of
-Python code, which evaluates to an instantiated sklearn `Estimator` and can
-be fitted on a training set and evaluated on a validation set of a particular
-dataset `D`.
+as a sequence of tokens conditioned on the space of possible executable
+`frameworks`. The scope of this project is to define a `framework`, expressed
+as a piece of Python code, which evaluates to an instantiated sklearn
+[`Pipeline`][sklearn-pipeline] and can be fitted on a training set and
+evaluated on a validation set of a particular dataset `D`.
 
-Following the Neural Architecture scheme, SeqMetaML uses the REINFORCE algorithm
+Following the Neural Architecture scheme, DeepCASH uses the REINFORCE algorithm
 to compute the policy gradient used to update the Controller in order to learn a
 policy for proposing good `frameworks` that are able to achieve high validation
 set performance.
 
 The second contribution of this project is that it proposes a conditional
-`framework` generator by extending the Controller network to have an `encoder`
-RNN that takes as input metadata about the dataset `D` (e.g. number of
-instances, number of features). The vector at the end of this `encoder` network
-would be used as the initial state of the `decoder` network, which generates a
-string representing the proposed `framework`. Therefore, we can condition the
-output of the `decoder` network metadata on `D` to propose customized
-`frameworks`.
+ML `framework` generator by extending the Controller network to have an `encoder`
+network that takes as input metadata about the dataset `D` (e.g. number of
+instances, number of features). The output of the `encoder` network would be
+fed into the `decoder` network, which proposes an ML `framework`. Therefore,
+we can condition the output of the `decoder` network metadata on `D` to propose
+customized `frameworks`. A future extension might be to specify the `encoder`
+network as an RNN, which directly takes as input a sequence of observations and
+features, resulting in a hidden state that is used as the initial hidden state
+of the `decoder`.
 
 ## Notes
 
@@ -63,7 +65,6 @@ output of the `decoder` network metadata on `D` to propose customized
   is an RNN the outputs a string of code and the discriminator tries to predict
   whether that code (i) is executable and (ii) evaluates to an sklearn
   `Estimator`
-
 
 # Extensions
 
@@ -160,3 +161,4 @@ evaluates to an `Estimator` object.
 [tpot]: https://github.com/EpistasisLab/tpot
 [h20]: http://docs.h2o.ai/h2o/latest-stable/h2o-docs/automl.html
 [openml]: https://www.openml.org/
+[sklearn-pipeline]: http://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html
