@@ -6,16 +6,11 @@ TODO:
 
 import torch
 
-from rnn_code_generator import (
-    CodeGeneratorRNN, n_metafeatures, n_characters, n_hidden, n_characters,
-    dropout_rate, n_rnn_layers, sample_rnn, generate_samples)
+from rnn_code_generator import load_model, generate_samples
 
 
 def main(path="rnn_code_generator_model.pt"):
-    rnn = CodeGeneratorRNN(
-        n_metafeatures, n_characters, n_hidden, n_characters,
-        dropout_rate=dropout_rate, num_rnn_layers=n_rnn_layers)
-    rnn.load_state_dict(torch.load(path))
+    rnn = load_model(path)
     print("samples: executable, creates_estimator")
     for _ in range(5):
         print(generate_samples(

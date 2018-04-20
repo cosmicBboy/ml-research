@@ -32,7 +32,7 @@ from collections import namedtuple
 from sklearn.utils.testing import all_estimators
 
 
-CHARACTERS = string.ascii_letters + string.digits + " .,'-_()[]{}="
+CHARACTERS = string.ascii_letters + string.digits + "._()"
 # These estimators have been deprecated
 EXCLUDE_ESTIMATORS = [
     "RandomizedLogisticRegression",

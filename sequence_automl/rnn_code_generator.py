@@ -40,7 +40,7 @@ eos_index = characters.find(eos_token)  # end of sequence index
 sos_index = characters.find(sos_token)  # start of sequence index
 
 # model hyperparameters
-dropout_rate = 0.3
+dropout_rate = 0.1
 n_rnn_layers = 3  # number of hidden layers
 n_hidden = 128  # number of units in hidden layer
 criterion = nn.NLLLoss()  # negative log likelihood loss
@@ -48,7 +48,7 @@ learning_rate = 0.0005
 
 # training parameters
 n_training_samples = 50000
-n_iters = 100000
+n_iters = 20000
 print_every = 1000
 plot_every = 1000
 all_losses = []
@@ -69,6 +69,7 @@ class CodeGeneratorRNN(nn.Module):
         self.dropout_rate = dropout_rate
         self.num_rnn_layers = num_rnn_layers
         self.hidden_size = hidden_size
+        self.output_size = output_size
         self.metafeature_size = metafeature_size
         self.rnn = nn.GRU(
             metafeature_size + input_size, hidden_size,
@@ -168,11 +169,8 @@ def train(rnn, optim, metafeature_tensor, input_tensor, target_tensor):
     loss = 0
 
     output, hidden = rnn(metafeature_tensor, input_tensor, hidden)
-    try:
-        output = output.view(output.shape[0], -1)
-        loss += criterion(output, target_tensor)
-    except:
-        import ipdb; ipdb.set_trace()
+    output = output.view(output.shape[0], -1)
+    loss += criterion(output, target_tensor)
 
     loss.backward()
     optim.step()
@@ -218,6 +216,14 @@ def generate_samples(rnn, start_chars=sos_token * 3, metafeatures=None):
             ["executable", "not_creates_estimator"]
              for _ in range(len(start_chars))]
     return [sample_rnn(rnn, c, m) for c, m in zip(start_chars, metafeatures)]
+
+
+def load_model(path):
+    rnn = CodeGeneratorRNN(
+        n_metafeatures, n_characters, n_hidden, n_characters,
+        dropout_rate=dropout_rate, num_rnn_layers=n_rnn_layers)
+    rnn.load_state_dict(torch.load(path))
+    return rnn
 
 
 def main():
