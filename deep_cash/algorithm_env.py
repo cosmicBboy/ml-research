@@ -56,25 +56,6 @@ HyperparameterSpec = namedtuple(
     "HyperparameterSpec", ["hyperparameters", "defaults"])
 
 
-def code_is_executable(estimator_code):
-    """Determine if code string is executable.
-
-    :param str estimator_code: string to check.
-    :returns bool: True if executable
-    """
-    try:
-        eval(estimator_code)
-        return True
-    except:
-        return False
-
-
-def code_evals_to_algorithm_instance(estimator_code):
-    """Determing if code evaluates to a BaseEstimator instance."""
-    parent_classes = inspect.getmro(type(eval(estimator_code)))
-    return sklearn.base.BaseEstimator in parent_classes
-
-
 class AlgorithmEnv(object):
 
     def __init__(self, classifiers, regressors, transformers):
@@ -235,6 +216,25 @@ def get_algorithms(estimator_type):
             estimator_name, estimator_class in
             all_estimators(type_filter=estimator_type)
             if estimator_name not in EXCLUDE_ESTIMATORS]
+
+
+def code_is_executable(estimator_code):
+    """Determine if code string is executable.
+
+    :param str estimator_code: string to check.
+    :returns bool: True if executable
+    """
+    try:
+        eval(estimator_code)
+        return True
+    except:
+        return False
+
+
+def code_evals_to_algorithm_instance(estimator_code):
+    """Determing if code evaluates to a BaseEstimator instance."""
+    parent_classes = inspect.getmro(type(eval(estimator_code)))
+    return sklearn.base.BaseEstimator in parent_classes
 
 
 if __name__ == "__main__":
