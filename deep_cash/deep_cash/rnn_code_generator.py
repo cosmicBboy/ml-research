@@ -24,7 +24,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-from algorithm_env import create_algorithm_env, CHARACTERS
+from .algorithm_env import create_algorithm_env, CHARACTERS
 
 
 metafeature_categories = (

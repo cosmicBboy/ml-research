@@ -239,6 +239,7 @@ def code_evals_to_algorithm_instance(estimator_code):
 
 if __name__ == "__main__":
     algorithm_env = create_algorithm_env()
+    import ipdb; ipdb.set_trace()
     print("Algorithm Environment:")
     print("classifiers: %s" % len(algorithm_env.classifiers))
     print("regressors: %s" % len(algorithm_env.regressors))

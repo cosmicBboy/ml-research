@@ -9,7 +9,7 @@ import torch
 from torch.autograd import Variable
 from copy import copy
 
-from rnn_code_generator import (
+from .rnn_code_generator import (
     load_model, create_metafeature_tensor, create_input_tensor,
     sos_index, sos_token, eos_index, eos_token, characters)
 
