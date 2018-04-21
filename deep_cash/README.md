@@ -7,13 +7,19 @@
 
 The Combined Algorithm Selection and Hyperparameter optimization
 ([CASH][autosklearn]) problem is an important one to solve if we want to
-effectively scale and deploy machine learning systems in real-world use cases.
+effectively scale and deploy machine learning systems in real-world use cases,
+which often deals with small (< 10 gb) to medium size (10 - 100 gb) data.
+
 CASH is the problem of searching through the space of all ML frameworks,
 defined as an Algorithm `A` and a set of relevant hyperparameters `lambda`
 and proposing a set of models that will perform well given a dataset and
 a task e.g.
 
-`Raw Data -> Handle Null Values -> PCA -> Logistic Regression(hyperparemeters)`
+```
+.----------.    .--------------.    .-----.    .---------------------.
+| Raw Data | -> | Handle Nulls | -> | PCA | -> | Logistic Regression |
+.----------.    .--------------.    .-----.    .---------------------.
+```
 
 In order to solve this problem, previous work like [autosklearn][autosklearn]
 uses a Bayesian Optimization techniques [SMAC][smac] with an offline meta-
@@ -28,6 +34,7 @@ problem, where a Controller network proposes "child" neural net architectures
 that are trained on a training set and evaluated on a validation set, using the
 validation performance `R` as a reinforcement learning reward signal to learn
 the best architecture proposal policy.
+
 
 # Contributions
 
@@ -50,31 +57,71 @@ network that takes as input metadata about the dataset `D` (e.g. number of
 instances, number of features). The output of the `encoder` network would be
 fed into the `decoder` network, which proposes an ML `framework`. Therefore,
 we can condition the output of the `decoder` network metadata on `D` to propose
-customized `frameworks`. A future extension might be to specify the `encoder`
-network as an RNN, which directly takes as input a sequence of observations and
-features, resulting in a hidden state that is used as the initial hidden state
-of the `decoder`.
+customized `frameworks`.
+
+
+# Implementation
+
+There are two general approaches to take, with substantial tradeoffs to
+consider:
+
+## Approach 1: Character-level Controller
+
+Generate an ML `frameworks` at the character level, such that the goal is to
+output Python code using a softmax over the space of valid characters, e.g.
+`A-Z`, `a-z`, `0-9`, `()[]=`, etc.
+
+This approach requires building in fewer assumptions into the AutoML system,
+however the function that the Controller needs to learn would be much more
+complex: it needs to (a) generate valid sklearn code character-by-character,
+and (b) generate performant algorithm and hyperparameter combinations over the
+distribution of datasets and tasks.
+
+## Approach 2: Domain-specific Controller
+
+Generate ML `frameworks` over a state space of algorithms and hyperparameter
+values, in this case, over the estimators/transformers of the `sklearn` API.
+
+This approach requires building in more assumptions into the AutoML system,
+e.g. expicitly specifying the algorithm/hyperparamater space to search over
+and how to interpret the output of the Controller so as to fit a model, but
+the advantage is that the Controller mainly has to learn a function that
+generates performant algorithm and hyperparameter combinations.
+
+One example of how to implement a domain-specific controller would be
+to create an `AlgorithmRNN` and a `HyperparameterRNN` to predict a sequence of
+algorithms and hyperparameter settings set using a softmax for each step of an
+ML `framework`:
+
+- imputation (e.g. mean, median, mode)
+- one hot encoding
+- rescaling (e.g. min-max, mean-variance)
+- feature preprocessing (e.g. PCA)
+- classification/regression
+
 
 ## Notes
 
-- The `hyperparameter` tuple can be a string of characters, or a softmax of
-  the hyperparameter state space encoded as a categorical variable. In the
-  the softmax case, the Controller alternates between `hyperparameter_name`
-  and `hyperparameter_value` softmax output layers.
-- The Controller can possibly be formulated as a GAN, where the generator
-  is an RNN the outputs a string of code and the discriminator tries to predict
+- The Controller can possibly be pre-trained using a GAN, where the generator
+  is an RNN that outputs a string of code and the discriminator tries to predict
   whether that code (i) is executable and (ii) evaluates to an sklearn
-  `Estimator`
+  `Estimator`.
+- Another alternative to training a character-level model is to tokenize
+  the code, e.g. `sklearn.linear_model -> "sklearn", ".", "linear_model"` in
+  order to reduce dimensionality of the output space.
+
 
 # Extensions
 
 An extension to the `encoder` would be to generalize the metadata feature
 representation from hand-crafted features (e.g. mean of means of numerical
 features) and instead formulate `encoder` as a sequence model, where the input
-is a sequence of sequences the first sequence contains data points or
-`instances` of the dataset, the second sequence contains the `features` of
-that particular `instance`. The weights in the encoder are trained jointly as
-part of the gradient computed using the REINFORCE algorithm.
+is a sequence of sequences. The first sequence contains data points or
+`instances` of the dataset, the second sequence contains minimally preprocessed
+`features` of that particular `instance` (note that the challenge here is how
+to represent categorical features across difference datasets). The weights in
+the `encoder` are trained jointly as part of the gradient computed using the
+REINFORCE algorithm.
 
 
 # Why?
@@ -105,46 +152,41 @@ data.
 
 ## 2. Create proof-of-concept sequence model to generate `frameworks`
 
-**estimate: 1 month**
+**estimate: 1-2 months**
 
 To verify that such a model can generate executable code, train an RNN to
 generate a string that successfully executes in the Python environment and
 evaluates to an `Estimator` object.
 
 - This RNN should be conditioned on two binary variables: `is_executable`,
-  and `creates_estimator`. The input should be these two binary variables plus
-  a latent vector `z` of random noise that are fully connected to an
-  initialization layer, which has the same dimension as the hidden activation
-  of the generator RNN. The output of this model should be tuples of
-  `framework` and `hyperparameters` strings.
-- Evaluate the RNN by generating random samples measuring the proportion of
-  samples that are executable and the proportion of those that evaluate to
-  value `Estimator` or `Pipeline` objects.
+  and `creates_estimator`. The input should be these two binary variables, and
+  the output should be a string.
+- Evaluate the RNN by generating samples and measuring the proportion that are
+  executable and the proportion of those that evaluate to `Pipeline` objects.
+  - Start with **approach 1**, and if the RNN is unable to generate valid
+    sklearn `Pipelines` at least `50%` of the time, pivot to **approach 2**.
 - Run each `framework` and `hyperparameters` input against a set of datasets
   and supervised learning tasks, available on OpenML, in order to evaluate their
   performance on the validation set.
-- **Note** an alternative to training a character-level model is to tokenize
-  the code, e.g. `sklearn.linear_model -> "sklearn", ".", "linear_model"` in
-  order to reduce dimensionality of the output space.
 
 
 ## 3. Create the Controller model by using the pre-trained sequence model from (2)
 
-**estimate: 1 month**
+**estimate: 1-2 months**
 
 - Extend the controller RNN such that it takes as input the following
   variables:
   - `is_executable`, `creates_estimator`, latent vector `z`, and metadata
     features (see [auto-sklearn supplemental material][autosklearn-supp])
-- use the proposed `frameworks` to train a model on some data `D` using the
+- Use the proposed `frameworks` to train a model on some data `D` using the
   training set and evaluate them on the validation set.
 - Use the REINFORCE algorithm to learn the policy gradient to fine-tune the
   Controller.
 
 
-## 4 For some set of datasets, compare `SeqMetaML` to other methods
+## 4 For some set of datasets, compare `DeepCASH` to other AutoML methods
 
-**estimate: 1 month**
+**estimate: 1-2 months**
 
 - Specify some dataset `{D_1, D_0, ..., D_n}`
 - Compare against [`autosklearn`][autosklearn-package], [`tpot`][tpot], and
