@@ -8,5 +8,7 @@ papers.nips.cc/paper/5872-efficient-and-robust-automated-machine-learning.pdf
 
 from . import components
 
-lr = components.classifiers.logistic_regression()
-import ipdb; ipdb.set_trace()
+
+def classifiers():
+    return [
+        components.classifiers.logistic_regression()]
