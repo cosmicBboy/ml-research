@@ -1,14 +1,12 @@
 """Module for creating a structured algorithm environment.
 
-This module extends algorithm_env.AlgorithmEnv to include a specific subset
-of sklearn Estimators, primarily based on the auto-sklearn paper:
-
-papers.nips.cc/paper/5872-efficient-and-robust-automated-machine-learning.pdf
-
-The structured algorithm environment is different from the `algorithm_env.py`
+The structured algorithm space is different from the `algorithm_env.py`
 module because here we specify an interface to generate a machine learning
 framework F, which is a sequence of algorithms (estimators/transformers) and
-their associated hyperparameters.
+their associated hyperparameters. This interface is inspired by this paper
+on automated machine learning:
+
+papers.nips.cc/paper/5872-efficient-and-robust-automated-machine-learning.pdf
 
 The sequence follows the general structure
 
@@ -16,7 +14,7 @@ The sequence follows the general structure
 | data preprocessor | -> | feature preprocessor | -> | classifier/regressor |
 .-------------------.    .----------------------.    .----------------------.
 
-where there can be at n data preprocessors (imputation, scaling, encoding,
+where there can be n data preprocessors (imputation, scaling, encoding,
 filtering).
 """
 
@@ -28,7 +26,7 @@ from sklearn.pipeline import Pipeline
 from . import components
 
 
-class AlgorithmEnvStructured(object):
+class AlgorithmSpace(object):
     """A class that generates machine learning frameworks."""
 
     def __init__(self, data_preprocessors=None, feature_preprocessors=None,

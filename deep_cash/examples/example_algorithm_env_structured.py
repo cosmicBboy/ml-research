@@ -1,11 +1,11 @@
-"""Example Usage of algorithm_env_structured module."""
+"""Example Usage of algorithm_space_structured module."""
 
 from sklearn.datasets import make_classification
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 
 from deep_cash import components
-from deep_cash.algorithm_env_structured import AlgorithmEnvStructured
+from deep_cash.algorithm_space import AlgorithmSpace
 
 # create dataset to evaluate
 X, y = make_classification(
@@ -17,38 +17,35 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
 # create an algorithm environment consisting of one data preprocessor,
 # feature preprocessor, and classifier.
-algorithm_env = AlgorithmEnvStructured(
+algorithm_space = AlgorithmSpace(
     data_preprocessors=[components.data_preprocessors.imputer()],
     feature_preprocessors=[components.feature_preprocessors.pca()],
     classifiers=[components.classifiers.logistic_regression()])
-ml_frameworks = algorithm_env.framework_iterator()
+ml_frameworks = algorithm_space.framework_iterator()
 
 
 # sample machine learning frameworks from the algorithm environment
 i, j = 0, 0
 num_samples = 100
 num_candidates = 10
-candidates = []
+best_candidates = []
+best_scores = []
 
 while True:
-    mlf = algorithm_env.sample_ml_framework()
+    mlf = algorithm_space.sample_ml_framework()
     try:
         mlf.fit(X_train, y_train)
         train_score = roc_auc_score(y_train, mlf.predict(X_train))
         test_score = roc_auc_score(y_test, mlf.predict(X_test))
-        if len(candidates) == 0:
-            candidates.append((mlf, train_score, test_score))
+        # maintain the best candidates and their associated scores
+        if len(best_candidates) < num_candidates:
+            best_candidates.append(mlf)
+            best_scores.append(test_score)
         else:
-            # insert best-performing candidates into stack
-            for index, c in enumerate(candidates):
-                if test_score > c[2]:
-                    candidates.insert(index, (mlf, train_score, test_score))
-                    break
-                elif len(candidates) <= num_candidates:
-                    candidates.append((mlf, train_score, test_score))
-                    break
-                else:
-                    break
+            min_index = best_scores.index(min(best_scores))
+            if test_score > best_scores[min_index]:
+                best_candidates[min_index] = mlf
+                best_scores[min_index] = test_score
         print(
             "valid framework %d/%d > training auc: %0.02f - test auc: %0.02f" %
             (i, j, train_score, test_score))
@@ -56,13 +53,15 @@ while True:
         if i > num_samples:
             break
     except ValueError:
+        # pass on frameworks that error out due to misconfiguration of
+        # hyperparameters.
         pass
     j += 1
 
 
 print("\nBest Models:")
 print("------------")
-for mlf, train_score, test_score in candidates:
+for test_score, mlf in zip(best_scores, best_candidates):
     for step in mlf.steps:
         print(step)
     print("training auc: %0.02f - test auc: %0.02f\n" %

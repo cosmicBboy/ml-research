@@ -1,11 +1,11 @@
 from . import (
-    algorithm_env, algorithm_env_structured, beam_search, components,
+    algorithm_env, algorithm_space, beam_search, components,
     rnn_code_generator)
 
 
 __all__ = [
     algorithm_env,
-    algorithm_env_structured,
+    algorithm_space,
     beam_search,
     components,
     rnn_code_generator]
