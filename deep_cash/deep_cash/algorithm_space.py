@@ -48,7 +48,11 @@ class AlgorithmSpace(object):
             else classifiers
 
     def sample_ml_framework(self, random_state=None):
-        """Sample a random ML framework from the algorithm space."""
+        """Sample a random ML framework from the algorithm space.
+
+        :param int|None random_state: provide random state, which determines
+            the ML framework sampled.
+        """
         np.random.seed(random_state)
         components = [
             self.data_preprocessors[
@@ -68,7 +72,7 @@ class AlgorithmSpace(object):
     def framework_iterator(self):
         """Return a generator of all algorithm and hyperparameter combos.
 
-        This is potentially a huge space, creating a generator that creates
+        This is potentially a huge space, creating a generator that yields
         a machine learning framework (sklearn.Pipeline object) based on all
         possible estimator combinations and all possible hyperparameter
         combinations of those estimators.
@@ -88,7 +92,15 @@ class AlgorithmSpace(object):
 
     def _create_ml_framework(
             self, components, memory=None, **framework_hyperparameters):
-        """Create ML framework, in this context an sklearn pipeline object."""
+        """Create ML framework, in this context an sklearn pipeline object.
+
+        :param list[AlgorithmComponent] components: A list of algorithm
+            components with which to create an ML framework.
+        :param str|None memory: path to caching directory in which to store
+            fitten transformers of the sklearn.Pipeline. If None, no caching
+            is done
+        :param dict framework_hyperparameters: hyperparameters of the pipeline.
+        """
         pipeline = Pipeline(
             memory=memory,
             steps=[(a.aname, a.aclass()) for a in components])
