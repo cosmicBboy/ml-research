@@ -4,7 +4,6 @@ TODO:
 - incorporate diversity into the rank score so that samples are differet.
 """
 
-import numpy as np
 import torch
 from torch.autograd import Variable
 from copy import copy
@@ -105,17 +104,3 @@ class Candidate(object):
         if code.endswith(eos_token):
             code = code[:-1]
         return code
-
-
-def main(rnn):
-    beam = BeamSearchDecoder(rnn, top_n=20)
-    top_candidates = beam.sample(
-        "^", ["executable", "creates_estimator"], max_length=100)
-    print("Beamsearch Samples:")
-    print("-------------------")
-    for c in top_candidates:
-        print(c.sample_code)
-
-
-if __name__ == "__main__":
-    main(load_model("rnn_code_generator_model.pt"))
