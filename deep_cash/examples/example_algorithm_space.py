@@ -12,6 +12,8 @@ X, y = make_classification(
     n_samples=1000, n_features=20, n_informative=10,
     n_classes=2, shuffle=True)
 
+import ipdb; ipdb.set_trace()
+
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 

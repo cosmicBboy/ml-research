@@ -1,3 +1,3 @@
 deps:
 	conda install pytorch torchvision -c pytorch
-	conda install pandas matplotlib ipython seaborn scikit-learn pytest
+	conda install pandas numpy matplotlib ipython seaborn scikit-learn pytest

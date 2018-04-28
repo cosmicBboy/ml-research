@@ -25,12 +25,20 @@ from sklearn.pipeline import Pipeline
 
 from . import components
 
+START_TOKEN = "<sos>"
+END_TOKEN = "<eos>"
+NONE_TOKEN = "<none>"
+
 
 class AlgorithmSpace(object):
     """A class that generates machine learning frameworks."""
 
+    # currently support data preprocessor, feature preprocessor, classifer
+    N_COMPONENT_TYPES = 3
+
     def __init__(self, data_preprocessors=None, feature_preprocessors=None,
-                 classifiers=None):
+                 classifiers=None, with_start_token=True,
+                 with_end_token=False, with_none_token=False):
         """Initialize a structured algorithm environment.
 
         :param list[AlgorithmComponent]|None data_preprocessors: algorithm
@@ -46,6 +54,42 @@ class AlgorithmSpace(object):
             if feature_preprocessors is None else feature_preprocessors
         self.classifiers = classifiers() if classifiers is None \
             else classifiers
+        self.with_start_token = with_start_token
+        self.with_end_token = with_end_token
+        self.with_none_token = with_none_token
+
+    @property
+    def components(self):
+        """Concatenates all components into a single list"""
+        components = self.data_preprocessors + \
+            self.feature_preprocessors + \
+            self.classifiers
+        if self.with_start_token:
+            components += [START_TOKEN]
+        if self.with_end_token:
+            components += [END_TOKEN]
+        if self.with_none_token:
+            components += [NONE_TOKEN]
+        return components
+
+    @property
+    def start_token_index(self):
+        return self.components.index(START_TOKEN) if self.with_start_token \
+            else None
+
+    @property
+    def end_token_index(self):
+        return self.components.index(END_TOKEN) if self.with_end_token \
+            else None
+
+    @property
+    def none_token_index(self):
+        return self.components.index(NONE_TOKEN) if self.with_none_token \
+            else None
+
+    @property
+    def n_components(self):
+        return len(self.components)
 
     def sample_ml_framework(self, random_state=None):
         """Sample a random ML framework from the algorithm space.
@@ -78,7 +122,7 @@ class AlgorithmSpace(object):
         combinations of those estimators.
         """
         return (
-            self._create_ml_framework(
+            self.create_ml_framework(
                 [dp, fp, clf], **self._combine_dicts([d_hp, f_hp, c_hp]))
             for dp, fp, clf in itertools.product(
                 self.data_preprocessors,
@@ -90,7 +134,7 @@ class AlgorithmSpace(object):
                 clf.hyperparameter_iterator())
         )
 
-    def _create_ml_framework(
+    def create_ml_framework(
             self, components, memory=None, **framework_hyperparameters):
         """Create ML framework, in this context an sklearn pipeline object.
 

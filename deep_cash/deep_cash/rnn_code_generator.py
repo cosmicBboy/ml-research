@@ -95,7 +95,8 @@ def create_training_data(algorithm_env, n=5):
     return training_data
 
 
-def create_metafeature_tensor(metafeatures, seq):
+def create_metafeature_tensor(
+        metafeatures, seq, metafeature_categories=metafeature_categories):
     """Convert a metafeature vector into a tensor.
 
     For now this will be a single category indicating `is_executable`.
