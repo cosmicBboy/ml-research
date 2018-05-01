@@ -48,11 +48,11 @@ class AlgorithmSpace(object):
         :param list[AlgorithmComponent]|None classifiers: algorithm
             components for classification
         """
-        self.data_preprocessors = data_preprocessors() \
+        self.data_preprocessors = get_data_preprocessors() \
             if data_preprocessors is None else data_preprocessors
-        self.feature_preprocessors = feature_preprocessors() \
+        self.feature_preprocessors = get_feature_preprocessors() \
             if feature_preprocessors is None else feature_preprocessors
-        self.classifiers = classifiers() if classifiers is None \
+        self.classifiers = get_classifiers() if classifiers is None \
             else classifiers
         self.with_start_token = with_start_token
         self.with_end_token = with_end_token
@@ -158,7 +158,7 @@ class AlgorithmSpace(object):
         return combined_dicts
 
 
-def data_preprocessors():
+def get_data_preprocessors():
     """Get all data preprocessors in structured algorithm environment."""
     return [
         components.data_preprocessors.imputer(),
@@ -171,7 +171,7 @@ def data_preprocessors():
     ]
 
 
-def feature_preprocessors():
+def get_feature_preprocessors():
     """Get all feature preprocessors in structured algorithm environment."""
     return [
         components.feature_preprocessors.fast_ica(),
@@ -186,7 +186,7 @@ def feature_preprocessors():
     ]
 
 
-def classifiers():
+def get_classifiers():
     """Get all classifiers in structured algorithm environment."""
     return [
         components.classifiers.logistic_regression(),

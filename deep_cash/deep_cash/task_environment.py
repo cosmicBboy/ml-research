@@ -18,9 +18,10 @@ class TaskEnvironment(object):
 
     def __init__(self, scorer, n_samples=1000, random_state=None):
         # TODO: soon this should be a set of datasets from which to sample.
+        self.n_samples = n_samples
         self.data_env = make_classification(
-            n_samples=1000, n_features=20, n_informative=10,
-            n_classes=2, shuffle=True)
+            n_samples=self.n_samples, n_features=50, n_informative=3,
+            n_classes=2, shuffle=True, random_state=random_state)
         self.X = self.data_env[0]
         self.y = self.data_env[1]
         self.data_env_index = np.array(range(n_samples))
@@ -31,9 +32,8 @@ class TaskEnvironment(object):
 
     def sample(self):
         # number of training samples to bootstrap
-        num_samples = np.random.choice(range(int(self.n / 2), self.n), 1)
         train_index = np.random.choice(
-            self.data_env_index, num_samples, replace=True)
+            self.data_env_index, self.n_samples, replace=True)
         test_index = np.setdiff1d(self.data_env_index, train_index)
         # save the test partitions for evaluation
         self.X_train = self.X[train_index]
@@ -43,9 +43,12 @@ class TaskEnvironment(object):
         return _metafeatures(self.X_train, self.y_train)
 
     def evaluate(self, ml_framework):
-        ml_framework.fit(self.X_train, self.y_train)
         try:
-            pred = ml_framework.predict_proba(self.X_test)[:, 1]
+            ml_framework.fit(self.X_train, self.y_train)
+            try:
+                pred = ml_framework.predict_proba(self.X_test)[:, 1]
+            except:
+                pred = ml_framework.predict(self.X_test)
+            return self.scorer(self.y_test, pred) * 100  # scale to [0, 100]
         except:
-            pred = ml_framework.predict(self.X_test)
-        return self.scorer(self.y_test, pred)
+            return None

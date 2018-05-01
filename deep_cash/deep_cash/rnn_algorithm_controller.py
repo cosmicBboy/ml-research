@@ -6,6 +6,7 @@ import torch.nn as nn
 
 from torch.autograd import Variable
 from torch.distributions import Categorical
+import torch.nn.utils as utils
 
 from .algorithm_space import START_TOKEN
 
@@ -33,9 +34,10 @@ class AlgorithmControllerRNN(nn.Module):
         super(AlgorithmControllerRNN, self).__init__()
         self.dropout_rate = dropout_rate
         self.num_rnn_layers = num_rnn_layers
+        self.metafeature_size = metafeature_size
+        self.input_size = input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
-        self.metafeature_size = metafeature_size
         self.rnn = nn.GRU(
             metafeature_size + input_size, hidden_size,
             num_layers=self.num_rnn_layers)
@@ -55,8 +57,7 @@ class AlgorithmControllerRNN(nn.Module):
         return output, hidden
 
     def initHidden(self):
-        # randomly initialize
-        return Variable(torch.randn(self.num_rnn_layers, 1, self.hidden_size))
+        return Variable(torch.zeros(self.num_rnn_layers, 1, self.hidden_size))
 
 
 def _create_metafeature_tensor(metafeatures, seq):
@@ -110,15 +111,10 @@ def select_ml_framework(a_controller, a_space, metafeatures):
     :param AlgorithmControllerRNN a_controller:
     :param list metafeatures:
     """
-    # TODO:
-    # - create metafeatures tensor, which has dim <1 x 1 x n_metafeatures>
-    # - create input tensor, which has dim <1 x 1 x a_space.n_components>,
-    #   where the 3rd dimension encodes a one-hot encoded vector the index
-    #   for the <sos> token is 1.
-    # - Note that the first dimension of the metafeatures and input tensor are
-    #   both 1 because we want to train a generative model that proposes
-    #   policies, which are sequences of actions, each action specifying one
-    #   aspect of a machine learning framework
+    # Note that the first dimension of the metafeatures and input tensor are
+    # both 1 because we want to train a generative model that proposes
+    # policies, which are sequences of actions, each action specifying one
+    # aspect of a machine learning framework.
     metafeature_tensor, input_tensor = _create_training_data_tensors(
         a_space, metafeatures, [START_TOKEN])
     hidden = a_controller.initHidden()
@@ -128,44 +124,43 @@ def select_ml_framework(a_controller, a_space, metafeatures):
     log_probs = []
     for i in range(a_space.N_COMPONENT_TYPES):
         probs, hidden = a_controller(metafeature_tensor, input_tensor, hidden)
-        m = Categorical(probs[0])
+        m = Categorical(probs)
         action = m.sample()
-        component = a_space.components[action.data[0]]
-        ml_framework += [component]
-        input_tensor = Variable(_create_input_tensor(a_space, [component]))
         log_probs.append(m.log_prob(action))
-    log_probs = torch.cat(log_probs)
-    a_controller.saved_log_probs.append(log_probs.sum())
+        component = a_space.components[int(action)]
+        ml_framework.append(component)
+        input_tensor = Variable(_create_input_tensor(a_space, [component]))
+    log_probs = torch.cat(log_probs).sum()
+    a_controller.saved_log_probs.append(log_probs)
     return ml_framework
 
 
-def terminate_episode(a_controller, optim):
+def terminate_episode(a_controller, optim, baseline_reward, show_grad=False):
     R = 0
-    policy_loss = []
-    rewards = []
-
-    # compute discounted reward
-    for r in a_controller.rewards[::-1]:
-        R = r + GAMMA * R
-        rewards.insert(0, R)
-    rewards = torch.Tensor(rewards)
-    rewards = (rewards - rewards.mean()) / (rewards.std() + EPS)
+    loss = []
 
     # compute loss
-    for log_prob, reward in zip(a_controller.saved_log_probs, rewards):
-        policy_loss.append(-log_prob * reward)
+    for log_prob, reward in zip(
+            a_controller.saved_log_probs, a_controller.rewards):
+        loss.append(-log_prob * (reward - baseline_reward))
 
     # one step of gradient descent
     optim.zero_grad()
-    policy_loss = torch.cat(policy_loss).sum()
-    policy_loss.backward()
+    loss = torch.cat(loss).sum().div(len(a_controller.rewards))
+    loss.backward()
+    utils.clip_grad_norm(a_controller.parameters(), 20)
     optim.step()
+
+    if show_grad:
+        print("\n\nGradients")
+        for param in a_controller.parameters():
+            print(param.grad.data.sum())
 
     # reset rewards and log probs
     del a_controller.rewards[:]
     del a_controller.saved_log_probs[:]
 
-    return policy_loss.data[0]
+    return loss.data[0]
 
 
 def check_ml_framework(a_space, ml_framework):
@@ -176,7 +171,7 @@ def check_ml_framework(a_space, ml_framework):
 
 
 def train(a_controller, a_space, t_env, optim, num_episodes=10,
-          log_every=1, n_iter=5000):
+          log_every=1, n_iter=1000, show_grad=False):
     """Train the AlgorithmContoller RNN.
 
     :param AlgorithmControllerRNN a_controller: Controller to sample
@@ -188,28 +183,43 @@ def train(a_controller, a_space, t_env, optim, num_episodes=10,
         algorithm controller.
     """
     running_reward = 10
+    overall_mean_reward = []
+    overall_loss = []
+    prev_baseline_reward = 0
     for i_episode in range(num_episodes):
         t_state = t_env.sample()  # initial sample
         n_valid = 0
-        ml_score = []
+        current_baseline_reward = 0
         for i in range(n_iter):
             ml_framework = select_ml_framework(a_controller, a_space, t_state)
             ml_framework = check_ml_framework(a_space, ml_framework)
             if ml_framework is None:
-                reward = -1  # negative reward for proposing invalid framework
+                reward = 0  # zero reward for proposing invalid framework
             else:
                 n_valid += 1
                 print("Proposed %d/%d valid frameworks" % (n_valid, i + 1),
                       sep=" ", end="\r", flush=True)
                 reward = t_env.evaluate(ml_framework)
-                ml_score.append(reward)
+                if reward is None:
+                    reward = 0
+            current_baseline_reward = (reward * 0.99) + \
+                current_baseline_reward * 0.01
             t_state = t_env.sample()
             a_controller.rewards.append(reward)
 
+        mean_reward = np.mean(a_controller.rewards)
         running_reward = running_reward * 0.99 + i * 0.01
-        loss = terminate_episode(a_controller, optim)
+
+        loss = terminate_episode(
+            a_controller, optim, prev_baseline_reward, show_grad=show_grad)
+        overall_mean_reward.append(mean_reward)
+        overall_loss.append(loss)
+        prev_baseline_reward = current_baseline_reward
         if i_episode % log_every == 0:
-            print("\nEpisode: %s | Loss: %0.02f | Mean Score: %0.02f | "
-                  "Last episode length: %d | Running reward: %0.02f" %
-                  (i_episode, loss, np.mean(ml_score), i + 1, running_reward))
+            print("\nEpisode: %s | Mean Reward : %0.02f | "
+                  "Last episode length: %d | "
+                  "Running reward: %0.02f" %
+                  (i_episode, mean_reward, i + 1, running_reward))
+
+    return overall_mean_reward, overall_loss
 
