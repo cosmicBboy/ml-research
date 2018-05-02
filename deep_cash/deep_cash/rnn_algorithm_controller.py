@@ -10,7 +10,6 @@ import torch.nn.utils as utils
 
 from .algorithm_space import START_TOKEN
 
-EPS = np.finfo(np.float32).eps.item()
 GAMMA = 0.99
 
 
