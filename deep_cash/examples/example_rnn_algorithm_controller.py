@@ -20,7 +20,9 @@ hidden_size = 100
 n_episodes = 100
 n_iter = 100
 
-t_env = TaskEnvironment(roc_auc_score, random_state=100)
+t_env = TaskEnvironment(
+    roc_auc_score, random_state=100,
+    per_framework_time_limit=5)
 
 # create algorithm space
 a_space = AlgorithmSpace()
