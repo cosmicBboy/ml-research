@@ -1,4 +1,7 @@
-"""Module for generating algorithms sequences."""
+"""Module for generating algorithms sequences.
+
+TODO: add time cost to fitting a proposed framework
+"""
 
 import numpy as np
 import torch
@@ -11,6 +14,7 @@ import torch.nn.utils as utils
 from .algorithm_space import START_TOKEN
 
 GAMMA = 0.99
+ERROR_REWARD = -100
 
 
 # specify type of the metafeature
@@ -20,7 +24,6 @@ METAFEATURES = [
 
 
 class AlgorithmControllerRNN(nn.Module):
-
     """RNN module to generate algorithm components.
 
     REINFORCE implementation adapted from:
@@ -191,16 +194,17 @@ def train(a_controller, a_space, t_env, optim, num_episodes=10,
         current_baseline_reward = 0
         for i in range(n_iter):
             ml_framework = select_ml_framework(a_controller, a_space, t_state)
+            # TODO: move check_ml_framework into the task environment.
             ml_framework = check_ml_framework(a_space, ml_framework)
             if ml_framework is None:
-                reward = 0  # zero reward for proposing invalid framework
+                reward = ERROR_REWARD
             else:
                 n_valid += 1
                 print("Proposed %d/%d valid frameworks" % (n_valid, i + 1),
                       sep=" ", end="\r", flush=True)
                 reward = t_env.evaluate(ml_framework)
                 if reward is None:
-                    reward = 0
+                    reward = ERROR_REWARD
             current_baseline_reward = (reward * 0.99) + \
                 current_baseline_reward * 0.01
             t_state = t_env.sample()

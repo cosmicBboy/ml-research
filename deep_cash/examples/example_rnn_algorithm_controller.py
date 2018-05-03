@@ -17,20 +17,16 @@ from deep_cash.task_environment import TaskEnvironment
 metafeatures = ["number_of_examples"]
 learning_rate = 0.005
 hidden_size = 100
-n_episodes = 200
+n_episodes = 100
 n_iter = 100
 
 t_env = TaskEnvironment(roc_auc_score, random_state=100)
 
 # create algorithm space
-a_space = AlgorithmSpace(
-    data_preprocessors=[components.data_preprocessors.imputer()],
-    feature_preprocessors=[components.feature_preprocessors.pca()],
-)
-
+a_space = AlgorithmSpace()
 
 df = pd.DataFrame(index=range(n_episodes))
-n_layers = [1, 2, 3]
+n_layers = [3, 6]
 for n in n_layers:
     print("Training controller, n_layers=%d" % n)
     # create algorithm controller
@@ -50,3 +46,4 @@ fig, ax = plt.subplots()
 df[["rewards_n_layers_%d" % i for i in n_layers]].plot(ax=ax)
 fig.savefig("artifacts/rnn_algorithm_controller_experiment.png")
 df.to_csv("artifacts/rnn_algorithm_controller_experiment.csv", index=False)
+

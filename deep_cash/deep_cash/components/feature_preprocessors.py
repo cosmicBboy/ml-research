@@ -61,7 +61,7 @@ def fast_ica():
     return AlgorithmComponent(
         "FastICA", FastICA, [
             UniformIntHyperparameter(
-                "n_components", 10, 2000, default=None, log=True),
+                "n_components", 10, 2000, default=100),
             CategoricalHyperparameter(
                 "algorithm", ["parallel", "deflation"], default="parallel"),
             CategoricalHyperparameter(
