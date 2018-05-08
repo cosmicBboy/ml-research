@@ -1,6 +1,7 @@
 """Module for generating algorithms sequences.
 
-TODO: add time cost to fitting a proposed framework
+TODO:
+- add time cost to fitting a proposed framework
 """
 
 import numpy as np

@@ -1,5 +1,7 @@
 """Define algorithm component."""
 
+from collections import OrderedDict
+
 import numpy as np
 
 import itertools
@@ -21,12 +23,23 @@ class AlgorithmComponent(object):
         self.aclass = aclass
         self.hyperparameters = hyperparameters
 
+    def hyperparameter_name_space(self):
+        """Return list of hyperparameter names.
+
+        TODO: make this a property with the @property decorator
+        """
+        return ["%s__%s" % (self.aname, h.hname) for h in self.hyperparameters]
+
     def hyperparameter_state_space(self):
-        """Return dict of hyperparameter space."""
+        """Return dict of hyperparameter space.
+
+        TODO: make this a property with the @property decorator
+        """
         if self.hyperparameters is None:
-            return {}
-        return {"%s__%s" % (self.aname, h.hname): h.get_state_space()
-                for h in self.hyperparameters}
+            return OrderedDict()
+        return OrderedDict([
+            ("%s__%s" % (self.aname, h.hname), h.get_state_space())
+            for h in self.hyperparameters])
 
     def hyperparameter_iterator(self):
         """Return a generator of all possible hyperparameter combinations."""

@@ -21,6 +21,8 @@ filtering).
 import itertools
 import numpy as np
 
+from collections import OrderedDict
+
 from sklearn.pipeline import Pipeline
 
 from . import components
@@ -28,6 +30,7 @@ from . import components
 START_TOKEN = "<sos>"
 END_TOKEN = "<eos>"
 NONE_TOKEN = "<none>"
+SPECIAL_TOKENS = [START_TOKEN, END_TOKEN, NONE_TOKEN]
 
 
 class AlgorithmSpace(object):
@@ -71,6 +74,42 @@ class AlgorithmSpace(object):
         if self.with_none_token:
             components += [NONE_TOKEN]
         return components
+
+    @property
+    def hyperparameter_name_space(self):
+        """Return all hyperparameters for all components in the space."""
+        hyperparams = []
+        for c in self.components:
+            if c not in SPECIAL_TOKENS and c.hyperparameters is not None:
+                hyperparams.extend(c.hyperparameter_name_space())
+        return hyperparams
+
+    @property
+    def hyperparameter_state_space(self):
+        """Return all hyperparameter name-value pairs."""
+        hyperparam_states = OrderedDict()
+        for c in self.components:
+            if c not in SPECIAL_TOKENS and c.hyperparameters is not None:
+                hyperparam_states.update(c.hyperparameter_state_space())
+        return hyperparam_states
+
+    @property
+    def hyperparameter_state_space_flat(self):
+        """Return all hyperparameter values in flat structure.
+
+        In the following form:
+        {
+            "Algorithm__hyperparameter__value_0": value_0,
+            "Algorithm__hyperparameter__value_1": value_1,
+            ...
+            "Algorithm__hyperparameter__value_n": value_n,
+        }
+        """
+        hyperparam_values = OrderedDict()
+        for name, space in self.hyperparameter_state_space.items():
+            for i, value in enumerate(space):
+                hyperparam_values["%s__state_%d" % (name, i)] = value
+        return hyperparam_values
 
     @property
     def start_token_index(self):
