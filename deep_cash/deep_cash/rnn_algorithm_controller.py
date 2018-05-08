@@ -87,6 +87,7 @@ def _create_metafeature_tensor(metafeatures, seq):
     m = torch.cat(m, 2)
     return m
 
+
 def _create_input_tensor(a_space, seq):
     """Convert a string of characters to an input tensor.
 
