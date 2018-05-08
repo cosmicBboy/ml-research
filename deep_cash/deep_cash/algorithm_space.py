@@ -60,7 +60,7 @@ class AlgorithmSpace(object):
 
     @property
     def components(self):
-        """Concatenates all components into a single list"""
+        """Concatenate all components into a single list."""
         components = self.data_preprocessors + \
             self.feature_preprocessors + \
             self.classifiers
@@ -74,21 +74,25 @@ class AlgorithmSpace(object):
 
     @property
     def start_token_index(self):
+        """Return index of the start of sequence token."""
         return self.components.index(START_TOKEN) if self.with_start_token \
             else None
 
     @property
     def end_token_index(self):
+        """Return index of the end of sequence token."""
         return self.components.index(END_TOKEN) if self.with_end_token \
             else None
 
     @property
     def none_token_index(self):
+        """Return index of the none token."""
         return self.components.index(NONE_TOKEN) if self.with_none_token \
             else None
 
     @property
     def n_components(self):
+        """Return number of components in the algorithm space."""
         return len(self.components)
 
     def sample_ml_framework(self, random_state=None):
