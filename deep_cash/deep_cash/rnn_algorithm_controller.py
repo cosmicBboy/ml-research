@@ -33,6 +33,7 @@ class AlgorithmControllerRNN(nn.Module):
     def __init__(
             self, metafeature_size, input_size, hidden_size, output_size,
             dropout_rate=0.1, num_rnn_layers=1):
+        """Initialize algorithm controller to propose ML frameworks."""
         super(AlgorithmControllerRNN, self).__init__()
         self.dropout_rate = dropout_rate
         self.num_rnn_layers = num_rnn_layers
@@ -138,7 +139,7 @@ def select_ml_framework(a_controller, a_space, metafeatures):
 
 
 def terminate_episode(a_controller, optim, baseline_reward, show_grad=False):
-    R = 0
+    """End an episode with one backpropagation step."""
     loss = []
 
     # compute loss
@@ -166,14 +167,28 @@ def terminate_episode(a_controller, optim, baseline_reward, show_grad=False):
 
 
 def check_ml_framework(a_space, ml_framework):
+    """Check if the steps in ML framework form a valid pipeline."""
     try:
         return a_space.create_ml_framework(ml_framework)
-    except:
+    except Exception:
         return None
 
 
+def maintain_best_candidates(
+        best_candidates, best_scores, num_candidates, ml_framework, score):
+    """Maintain the best candidates and their associated scores."""
+    if len(best_candidates) < num_candidates:
+        return best_candidates + [ml_framework], best_scores + [score]
+    else:
+        min_index = best_scores.index(min(best_scores))
+        if score > best_scores[min_index]:
+            best_candidates[min_index] = ml_framework
+            best_scores[min_index] = score
+        return best_candidates, best_scores
+
+
 def train(a_controller, a_space, t_env, optim, num_episodes=10,
-          log_every=1, n_iter=1000, show_grad=False):
+          log_every=1, n_iter=1000, show_grad=False, num_candidates=10):
     """Train the AlgorithmContoller RNN.
 
     :param AlgorithmControllerRNN a_controller: Controller to sample
@@ -185,31 +200,46 @@ def train(a_controller, a_space, t_env, optim, num_episodes=10,
         algorithm controller.
     """
     running_reward = 10
+    best_candidates = []
+    best_scores = []
     overall_mean_reward = []
     overall_loss = []
+    overall_ml_performance = []
     prev_baseline_reward = 0
     for i_episode in range(num_episodes):
-        t_state = t_env.sample()  # initial sample
+        # sample data environment from data distribution
+        t_env.sample_data_env()
+        # sample training/test data from data environment
+        t_state = t_env.sample()
         n_valid = 0
         current_baseline_reward = 0
+        ml_performance = []
         for i in range(n_iter):
             ml_framework = select_ml_framework(a_controller, a_space, t_state)
             # TODO: move check_ml_framework into the task environment.
             ml_framework = check_ml_framework(a_space, ml_framework)
             if ml_framework is None:
-                reward = ERROR_REWARD
+                reward = t_env.error_reward
             else:
                 n_valid += 1
                 print("Proposed %d/%d valid frameworks" % (n_valid, i + 1),
                       sep=" ", end="\r", flush=True)
                 reward = t_env.evaluate(ml_framework)
                 if reward is None:
-                    reward = ERROR_REWARD
+                    reward = t_env.error_reward
+                else:
+                    ml_performance.append(reward)
+                    # TODO: make this functional i.e. no side-effects
+                    best_candidates, best_scores = maintain_best_candidates(
+                        best_candidates, best_scores, num_candidates,
+                        ml_framework, reward)
             current_baseline_reward = (reward * 0.99) + \
                 current_baseline_reward * 0.01
             t_state = t_env.sample()
             a_controller.rewards.append(reward)
 
+        mean_ml_performance = np.mean(ml_performance) if \
+            len(ml_performance) > 0 else np.nan
         mean_reward = np.mean(a_controller.rewards)
         running_reward = running_reward * 0.99 + i * 0.01
 
@@ -217,12 +247,14 @@ def train(a_controller, a_space, t_env, optim, num_episodes=10,
             a_controller, optim, prev_baseline_reward, show_grad=show_grad)
         overall_mean_reward.append(mean_reward)
         overall_loss.append(loss)
+        overall_ml_performance.append(mean_ml_performance)
         prev_baseline_reward = current_baseline_reward
         if i_episode % log_every == 0:
-            print("\nEpisode: %s | Mean Reward : %0.02f | "
-                  "Last episode length: %d | "
+            print("\nEpisode: %s | Mean Reward: %0.02f | "
+                  "Mean Performance: %0.02f | Episode length: %d | "
                   "Running reward: %0.02f" %
-                  (i_episode, mean_reward, i + 1, running_reward))
+                  (i_episode, mean_reward, mean_ml_performance, i + 1,
+                   running_reward))
 
-    return overall_mean_reward, overall_loss
-
+    return overall_mean_reward, overall_loss, overall_ml_performance, \
+        best_candidates, best_scores
