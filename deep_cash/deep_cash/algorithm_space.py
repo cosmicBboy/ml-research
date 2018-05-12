@@ -41,7 +41,10 @@ class AlgorithmSpace(object):
 
     def __init__(self, data_preprocessors=None, feature_preprocessors=None,
                  classifiers=None, with_start_token=True,
-                 with_end_token=False, with_none_token=False):
+                 with_end_token=False, with_none_token=False,
+                 hyperparam_with_start_token=True,
+                 hyperparam_with_end_token=False,
+                 hyperparam_with_none_token=True):
         """Initialize a structured algorithm environment.
 
         :param list[AlgorithmComponent]|None data_preprocessors: algorithm
@@ -60,6 +63,9 @@ class AlgorithmSpace(object):
         self.with_start_token = with_start_token
         self.with_end_token = with_end_token
         self.with_none_token = with_none_token
+        self.hyperparam_with_start_token = hyperparam_with_start_token
+        self.hyperparam_with_end_token = hyperparam_with_end_token
+        self.hyperparam_with_none_token = hyperparam_with_none_token
 
     @property
     def components(self):
@@ -109,7 +115,21 @@ class AlgorithmSpace(object):
         for name, space in self.hyperparameter_state_space.items():
             for i, value in enumerate(space):
                 hyperparam_values["%s__state_%d" % (name, i)] = value
+        if self.hyperparam_with_start_token:
+            hyperparam_values["START_TOKEN"] = START_TOKEN
+        if self.hyperparam_with_end_token:
+            hyperparam_values["END_TOKEN"] = END_TOKEN
+        if self.hyperparam_with_none_token:
+            hyperparam_values["NONE_TOKEN"] = NONE_TOKEN
         return hyperparam_values
+
+    @property
+    def hyperparameter_state_space_values(self):
+        return list(self.hyperparameter_state_space_flat.values())
+
+    @property
+    def hyperparameter_state_space_keys(self):
+        return list(self.hyperparameter_state_space_flat.keys())
 
     @property
     def start_token_index(self):
@@ -130,9 +150,32 @@ class AlgorithmSpace(object):
             else None
 
     @property
+    def h_start_token_index(self):
+        """Return index of hyperparameter start token."""
+        return self.hyperparameter_state_space_values.index(START_TOKEN) if \
+            self.with_start_token else None
+
+    @property
     def n_components(self):
         """Return number of components in the algorithm space."""
         return len(self.components)
+
+    @property
+    def n_hyperparameter_names(self):
+        """Return number of hyperparameter"""
+        return len(self.hyperparameter_name_space)
+
+    @property
+    def n_hyperparameters(self):
+        """Return number of hyperparameter"""
+        return len(self.hyperparameter_state_space_flat)
+
+    def h_value_index(self, hyperparameter_name):
+        """Check whether a hyperparameter value index is correct."""
+        return [
+            i for i, (k, v) in enumerate(
+                self.hyperparameter_state_space_flat.items())
+            if k.startswith(hyperparameter_name)]
 
     def sample_ml_framework(self, random_state=None):
         """Sample a random ML framework from the algorithm space.
@@ -153,7 +196,7 @@ class AlgorithmSpace(object):
         for a in components:
             framework_hyperparameters.update(
                 a.sample_hyperparameter_state_space())
-        return self._create_ml_framework(
+        return self.create_ml_framework(
             components, **framework_hyperparameters)
 
     def framework_iterator(self):
@@ -178,7 +221,7 @@ class AlgorithmSpace(object):
         )
 
     def create_ml_framework(
-            self, components, memory=None, **framework_hyperparameters):
+            self, components, memory=None):
         """Create ML framework, in this context an sklearn pipeline object.
 
         :param list[AlgorithmComponent] components: A list of algorithm
@@ -186,13 +229,22 @@ class AlgorithmSpace(object):
         :param str|None memory: path to caching directory in which to store
             fitten transformers of the sklearn.Pipeline. If None, no caching
             is done
-        :param dict framework_hyperparameters: hyperparameters of the pipeline.
         """
-        pipeline = Pipeline(
+        ml_framework = Pipeline(
             memory=memory,
             steps=[(a.aname, a.aclass()) for a in components])
-        pipeline.set_params(**framework_hyperparameters)
-        return pipeline
+        return ml_framework
+
+    def set_ml_framework_params(self, ml_framework, hyperparameters):
+        """Set parameters of ML framework.
+
+        :param sklearn.Pipeline ml_framework: a ml framework.
+        :param dict framework_hyperparameters: hyperparameters of the pipeline.
+        """
+        hyperparameters = OrderedDict([
+            (k, v) for k, v in hyperparameters.items()
+            if v != NONE_TOKEN])
+        return ml_framework.set_params(**hyperparameters)
 
     def _combine_dicts(self, dicts):
         combined_dicts = {}

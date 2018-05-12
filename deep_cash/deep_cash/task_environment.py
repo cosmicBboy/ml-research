@@ -60,6 +60,11 @@ class TaskEnvironment(object):
         """Return reward in the situation of a fit/predict error."""
         return self._error_reward * self._reward_scale
 
+    @property
+    def correct_hyperparameter_reward(self):
+        """Return reward when proposed hyperparameter is correct."""
+        return 1 * self._reward_scale
+
     def sample_data_env(self):
         """Sample the data distribution."""
         data_env_tuple = self.data_distribution[
