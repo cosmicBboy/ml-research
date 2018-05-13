@@ -1,6 +1,7 @@
 """Module for generating algorithms sequences.
 
 TODO:
+- remove dependency of MLFrameworkController on AlgorithmSpace
 - add time cost to fitting a proposed framework
 """
 
@@ -18,7 +19,7 @@ from . import utils
 from .algorithm_space import START_TOKEN
 
 
-class _ControllerRNN(nn.Module):
+class _SubControllerRNN(nn.Module):
     """RNN module to generate algorithm component/hyperparameter settings.
 
     REINFORCE implementation adapted from:
@@ -27,9 +28,9 @@ class _ControllerRNN(nn.Module):
 
     def __init__(
             self, metafeature_size, input_size, hidden_size, output_size,
-            optim, optim_kwargs, dropout_rate=0.1, num_rnn_layers=1):
+            optim=None, optim_kwargs=None, dropout_rate=0.1, num_rnn_layers=1):
         """Initialize algorithm controller to propose ML frameworks."""
-        super(_ControllerRNN, self).__init__()
+        super(_SubControllerRNN, self).__init__()
         self.dropout_rate = dropout_rate
         self.num_rnn_layers = num_rnn_layers
         self.metafeature_size = metafeature_size
@@ -49,7 +50,10 @@ class _ControllerRNN(nn.Module):
         self.rewards = []
 
         # set optimization object
-        self.optim = optim(self.parameters(), **optim_kwargs)
+        if optim is None:
+            self.optim = optim
+        else:
+            self.optim = optim(self.parameters(), **optim_kwargs)
 
     def forward(self, metafeatures, input, hidden):
         input_concat = torch.cat((metafeatures, input), 2)
@@ -69,6 +73,10 @@ class _ControllerRNN(nn.Module):
         algorithm and hyperparameter controller of the hidden layers are
         shared.
         """
+        if self.optim is None:
+            raise ValueError(
+                "optimization object not set. You need to provide `optim` "
+                "and `optim_kwargs` when instantiating an %s object" % self)
         loss = []
         log_probs = getattr(self, log_probs_attr)
         rewards = getattr(self, rewards_attr)
@@ -100,16 +108,17 @@ class _ControllerRNN(nn.Module):
         return Variable(torch.zeros(self.num_rnn_layers, 1, self.hidden_size))
 
 
-class AlgorithmControllerRNN(_ControllerRNN):
+class AlgorithmControllerRNN(_SubControllerRNN):
     """RNN module to generate algorithm components."""
     pass
 
 
-class HyperparameterControllerRNN(_ControllerRNN):
+class HyperparameterControllerRNN(_SubControllerRNN):
     """RNN module to propose hyperparameter settings."""
 
     def __init__(self, *args, **kwargs):
         super(HyperparameterControllerRNN, self).__init__(*args, **kwargs)
+        # lists to store inner hyperparameter training loop.
         self.inner_saved_log_probs = []
         self.inner_rewards = []
 
@@ -121,91 +130,100 @@ class HyperparameterControllerRNN(_ControllerRNN):
 
 class MLFrameworkController(object):
     """Controller to generate machine learning frameworks."""
-    pass
 
+    def __init__(self, a_controller, h_controller, a_space):
+        self.a_controller = a_controller
+        self.h_controller = h_controller
+        self.a_space = a_space
 
-def select_ml_framework(a_controller, a_space, metafeatures):
-    """Select ML framework from the algrothm controller given state.
+    def select_ml_framework(self, t_state):
+        """Select ML framework from the algorithm controller given task state.
 
-    The task state is implemented as the metafeatures associated with a
-    particular training set metafeatures, in the context of bootstrap sampling
-    where an ML framework is fit on the bootstrapped sample and the validation
-    performance (reward) is computed on the out-of-bag sample.
+        The task state is implemented as the metafeatures associated with a
+        particular training set metafeatures, in the context of bootstrap
+        sampling where an ML framework is fit on the bootstrapped sample and
+        the validation performance (reward) is computed on the out-of-bag
+        sample.
 
-    :param AlgorithmControllerRNN a_controller:
-    :param list metafeatures:
-    """
-    # Note that the first dimension of the metafeatures and input tensor are
-    # both 1 because we want to train a generative model that proposes
-    # policies, which are sequences of actions, each action specifying one
-    # aspect of a machine learning framework.
-    metafeature_tensor, input_tensor = utils._create_training_data_tensors(
-        a_space, metafeatures, [START_TOKEN])
-    hidden = a_controller.initHidden()
-    ml_framework = []
-    component_probs = []
+        :param AlgorithmControllerRNN a_controller:
+        :param list t_state:
+        """
+        # Note that the first dimension of the metafeatures and input tensor
+        # are both 1 because we want to train a generative model that proposes
+        # policies, which are sequences of actions, each action specifying one
+        # aspect of a machine learning framework.
+        metafeature_tensor, input_tensor = utils._create_training_data_tensors(
+            self.a_space, t_state, [START_TOKEN])
+        hidden = self.a_controller.initHidden()
+        ml_framework = []
+        # TODO: eventually remove this so that the hyperparameter controller
+        # doesn't need the flattened softmax output of the algorithm controller
+        component_probs = []
+        # compute joint log probability of the components
+        log_probs = []
+        for i in range(self.a_space.N_COMPONENT_TYPES):
+            # algorithm controller
+            probs, hidden = self.a_controller(
+                metafeature_tensor, input_tensor, hidden)
+            m = Categorical(probs)
+            action = m.sample()
+            log_probs.append(m.log_prob(action))
+            component = self.a_space.components[int(action)]
+            component_probs.append(probs.data)
+            ml_framework.append(component)
+            input_tensor = Variable(
+                utils._create_input_tensor(self.a_space, [component]))
 
-    # compute joint log probability of the components
-    log_probs = []
-    for i in range(a_space.N_COMPONENT_TYPES):
-        # algorithm controller
-        probs, hidden = a_controller(metafeature_tensor, input_tensor, hidden)
-        m = Categorical(probs)
-        action = m.sample()
-        log_probs.append(m.log_prob(action))
-        component = a_space.components[int(action)]
-        ml_framework.append(component)
-        component_probs.append(probs.data)
-        input_tensor = Variable(
-            utils._create_input_tensor(a_space, [component]))
-    a_controller.saved_log_probs.append(torch.cat(log_probs).sum())
-    component_probs = torch.cat(component_probs, dim=1)
-    component_probs = component_probs.view(1, 1, component_probs.shape[1])
-    return ml_framework, component_probs
+        # save log probabilities per paction
+        self.a_controller.saved_log_probs.append(torch.cat(log_probs).sum())
 
+        # create a flattened vector of the softmax output for all
+        # algorithm components. This is used as input to the hyperparameter
+        # controller. In the future we'll want to exchange information between
+        # the two controllers via the hidden state.
+        component_probs = torch.cat(component_probs, dim=1)
+        component_probs = component_probs.view(1, 1, component_probs.shape[1])
+        return ml_framework, component_probs
 
-def select_hyperparameters(
-        h_controller, a_space, metafeatures, component_probs, n_hyperparams,
-        inner=False):
-    """Select Hyperparameters.
-
-    TODO:
-    - try having the h_controller select hyperparameters conditioned on the
-      a_controller action, i.e. the selected component as a feature vector
-      (either one-hot encoded or the softmax).
-    - try a schedule for proposing a few hyperparameters at a time, so at
-      first, have the h_controller predict the first n hyperparameters in the
-      space and as n_episodes progresses, increase the number of
-      hyperparameters proposed the h_controller.
-    """
-    metafeature_tensor = utils._create_metafeature_tensor(
-        metafeatures, [START_TOKEN])
-    metafeature_tensor = Variable(torch.cat(
-        [metafeature_tensor, component_probs], dim=2))
-    hyperparameter_tensor = utils._create_hyperparameter_tensor(
-        a_space, [a_space.h_start_token_index])
-    h_hidden = h_controller.initHidden()
-    h_log_probs = []
-    hyperparameters = []
-    h_value_indices = []
-    # compute joint log probability of hyperparameters
-    for h_key in a_space.hyperparameter_name_space[:n_hyperparams]:
-        h_probs, h_hidden = h_controller(
-            metafeature_tensor, hyperparameter_tensor, h_hidden)
-        h_m = Categorical(h_probs)
-        h_action = h_m.sample()
-        h_log_probs.append(h_m.log_prob(h_action))
-        h_value = \
-            a_space.hyperparameter_state_space_values[int(h_action)]
-        h_value_indices.append((h_key, int(h_action)))
-        hyperparameters.append((h_key, h_value))
+    def select_hyperparameters(
+            self, t_state, component_probs, n_hyperparams, inner=False):
+        """Select Hyperparameters."""
+        metafeature_tensor = utils._create_metafeature_tensor(
+            t_state, [START_TOKEN])
+        metafeature_tensor = Variable(torch.cat(
+            [metafeature_tensor, component_probs], dim=2))
         hyperparameter_tensor = utils._create_hyperparameter_tensor(
-            a_space, [int(h_action)])
-    if inner:
-        h_controller.inner_saved_log_probs.append(torch.cat(h_log_probs).sum())
-    else:
-        h_controller.saved_log_probs.append(torch.cat(h_log_probs).sum())
-    return OrderedDict(hyperparameters), OrderedDict(h_value_indices)
+            self.a_space, [self.a_space.h_start_token_index])
+        h_hidden = self.h_controller.initHidden()
+        h_log_probs = []
+        hyperparameters = []
+        h_value_indices = []
+        # compute joint log probability of hyperparameters
+        for h_key in self.a_space.hyperparameter_name_space[:n_hyperparams]:
+            h_probs, h_hidden = self.h_controller(
+                metafeature_tensor, hyperparameter_tensor, h_hidden)
+            h_m = Categorical(h_probs)
+            h_action = h_m.sample()
+            h_log_probs.append(h_m.log_prob(h_action))
+            h_value = \
+                self.a_space.hyperparameter_state_space_values[int(h_action)]
+            h_value_indices.append((h_key, int(h_action)))
+            hyperparameters.append((h_key, h_value))
+            hyperparameter_tensor = utils._create_hyperparameter_tensor(
+                self.a_space, [int(h_action)])
+        if inner:
+            self.h_controller.inner_saved_log_probs.append(
+                torch.cat(h_log_probs).sum())
+        else:
+            self.h_controller.saved_log_probs.append(
+                torch.cat(h_log_probs).sum())
+        return OrderedDict(hyperparameters), OrderedDict(h_value_indices)
+
+    def fit(self):
+        pass
+
+    def fit_h_controller(self):
+        pass
 
 
 def check_ml_framework(a_space, pipeline):
@@ -246,7 +264,7 @@ def maintain_best_candidates(
 
 
 def train_h_controller(
-        h_controller, a_space, t_env, t_state, component_probs,
+        mlf_controller, t_env, t_state, component_probs,
         ml_framework, h_prev_baseline_reward, n_iter, verbose=False,
         n_hyperparams=1):
     """Train the hyperparameter controller given an ML framework."""
@@ -263,17 +281,18 @@ def train_h_controller(
         n_valid_hyperparams = 0
         for i in range(100):
             tmp_ml_framework = clone(ml_framework)
-            hyperparameters, h_value_indices = select_hyperparameters(
-                h_controller, a_space, t_state, component_probs, n_hyperparams,
-                inner=True)
+            hyperparameters, h_value_indices = \
+                mlf_controller.select_hyperparameters(
+                    t_state, component_probs, n_hyperparams, inner=True)
             tmp_ml_framework = check_hyperparameters(
-                tmp_ml_framework, a_space, hyperparameters, h_value_indices)
+                tmp_ml_framework, mlf_controller.a_space, hyperparameters,
+                h_value_indices)
             if tmp_ml_framework is None:
                 reward = t_env.error_reward
             else:
                 n_valid_hyperparams += 1
                 reward = t_env.correct_hyperparameter_reward
-            h_controller.inner_rewards.append(reward)
+            mlf_controller.h_controller.inner_rewards.append(reward)
             h_current_baseline_reward = utils._exponential_mean(
                 reward, h_current_baseline_reward)
             if verbose:
@@ -281,7 +300,8 @@ def train_h_controller(
                       (h_i_episode, n_valid_hyperparams, i + 1,
                        h_value_indices, " " * 10),
                       sep=" ", end="\r", flush=True)
-        h_loss = h_controller.inner_backward(h_prev_baseline_reward)
+        h_loss = mlf_controller.h_controller.inner_backward(
+            h_prev_baseline_reward)
         h_prev_baseline_reward = h_current_baseline_reward
     return h_loss, h_current_baseline_reward
 
@@ -304,6 +324,7 @@ def train(a_controller, h_controller, a_space, t_env,
     :param int increase_n_hyperparam_every: increase number of hyperparameters
         to propose after this many episodes.
     """
+    mlf_controller = MLFrameworkController(a_controller, h_controller, a_space)
     running_reward = 10
     best_candidates, best_scores = [], []
     overall_mean_reward, overall_loss, overall_ml_performance = [], [], []
@@ -330,8 +351,8 @@ def train(a_controller, h_controller, a_space, t_env,
 
         for i in range(n_iter):
             # ml framework pipeline creation
-            pipeline, component_probs = select_ml_framework(
-                a_controller, a_space, t_state)
+            pipeline, component_probs = \
+                mlf_controller.select_ml_framework(t_state)
             ml_framework = check_ml_framework(a_space, pipeline)
             if ml_framework is None:
                 reward = t_env.error_reward
@@ -341,12 +362,13 @@ def train(a_controller, h_controller, a_space, t_env,
                 # hyperparameter controller inner and outer loop
                 if i_episode > activate_h_controller:
                     _, h_current_baseline_reward = train_h_controller(
-                        h_controller, a_space, t_env, t_state, component_probs,
+                        mlf_controller, t_env, t_state, component_probs,
                         clone(ml_framework), h_prev_baseline_reward, n_iter,
                         n_hyperparams=n_hyperparams)
-                    hyperparameters, h_value_indices = select_hyperparameters(
-                        h_controller, a_space, t_state, component_probs,
-                        n_hyperparams=n_hyperparams)
+                    hyperparameters, h_value_indices = \
+                        mlf_controller.select_hyperparameters(
+                            t_state, component_probs,
+                            n_hyperparams=n_hyperparams)
                     ml_framework = check_hyperparameters(
                         ml_framework, a_space, hyperparameters,
                         h_value_indices)
