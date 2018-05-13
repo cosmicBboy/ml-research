@@ -25,7 +25,7 @@ METAFEATURES = [
 
 
 class _ControllerRNN(nn.Module):
-    """RNN module to generate algorithm components.
+    """RNN module to generate algorithm component/hyperparameter settings.
 
     REINFORCE implementation adapted from:
     https://github.com/pytorch/examples/blob/master/reinforcement_learning/reinforce.py
@@ -72,12 +72,8 @@ class AlgorithmControllerRNN(_ControllerRNN):
 class HyperparameterControllerRNN(_ControllerRNN):
     """RNN module to propose hyperparameter settings."""
 
-    def __init__(
-            self, metafeature_size, input_size, hidden_size, output_size,
-            dropout_rate=0.1, num_rnn_layers=1):
-        super(HyperparameterControllerRNN, self).__init__(
-            metafeature_size, input_size, hidden_size, output_size,
-            dropout_rate=0.1, num_rnn_layers=1)
+    def __init__(self, *args, **kwargs):
+        super(HyperparameterControllerRNN, self).__init__(*args, **kwargs)
         self.inner_saved_log_probs = []
         self.inner_rewards = []
 
@@ -319,8 +315,8 @@ def train_h_controller(
                 n_valid_hyperparams += 1
                 reward = t_env.correct_hyperparameter_reward
             h_controller.inner_rewards.append(reward)
-            h_current_baseline_reward = (reward * 0.99) + \
-                h_current_baseline_reward * 0.01
+            h_current_baseline_reward = _exponential_mean(
+                reward, h_current_baseline_reward)
             if verbose:
                 print("Ep%d, %d/%d valid hyperparams %s%s" %
                       (h_i_episode, n_valid_hyperparams, i + 1,
@@ -330,6 +326,14 @@ def train_h_controller(
             h_controller, h_optim, h_prev_baseline_reward, inner=True)
         h_prev_baseline_reward = h_current_baseline_reward
     return h_loss, h_current_baseline_reward
+
+
+def _ml_framework_string(ml_framework):
+    return " > ".join(s[0] for s in ml_framework.steps)
+
+
+def _exponential_mean(x, x_prev):
+    return x * 0.99 + x_prev * 0.01
 
 
 def train(a_controller, h_controller, a_space, t_env, a_optim, h_optim,
@@ -362,35 +366,45 @@ def train(a_controller, h_controller, a_space, t_env, a_optim, h_optim,
         t_env.sample_data_env()
         # sample training/test data from data environment
         t_state = t_env.sample()
-        if i_episode > 0 and i_episode % increase_n_hyperparam_every == 0:
-            n_hyperparams += increase_n_hyperparam_by
-        n_valid = 0
+        n_valid_frameworks = 0
         n_valid_hyperparams = 0
         n_successful = 0
         current_baseline_reward = 0
         ml_performance = []
+        valid_frameworks = []
+
+        # increment number of hyperparameters to predict
+        if i_episode > 0 and i_episode > activate_h_controller and \
+                i_episode % increase_n_hyperparam_every == 0:
+            n_hyperparams += increase_n_hyperparam_by
+
         for i in range(n_iter):
+            # ml framework pipeline creation
             pipeline, component_probs = select_ml_framework(
                 a_controller, a_space, t_state)
-            # TODO: move check_ml_framework into the task environment.
             ml_framework = check_ml_framework(a_space, pipeline)
             if ml_framework is None:
                 reward = t_env.error_reward
             else:
-                h_current_baseline_reward = 0
-                n_valid += 1
-                _, h_current_baseline_reward = train_h_controller(
-                    h_controller, a_space, t_env, h_optim,
-                    t_state, component_probs, clone(ml_framework),
-                    h_prev_baseline_reward, n_iter,
-                    n_hyperparams=n_hyperparams)
+                n_valid_frameworks += 1
+
+                # hyperparameter controller inner and outer loop
                 if i_episode > activate_h_controller:
+                    _, h_current_baseline_reward = train_h_controller(
+                        h_controller, a_space, t_env, h_optim,
+                        t_state, component_probs, clone(ml_framework),
+                        h_prev_baseline_reward, n_iter,
+                        n_hyperparams=n_hyperparams)
                     hyperparameters, h_value_indices = select_hyperparameters(
                         h_controller, a_space, t_state, component_probs,
                         n_hyperparams=n_hyperparams)
                     ml_framework = check_hyperparameters(
                         ml_framework, a_space, hyperparameters,
                         h_value_indices)
+                else:
+                    h_current_baseline_reward = 0
+
+                # ml framework evaluation
                 if ml_framework is None:
                     reward = t_env.error_reward
                 else:
@@ -400,6 +414,7 @@ def train(a_controller, h_controller, a_space, t_env, a_optim, h_optim,
                         reward = t_env.error_reward
                     else:
                         last_valid_framework = ml_framework
+                        valid_frameworks.append(ml_framework)
                         n_successful += 1
                         ml_performance.append(reward)
                         best_candidates, best_scores = \
@@ -408,12 +423,12 @@ def train(a_controller, h_controller, a_space, t_env, a_optim, h_optim,
                                 ml_framework, reward)
             print("%d/%d valid frameworks, %d/%d valid hyperparams "
                   "%d/%d successful frameworks" %
-                  (n_valid, i + 1,
+                  (n_valid_frameworks, i + 1,
                    n_valid_hyperparams, i + 1,
                    n_successful, i + 1),
                   sep=" ", end="\r", flush=True)
-            current_baseline_reward = (reward * 0.99) + \
-                current_baseline_reward * 0.01
+            current_baseline_reward = _exponential_mean(
+                reward, current_baseline_reward)
             t_state = t_env.sample()
             a_controller.rewards.append(reward)
             h_controller.rewards.append(reward)
@@ -421,7 +436,7 @@ def train(a_controller, h_controller, a_space, t_env, a_optim, h_optim,
         mean_ml_performance = np.mean(ml_performance) if \
             len(ml_performance) > 0 else np.nan
         mean_reward = np.mean(a_controller.rewards)
-        running_reward = running_reward * 0.99 + i * 0.01
+        running_reward = _exponential_mean(running_reward, i)
 
         a_loss = backward(
             a_controller, a_optim, prev_baseline_reward, show_grad=show_grad)
@@ -443,8 +458,15 @@ def train(a_controller, h_controller, a_space, t_env, a_optim, h_optim,
                    running_reward))
             if last_valid_framework:
                 print("last framework: %s" %
-                      " > ".join(s[0] for s in last_valid_framework.steps))
-            print("n_hyperparams: %d\n" % n_hyperparams)
+                      _ml_framework_string(last_valid_framework))
+            if len(valid_frameworks) > 0:
+                print("framework diversity: %d/%d" % (
+                    len(set([_ml_framework_string(f)
+                             for f in valid_frameworks])),
+                    len(valid_frameworks)))
+            if i_episode > activate_h_controller:
+                print("n_hyperparams: %d" % n_hyperparams)
+            print("")
 
     return overall_mean_reward, overall_loss, overall_ml_performance, \
         best_candidates, best_scores

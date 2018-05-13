@@ -18,7 +18,7 @@ metafeatures = ["number_of_examples"]
 learning_rate = 0.005
 hidden_size = 100
 n_episodes = 100
-activate_h_controller = -1
+activate_h_controller = 50
 n_iter = 100
 num_candidates = 10
 
@@ -50,7 +50,7 @@ for n in n_layers:
         a_controller, h_controller, a_space, t_env, a_optim, h_optim,
         num_episodes=n_episodes, n_iter=n_iter, num_candidates=num_candidates,
         activate_h_controller=activate_h_controller,
-        increase_n_hyperparam_by=3, increase_n_hyperparam_every=3)
+        increase_n_hyperparam_by=5, increase_n_hyperparam_every=5)
     metrics["rewards_n_layers_%d" % n] = rewards
     metrics["losses_n_layers_%d" % n] = losses
     metrics["ml_performances_n_layers_%d" % n] = ml_performances
