@@ -265,8 +265,7 @@ def maintain_best_candidates(
 
 def train_h_controller(
         mlf_controller, t_env, t_state, component_probs,
-        ml_framework, h_prev_baseline_reward, n_iter, verbose=False,
-        n_hyperparams=1):
+        ml_framework, n_iter, verbose=False, n_hyperparams=1):
     """Train the hyperparameter controller given an ML framework."""
     # TODO: need to create a separate inner loop for training the
     # the h_controller. For each valid ml_framework, perform
@@ -277,7 +276,7 @@ def train_h_controller(
     h_prev_baseline_reward = 0
     if verbose:
         print("\n%s" % utils._ml_framework_string(ml_framework))
-    for h_i_episode in range(1):
+    for h_i_episode in range(n_iter):
         n_valid_hyperparams = 0
         for i in range(100):
             tmp_ml_framework = clone(ml_framework)
@@ -329,7 +328,6 @@ def train(a_controller, h_controller, a_space, t_env,
     best_candidates, best_scores = [], []
     overall_mean_reward, overall_loss, overall_ml_performance = [], [], []
     prev_baseline_reward = 0
-    h_prev_baseline_reward = 0
     last_valid_framework = None
     n_hyperparams = 1  # propose this many hyperparameters
     for i_episode in range(num_episodes):
@@ -361,9 +359,9 @@ def train(a_controller, h_controller, a_space, t_env,
 
                 # hyperparameter controller inner and outer loop
                 if i_episode > activate_h_controller:
-                    _, h_current_baseline_reward = train_h_controller(
+                    _, _ = train_h_controller(
                         mlf_controller, t_env, t_state, component_probs,
-                        clone(ml_framework), h_prev_baseline_reward, n_iter,
+                        clone(ml_framework), n_iter=1,
                         n_hyperparams=n_hyperparams)
                     hyperparameters, h_value_indices = \
                         mlf_controller.select_hyperparameters(
@@ -372,8 +370,6 @@ def train(a_controller, h_controller, a_space, t_env,
                     ml_framework = check_hyperparameters(
                         ml_framework, a_space, hyperparameters,
                         h_value_indices)
-                else:
-                    h_current_baseline_reward = 0
 
                 # ml framework evaluation
                 if ml_framework is None:
@@ -401,23 +397,22 @@ def train(a_controller, h_controller, a_space, t_env,
             current_baseline_reward = utils._exponential_mean(
                 reward, current_baseline_reward)
             t_state = t_env.sample()
-            a_controller.rewards.append(reward)
-            h_controller.rewards.append(reward)
+            mlf_controller.a_controller.rewards.append(reward)
+            mlf_controller.h_controller.rewards.append(reward)
 
         mean_ml_performance = np.mean(ml_performance) if \
             len(ml_performance) > 0 else np.nan
         mean_reward = np.mean(a_controller.rewards)
         running_reward = utils._exponential_mean(running_reward, i)
 
-        a_loss = a_controller.backward(prev_baseline_reward)
+        a_loss = mlf_controller.a_controller.backward(prev_baseline_reward)
         if i_episode > activate_h_controller:
-            _ = h_controller.backward(prev_baseline_reward)
+            _ = mlf_controller.h_controller.backward(prev_baseline_reward)
         overall_mean_reward.append(mean_reward)
         overall_loss.append(a_loss)
         overall_ml_performance.append(mean_ml_performance)
         # update baseline rewards
         prev_baseline_reward = current_baseline_reward
-        h_prev_baseline_reward = h_current_baseline_reward
         if i_episode % log_every == 0:
             print("\nEp%s | mean reward: %0.02f | "
                   "mean perf: %0.02f | ep length: %d | "
