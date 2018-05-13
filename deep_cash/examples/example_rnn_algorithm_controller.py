@@ -17,8 +17,8 @@ from deep_cash.task_environment import TaskEnvironment
 metafeatures = ["number_of_examples"]
 learning_rate = 0.005
 hidden_size = 100
-n_episodes = 100
-activate_h_controller = 5
+n_episodes = 5
+activate_h_controller = 2
 n_iter = 100
 num_candidates = 10
 
@@ -34,6 +34,7 @@ metrics = pd.DataFrame(index=range(n_episodes))
 best_frameworks = pd.DataFrame(index=range(num_candidates))
 for n in n_layers:
     print("Training controller, n_layers=%d" % n)
+
     # create algorithm controller
     a_controller = AlgorithmControllerRNN(
         len(metafeatures), input_size=a_space.n_components,
@@ -46,16 +47,19 @@ for n in n_layers:
         hidden_size=hidden_size, output_size=a_space.n_hyperparameters,
         optim=torch.optim.Adam, optim_kwargs={"lr": learning_rate},
         dropout_rate=0.3, num_rnn_layers=n)
-    rewards, losses, ml_performances, best_candidates, best_scores = train(
+    tracker = train(
         a_controller, h_controller, a_space, t_env,
         num_episodes=n_episodes, n_iter=n_iter, num_candidates=num_candidates,
         activate_h_controller=activate_h_controller,
         increase_n_hyperparam_by=5, increase_n_hyperparam_every=5)
-    metrics["rewards_n_layers_%d" % n] = rewards
-    metrics["losses_n_layers_%d" % n] = losses
-    metrics["ml_performances_n_layers_%d" % n] = ml_performances
-    best_frameworks["best_candidates_n_layers_%d" % n] = best_candidates
-    best_frameworks["best_scores_n_layers_%d" % n] = best_scores
+
+    # gather metrics
+    metrics["rewards_n_layers_%d" % n] = tracker["overall_mean_reward"]
+    metrics["algorithm_losses_n_layers_%d" % n] = tracker["overall_a_loss"]
+    metrics["hyperparam_losses_n_layers_%d" % n] = tracker["overall_h_loss"]
+    metrics["ml_perf_n_layers_%d" % n] = tracker["overall_ml_performance"]
+    best_frameworks["best_cand_n_layers_%d" % n] = tracker["best_candidates"]
+    best_frameworks["best_scores_n_layers_%d" % n] = tracker["best_scores"]
     print("\n")
 
 for n in n_layers:
@@ -63,7 +67,7 @@ for n in n_layers:
     best_mlf = (
         best_frameworks
         .sort_values("best_scores_n_layers_%d" % n, ascending=False)
-        ["best_candidates_n_layers_%d" % n].iloc[0])
+        ["best_cand_n_layers_%d" % n].iloc[0])
     for step in best_mlf.steps:
         print(step)
     print("\n")
@@ -75,6 +79,7 @@ metrics.to_csv(
     "artifacts/rnn_algorithm_controller_experiment.csv", index=False)
 best_frameworks.to_csv(
     "artifacts/rnn_algorithm_controller_best_frameworks.csv", index=False)
-torch.save(a_controller.state_dict(), "artifacts/rnn_algorithm_controller.pt")
-torch.save(h_controller.state_dict(),
-           "artifacts/rnn_hyperparameter_controller.pt")
+torch.save(
+    a_controller.state_dict(), "artifacts/rnn_algorithm_controller.pt")
+torch.save(
+    h_controller.state_dict(), "artifacts/rnn_hyperparameter_controller.pt")

@@ -250,19 +250,6 @@ def check_hyperparameters(
         return None
 
 
-def maintain_best_candidates(
-        best_candidates, best_scores, num_candidates, ml_framework, score):
-    """Maintain the best candidates and their associated scores."""
-    if len(best_candidates) < num_candidates:
-        return best_candidates + [ml_framework], best_scores + [score]
-    else:
-        min_index = best_scores.index(min(best_scores))
-        if score > best_scores[min_index]:
-            best_candidates[min_index] = ml_framework
-            best_scores[min_index] = score
-        return best_candidates, best_scores
-
-
 def train_h_controller(
         mlf_controller, t_env, t_state, component_probs,
         ml_framework, n_iter, verbose=False, n_hyperparams=1):
@@ -305,6 +292,34 @@ def train_h_controller(
     return h_loss, h_current_baseline_reward
 
 
+def _performance_tracker():
+    return {
+        "best_candidates": [],
+        "best_scores": [],
+        "overall_mean_reward": [],
+        "overall_a_loss": [],
+        "overall_h_loss": [],
+        "overall_ml_performance": [],
+        "running_reward": 10,
+    }
+
+
+def _maintain_best_candidates(tracker, num_candidates, ml_framework, score):
+    """Maintain the best candidates and their associated scores.
+
+    NOTE: this function is stateful i.e. appends to best_candidates and
+    best_scores list.
+    """
+    if len(tracker["best_candidates"]) < num_candidates:
+        tracker["best_candidates"].append(ml_framework)
+        tracker["best_scores"].append(score)
+    else:
+        min_index = tracker["best_scores"].index(min(tracker["best_scores"]))
+        if score > tracker["best_scores"][min_index]:
+            tracker["best_candidates"][min_index] = ml_framework
+            tracker["best_scores"][min_index] = score
+
+
 def train(a_controller, h_controller, a_space, t_env,
           num_episodes=10, log_every=1, n_iter=1000, show_grad=False,
           num_candidates=10, activate_h_controller=2,
@@ -324,9 +339,7 @@ def train(a_controller, h_controller, a_space, t_env,
         to propose after this many episodes.
     """
     mlf_controller = MLFrameworkController(a_controller, h_controller, a_space)
-    running_reward = 10
-    best_candidates, best_scores = [], []
-    overall_mean_reward, overall_loss, overall_ml_performance = [], [], []
+    tracker = _performance_tracker()
     prev_baseline_reward = 0
     last_valid_framework = None
     n_hyperparams = 1  # propose this many hyperparameters
@@ -384,10 +397,8 @@ def train(a_controller, h_controller, a_space, t_env,
                         valid_frameworks.append(ml_framework)
                         n_successful += 1
                         ml_performance.append(reward)
-                        best_candidates, best_scores = \
-                            maintain_best_candidates(
-                                best_candidates, best_scores, num_candidates,
-                                ml_framework, reward)
+                        _maintain_best_candidates(
+                            tracker, num_candidates, ml_framework, reward)
             print("%d/%d valid frameworks, %d/%d valid hyperparams "
                   "%d/%d successful frameworks" %
                   (n_valid_frameworks, i + 1,
@@ -400,25 +411,31 @@ def train(a_controller, h_controller, a_space, t_env,
             mlf_controller.a_controller.rewards.append(reward)
             mlf_controller.h_controller.rewards.append(reward)
 
-        mean_ml_performance = np.mean(ml_performance) if \
-            len(ml_performance) > 0 else np.nan
-        mean_reward = np.mean(a_controller.rewards)
-        running_reward = utils._exponential_mean(running_reward, i)
+        tracker["running_reward"] = utils._exponential_mean(
+            tracker["running_reward"], i)
+        tracker["overall_mean_reward"].append(
+            np.mean(mlf_controller.a_controller.rewards))
+        tracker["overall_ml_performance"].append(
+            np.mean(ml_performance) if len(ml_performance) > 0 else np.nan)
 
-        a_loss = mlf_controller.a_controller.backward(prev_baseline_reward)
         if i_episode > activate_h_controller:
-            _ = mlf_controller.h_controller.backward(prev_baseline_reward)
-        overall_mean_reward.append(mean_reward)
-        overall_loss.append(a_loss)
-        overall_ml_performance.append(mean_ml_performance)
+            h_loss = mlf_controller.h_controller.backward(prev_baseline_reward)
+            tracker["overall_h_loss"].append(h_loss)
+        else:
+            tracker["overall_h_loss"].append(np.nan)
+
+        # backward pass
+        a_loss = mlf_controller.a_controller.backward(prev_baseline_reward)
+        tracker["overall_a_loss"].append(a_loss)
         # update baseline rewards
         prev_baseline_reward = current_baseline_reward
         if i_episode % log_every == 0:
             print("\nEp%s | mean reward: %0.02f | "
                   "mean perf: %0.02f | ep length: %d | "
                   "running reward: %0.02f" %
-                  (i_episode, mean_reward, mean_ml_performance, i + 1,
-                   running_reward))
+                  (i_episode, tracker["overall_mean_reward"][i_episode],
+                   tracker["overall_ml_performance"][i_episode], i + 1,
+                   tracker["running_reward"]))
             if last_valid_framework:
                 print("last framework: %s" %
                       utils._ml_framework_string(last_valid_framework))
@@ -431,5 +448,4 @@ def train(a_controller, h_controller, a_space, t_env,
                 print("n_hyperparams: %d" % n_hyperparams)
             print("")
 
-    return overall_mean_reward, overall_loss, overall_ml_performance, \
-        best_candidates, best_scores
+    return tracker
