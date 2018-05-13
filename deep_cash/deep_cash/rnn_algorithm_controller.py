@@ -276,7 +276,7 @@ def train_h_controller(
     h_current_baseline_reward = 0
     h_prev_baseline_reward = 0
     if verbose:
-        print("\n%s" % " > ".join(s[0] for s in ml_framework.steps))
+        print("\n%s" % utils._ml_framework_string(ml_framework))
     for h_i_episode in range(1):
         n_valid_hyperparams = 0
         for i in range(100):
