@@ -13,15 +13,9 @@ from collections import OrderedDict
 from sklearn.base import clone
 from torch.autograd import Variable
 from torch.distributions import Categorical
-import torch.nn.utils as utils
 
+from . import utils
 from .algorithm_space import START_TOKEN
-
-
-# specify type of the metafeature
-METAFEATURES = [
-    ("number_of_examples", int)
-]
 
 
 class _ControllerRNN(nn.Module):
@@ -33,7 +27,7 @@ class _ControllerRNN(nn.Module):
 
     def __init__(
             self, metafeature_size, input_size, hidden_size, output_size,
-            dropout_rate=0.1, num_rnn_layers=1):
+            optim, optim_kwargs, dropout_rate=0.1, num_rnn_layers=1):
         """Initialize algorithm controller to propose ML frameworks."""
         super(_ControllerRNN, self).__init__()
         self.dropout_rate = dropout_rate
@@ -42,6 +36,8 @@ class _ControllerRNN(nn.Module):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
+
+        # architecture specification
         self.rnn = nn.GRU(
             metafeature_size + input_size, hidden_size,
             num_layers=self.num_rnn_layers)
@@ -52,6 +48,9 @@ class _ControllerRNN(nn.Module):
         self.saved_log_probs = []
         self.rewards = []
 
+        # set optimization object
+        self.optim = optim(self.parameters(), **optim_kwargs)
+
     def forward(self, metafeatures, input, hidden):
         input_concat = torch.cat((metafeatures, input), 2)
         output, hidden = self.rnn(input_concat, hidden)
@@ -59,6 +58,43 @@ class _ControllerRNN(nn.Module):
         output = output.view(output.shape[0], -1)  # dim <seq_length x n_chars>
         output = self.softmax(output)
         return output, hidden
+
+    def backward(
+            self, baseline_reward, log_probs_attr="saved_log_probs",
+            rewards_attr="rewards", show_grad=False):
+        """End an episode with one backpropagation step.
+
+        NOTE: This should be implemented at the ML framework controller level
+        in order to implement the end-to-end RNN solution, where the
+        algorithm and hyperparameter controller of the hidden layers are
+        shared.
+        """
+        loss = []
+        log_probs = getattr(self, log_probs_attr)
+        rewards = getattr(self, rewards_attr)
+
+        # compute loss
+        for log_prob, reward in zip(log_probs, rewards):
+            loss.append(-log_prob * (reward - baseline_reward))
+
+        # one step of gradient descent
+        self.optim.zero_grad()
+        loss = torch.cat(loss).sum().div(len(rewards))
+        loss.backward()
+        # gradient clipping to prevent exploding gradient
+        nn.utils.clip_grad_norm(self.parameters(), 20)
+        self.optim.step()
+
+        if show_grad:
+            print("\n\nGradients")
+            for param in self.parameters():
+                print(param.grad.data.sum())
+
+        # reset rewards and log probs
+        del rewards[:]
+        del log_probs[:]
+
+        return loss.data[0]
 
     def initHidden(self):
         return Variable(torch.zeros(self.num_rnn_layers, 1, self.hidden_size))
@@ -77,58 +113,15 @@ class HyperparameterControllerRNN(_ControllerRNN):
         self.inner_saved_log_probs = []
         self.inner_rewards = []
 
-
-def _create_metafeature_tensor(metafeatures, seq):
-    """Convert a metafeature vector into a tensor.
-
-    For now this will be a single category indicating `is_executable`.
-
-    :returns Tensor: dim <string_length x 1 x metafeature_dim>, where
-        metafeature_dim is a continuous feature.
-    """
-    m = []
-    for i, feature in enumerate(metafeatures):
-        metafeature_type = METAFEATURES[i][1]
-        if metafeature_type is int:
-            metafeature_dim = 1
-            feature = metafeature_type(feature)
-        else:
-            raise ValueError(
-                "metafeature type %s not recognized" % metafeature_type)
-        t = torch.zeros(len(seq), 1, metafeature_dim)
-        for j, _ in enumerate(seq):
-            t[j][0][metafeature_dim - 1] = feature
-        m.append(t)
-    m = torch.cat(m, 2)
-    return m
+    def inner_backward(self, baseline_reward, **kwargs):
+        self.backward(
+            baseline_reward, log_probs_attr="inner_saved_log_probs",
+            rewards_attr="inner_rewards", **kwargs)
 
 
-def _create_input_tensor(a_space, seq):
-    """Convert sequence to algorithm space.
-
-    Returns tensor of dim <string_length x 1 x n_components>.
-    """
-    t = torch.zeros(len(seq), 1, a_space.n_components)
-    for i, action in enumerate(seq):
-        t[i][0][a_space.components.index(action)] = 1
-    return t
-
-
-def _create_hyperparameter_tensor(a_space, seq_index):
-    """Convert sequence to hyperparameter space.
-
-    Returns tensor of dim <string_length x 1 x n_hyperparameters>.
-    """
-    t = torch.zeros(len(seq_index), 1, a_space.n_hyperparameters)
-    for i, index in enumerate(seq_index):
-        t[i][0][index] = 1
-    return Variable(t)
-
-
-def _create_training_data_tensors(a_space, metafeatures, seq):
-    return (
-        Variable(_create_metafeature_tensor(metafeatures, seq)),
-        Variable(_create_input_tensor(a_space, seq)))
+class MLFrameworkController(object):
+    """Controller to generate machine learning frameworks."""
+    pass
 
 
 def select_ml_framework(a_controller, a_space, metafeatures):
@@ -146,7 +139,7 @@ def select_ml_framework(a_controller, a_space, metafeatures):
     # both 1 because we want to train a generative model that proposes
     # policies, which are sequences of actions, each action specifying one
     # aspect of a machine learning framework.
-    metafeature_tensor, input_tensor = _create_training_data_tensors(
+    metafeature_tensor, input_tensor = utils._create_training_data_tensors(
         a_space, metafeatures, [START_TOKEN])
     hidden = a_controller.initHidden()
     ml_framework = []
@@ -163,7 +156,8 @@ def select_ml_framework(a_controller, a_space, metafeatures):
         component = a_space.components[int(action)]
         ml_framework.append(component)
         component_probs.append(probs.data)
-        input_tensor = Variable(_create_input_tensor(a_space, [component]))
+        input_tensor = Variable(
+            utils._create_input_tensor(a_space, [component]))
     a_controller.saved_log_probs.append(torch.cat(log_probs).sum())
     component_probs = torch.cat(component_probs, dim=1)
     component_probs = component_probs.view(1, 1, component_probs.shape[1])
@@ -184,11 +178,11 @@ def select_hyperparameters(
       space and as n_episodes progresses, increase the number of
       hyperparameters proposed the h_controller.
     """
-    metafeature_tensor = _create_metafeature_tensor(
+    metafeature_tensor = utils._create_metafeature_tensor(
         metafeatures, [START_TOKEN])
     metafeature_tensor = Variable(torch.cat(
         [metafeature_tensor, component_probs], dim=2))
-    hyperparameter_tensor = _create_hyperparameter_tensor(
+    hyperparameter_tensor = utils._create_hyperparameter_tensor(
         a_space, [a_space.h_start_token_index])
     h_hidden = h_controller.initHidden()
     h_log_probs = []
@@ -205,48 +199,13 @@ def select_hyperparameters(
             a_space.hyperparameter_state_space_values[int(h_action)]
         h_value_indices.append((h_key, int(h_action)))
         hyperparameters.append((h_key, h_value))
-        hyperparameter_tensor = _create_hyperparameter_tensor(
+        hyperparameter_tensor = utils._create_hyperparameter_tensor(
             a_space, [int(h_action)])
     if inner:
         h_controller.inner_saved_log_probs.append(torch.cat(h_log_probs).sum())
     else:
         h_controller.saved_log_probs.append(torch.cat(h_log_probs).sum())
     return OrderedDict(hyperparameters), OrderedDict(h_value_indices)
-
-
-def backward(controller, optim, baseline_reward, show_grad=False, inner=False):
-    """End an episode with one backpropagation step."""
-    loss = []
-
-    if inner:
-        saved_log_probs = controller.inner_saved_log_probs
-        rewards = controller.inner_rewards
-    else:
-        saved_log_probs = controller.saved_log_probs
-        rewards = controller.rewards
-
-    # compute loss
-    for log_prob, reward in zip(saved_log_probs, rewards):
-        loss.append(-log_prob * (reward - baseline_reward))
-
-    # one step of gradient descent
-    optim.zero_grad()
-    loss = torch.cat(loss).sum().div(len(rewards))
-    loss.backward()
-    # gradient clipping to prevent exploding gradient
-    utils.clip_grad_norm(controller.parameters(), 20)
-    optim.step()
-
-    if show_grad:
-        print("\n\nGradients")
-        for param in controller.parameters():
-            print(param.grad.data.sum())
-
-    # reset rewards and log probs
-    del rewards[:]
-    del saved_log_probs[:]
-
-    return loss.data[0]
 
 
 def check_ml_framework(a_space, pipeline):
@@ -287,7 +246,7 @@ def maintain_best_candidates(
 
 
 def train_h_controller(
-        h_controller, a_space, t_env, h_optim, t_state, component_probs,
+        h_controller, a_space, t_env, t_state, component_probs,
         ml_framework, h_prev_baseline_reward, n_iter, verbose=False,
         n_hyperparams=1):
     """Train the hyperparameter controller given an ML framework."""
@@ -315,28 +274,19 @@ def train_h_controller(
                 n_valid_hyperparams += 1
                 reward = t_env.correct_hyperparameter_reward
             h_controller.inner_rewards.append(reward)
-            h_current_baseline_reward = _exponential_mean(
+            h_current_baseline_reward = utils._exponential_mean(
                 reward, h_current_baseline_reward)
             if verbose:
                 print("Ep%d, %d/%d valid hyperparams %s%s" %
                       (h_i_episode, n_valid_hyperparams, i + 1,
                        h_value_indices, " " * 10),
                       sep=" ", end="\r", flush=True)
-        h_loss = backward(
-            h_controller, h_optim, h_prev_baseline_reward, inner=True)
+        h_loss = h_controller.inner_backward(h_prev_baseline_reward)
         h_prev_baseline_reward = h_current_baseline_reward
     return h_loss, h_current_baseline_reward
 
 
-def _ml_framework_string(ml_framework):
-    return " > ".join(s[0] for s in ml_framework.steps)
-
-
-def _exponential_mean(x, x_prev):
-    return x * 0.99 + x_prev * 0.01
-
-
-def train(a_controller, h_controller, a_space, t_env, a_optim, h_optim,
+def train(a_controller, h_controller, a_space, t_env,
           num_episodes=10, log_every=1, n_iter=1000, show_grad=False,
           num_candidates=10, activate_h_controller=2,
           increase_n_hyperparam_by=3, increase_n_hyperparam_every=5):
@@ -391,9 +341,8 @@ def train(a_controller, h_controller, a_space, t_env, a_optim, h_optim,
                 # hyperparameter controller inner and outer loop
                 if i_episode > activate_h_controller:
                     _, h_current_baseline_reward = train_h_controller(
-                        h_controller, a_space, t_env, h_optim,
-                        t_state, component_probs, clone(ml_framework),
-                        h_prev_baseline_reward, n_iter,
+                        h_controller, a_space, t_env, t_state, component_probs,
+                        clone(ml_framework), h_prev_baseline_reward, n_iter,
                         n_hyperparams=n_hyperparams)
                     hyperparameters, h_value_indices = select_hyperparameters(
                         h_controller, a_space, t_state, component_probs,
@@ -427,7 +376,7 @@ def train(a_controller, h_controller, a_space, t_env, a_optim, h_optim,
                    n_valid_hyperparams, i + 1,
                    n_successful, i + 1),
                   sep=" ", end="\r", flush=True)
-            current_baseline_reward = _exponential_mean(
+            current_baseline_reward = utils._exponential_mean(
                 reward, current_baseline_reward)
             t_state = t_env.sample()
             a_controller.rewards.append(reward)
@@ -436,14 +385,11 @@ def train(a_controller, h_controller, a_space, t_env, a_optim, h_optim,
         mean_ml_performance = np.mean(ml_performance) if \
             len(ml_performance) > 0 else np.nan
         mean_reward = np.mean(a_controller.rewards)
-        running_reward = _exponential_mean(running_reward, i)
+        running_reward = utils._exponential_mean(running_reward, i)
 
-        a_loss = backward(
-            a_controller, a_optim, prev_baseline_reward, show_grad=show_grad)
+        a_loss = a_controller.backward(prev_baseline_reward)
         if i_episode > activate_h_controller:
-            _ = backward(
-                h_controller, h_optim, prev_baseline_reward,
-                show_grad=show_grad)
+            _ = h_controller.backward(prev_baseline_reward)
         overall_mean_reward.append(mean_reward)
         overall_loss.append(a_loss)
         overall_ml_performance.append(mean_ml_performance)
@@ -458,10 +404,10 @@ def train(a_controller, h_controller, a_space, t_env, a_optim, h_optim,
                    running_reward))
             if last_valid_framework:
                 print("last framework: %s" %
-                      _ml_framework_string(last_valid_framework))
+                      utils._ml_framework_string(last_valid_framework))
             if len(valid_frameworks) > 0:
                 print("framework diversity: %d/%d" % (
-                    len(set([_ml_framework_string(f)
+                    len(set([utils._ml_framework_string(f)
                              for f in valid_frameworks])),
                     len(valid_frameworks)))
             if i_episode > activate_h_controller:

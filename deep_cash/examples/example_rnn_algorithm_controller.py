@@ -18,7 +18,7 @@ metafeatures = ["number_of_examples"]
 learning_rate = 0.005
 hidden_size = 100
 n_episodes = 100
-activate_h_controller = 50
+activate_h_controller = 5
 n_iter = 100
 num_candidates = 10
 
@@ -38,16 +38,16 @@ for n in n_layers:
     a_controller = AlgorithmControllerRNN(
         len(metafeatures), input_size=a_space.n_components,
         hidden_size=hidden_size, output_size=a_space.n_components,
+        optim=torch.optim.Adam, optim_kwargs={"lr": learning_rate},
         dropout_rate=0.3, num_rnn_layers=n)
     h_controller = HyperparameterControllerRNN(
         len(metafeatures) + (a_space.n_components * a_space.N_COMPONENT_TYPES),
         input_size=a_space.n_hyperparameters,
         hidden_size=hidden_size, output_size=a_space.n_hyperparameters,
+        optim=torch.optim.Adam, optim_kwargs={"lr": learning_rate},
         dropout_rate=0.3, num_rnn_layers=n)
-    a_optim = torch.optim.Adam(a_controller.parameters(), lr=learning_rate)
-    h_optim = torch.optim.Adam(h_controller.parameters(), lr=learning_rate)
     rewards, losses, ml_performances, best_candidates, best_scores = train(
-        a_controller, h_controller, a_space, t_env, a_optim, h_optim,
+        a_controller, h_controller, a_space, t_env,
         num_episodes=n_episodes, n_iter=n_iter, num_candidates=num_candidates,
         activate_h_controller=activate_h_controller,
         increase_n_hyperparam_by=5, increase_n_hyperparam_every=5)
