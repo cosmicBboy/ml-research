@@ -1,5 +1,7 @@
 """Utility functions."""
 
+from collections import namedtuple
+
 import torch
 from torch.autograd import Variable
 
@@ -7,6 +9,10 @@ from torch.autograd import Variable
 METAFEATURES = [
     ("number_of_examples", int)
 ]
+
+PerformanceTracker = namedtuple("PerformanceTracker", [
+    "best_candidates", "best_scores", "overall_mean_reward", "overall_a_loss",
+    "overall_h_loss", "overall_ml_performance", "running_reward"])
 
 
 def _create_metafeature_tensor(metafeatures, seq):

@@ -54,12 +54,12 @@ for n in n_layers:
         increase_n_hyperparam_by=5, increase_n_hyperparam_every=5)
 
     # gather metrics
-    metrics["rewards_n_layers_%d" % n] = tracker["overall_mean_reward"]
-    metrics["algorithm_losses_n_layers_%d" % n] = tracker["overall_a_loss"]
-    metrics["hyperparam_losses_n_layers_%d" % n] = tracker["overall_h_loss"]
-    metrics["ml_perf_n_layers_%d" % n] = tracker["overall_ml_performance"]
-    best_frameworks["best_cand_n_layers_%d" % n] = tracker["best_candidates"]
-    best_frameworks["best_scores_n_layers_%d" % n] = tracker["best_scores"]
+    metrics["rewards_n_layers_%d" % n] = tracker.overall_mean_reward
+    metrics["algorithm_losses_n_layers_%d" % n] = tracker.overall_a_loss
+    metrics["hyperparam_losses_n_layers_%d" % n] = tracker.overall_h_loss
+    metrics["ml_perf_n_layers_%d" % n] = tracker.overall_ml_performance
+    best_frameworks["best_cand_n_layers_%d" % n] = tracker.best_candidates
+    best_frameworks["best_scores_n_layers_%d" % n] = tracker.best_scores
     print("\n")
 
 for n in n_layers:
