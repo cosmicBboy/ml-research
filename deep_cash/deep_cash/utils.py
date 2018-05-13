@@ -38,6 +38,12 @@ def _create_input_tensor(a_space, seq):
     """Convert sequence to algorithm space.
 
     Returns tensor of dim <string_length x 1 x n_components>.
+
+    :param AlgorithmSpace a_space: an algorithm space object that specifies
+        the space of possible ML framework components and hyperparameters
+    :param list[str] seq: sequence of algorithm components to encode into
+        integer tensor.
+    :returns: integer algorithm input tensor.
     """
     t = torch.zeros(len(seq), 1, a_space.n_components)
     for i, action in enumerate(seq):
@@ -49,7 +55,15 @@ def _create_hyperparameter_tensor(a_space, seq_index):
     """Convert sequence to hyperparameter space.
 
     Returns tensor of dim <string_length x 1 x n_hyperparameters>.
+
+    :param AlgorithmSpace a_space: an algorithm space object that specifies
+        the space of possible ML framework components and hyperparameters
+    :param list[int] seq: sequence of hyperparameter values to encode into
+        integer tensor.
+    :returns: integer hyperparameter input tensor.
     """
+    # NOTE: this is probably the way to go instead of encoding strings into
+    # integers as _create_input_tensor does.
     t = torch.zeros(len(seq_index), 1, a_space.n_hyperparameters)
     for i, index in enumerate(seq_index):
         t[i][0][index] = 1
