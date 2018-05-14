@@ -8,7 +8,8 @@ from sklearn.metrics import roc_auc_score
 
 from deep_cash.algorithm_space import AlgorithmSpace
 from deep_cash.rnn_algorithm_controller import (
-    AlgorithmControllerRNN, HyperparameterControllerRNN, train)
+    AlgorithmControllerRNN, HyperparameterControllerRNN)
+from deep_cash.rnn_ml_framework_controller import MLFrameworkController
 from deep_cash.task_environment import TaskEnvironment
 
 
@@ -47,9 +48,10 @@ for n in n_layers:
         hidden_size=hidden_size, output_size=a_space.n_hyperparameters,
         optim=torch.optim.Adam, optim_kwargs={"lr": learning_rate},
         dropout_rate=0.3, num_rnn_layers=n)
-    tracker = train(
-        a_controller, h_controller, a_space, t_env,
-        num_episodes=n_episodes, n_iter=n_iter, num_candidates=num_candidates,
+    mlf_controller = MLFrameworkController(a_controller, h_controller, a_space)
+    tracker = mlf_controller.fit(
+        t_env, num_episodes=n_episodes, n_iter=n_iter,
+        num_candidates=num_candidates,
         activate_h_controller=activate_h_controller,
         increase_n_hyperparam_by=5, increase_n_hyperparam_every=5)
 
@@ -78,8 +80,6 @@ fig.savefig("artifacts/rnn_algorithm_controller_experiment.png")
 metrics.to_csv(
     "artifacts/rnn_algorithm_controller_experiment.csv", index=False)
 best_frameworks.to_csv(
-    "artifacts/rnn_algorithm_controller_best_frameworks.csv", index=False)
-torch.save(
-    a_controller.state_dict(), "artifacts/rnn_algorithm_controller.pt")
-torch.save(
-    h_controller.state_dict(), "artifacts/rnn_hyperparameter_controller.pt")
+    "artifacts/rnn_algorithm_controller_best.csv", index=False)
+torch.save(a_controller.state_dict(), "artifacts/rnn_algorithm_controller.pt")
+torch.save(h_controller.state_dict(), "artifacts/rnn_hyperparam_controller.pt")
