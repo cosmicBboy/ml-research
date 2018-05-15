@@ -109,12 +109,19 @@ class HyperparameterControllerRNN(_SubControllerRNN):
     """RNN module to propose hyperparameter settings."""
 
     def __init__(self, *args, **kwargs):
+        """Initialize hyperparameter controller."""
         super(HyperparameterControllerRNN, self).__init__(*args, **kwargs)
         # lists to store inner hyperparameter training loop.
         self.inner_saved_log_probs = []
         self.inner_rewards = []
 
     def inner_backward(self, baseline_reward, **kwargs):
+        """Backward pass through the inner loop.
+
+        The inner training loop enables the hyperparameter controller to
+        adjust its weights by proposing hyperparameters conditioned on a single
+        ml pipeline.
+        """
         self.backward(
             baseline_reward, log_probs_attr="inner_saved_log_probs",
             rewards_attr="inner_rewards", **kwargs)

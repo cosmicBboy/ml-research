@@ -25,7 +25,6 @@ class MLFrameworkController(object):
         self.a_controller = a_controller
         self.h_controller = h_controller
         self.a_space = a_space
-        self.tracker = _performance_tracker()
 
     def select_algorithms(self, t_state):
         """Select ML algorithms from the algorithm controller given task state.
@@ -103,124 +102,41 @@ class MLFrameworkController(object):
                 torch.cat(log_probs).sum())
         return OrderedDict(hyperparameters), OrderedDict(value_indices)
 
-    def fit(self, t_env, num_episodes=10, log_every=1, n_iter=1000,
-            show_grad=False, num_candidates=10, activate_h_controller=2,
-            init_n_hyperparams=1, increase_n_hyperparam_by=3,
-            increase_n_hyperparam_every=5):
-        """Train the AlgorithmContoller RNN.
+    def select_eval_ml_framework(self, t_env, t_state, h_controller_is_active):
+        """Select ML framework given task state."""
+        # ml framework pipeline creation
+        pipeline, component_probs = self.select_algorithms(t_state)
+        ml_framework = check_ml_framework(self.a_space, pipeline)
+        if ml_framework is None:
+            return t_env.error_reward
 
-        :param DataSpace t_env: An environment that generates tasks to do on a
-            particular dataset and evaluates the solution proposed by the
-            algorithm controller.
-        :param int init_n_hyperparams: starting number of hyperparameters to
-            propose.
-        :param int increase_n_hyperparam_by: increase number of hyperparameters
-            by this much.
-        :param int increase_n_hyperparam_every: increase number of
-            hyperparameters to propose after this many episodes.
-        """
-        prev_baseline_reward = 0
-        n_hyperparams = init_n_hyperparams
-        for i_episode in range(num_episodes):
-            # sample data environment from data distribution
-            t_env.sample_data_env()
-            # sample training/test data from data environment
-            t_state = t_env.sample()
-            n_valid_frameworks, n_valid_hyperparams, n_successful = 0, 0, 0
-            current_baseline_reward = 0
-            ml_performance, valid_frameworks = [], []
+        self.cf_tracker.n_valid_frameworks += 1
+        # hyperparameter controller inner and outer loop
+        if h_controller_is_active:
+            _ = self.fit_h_controller(
+                ml_framework, t_env, t_state, component_probs,
+                n_iter=1, n_hyperparams=self.cf_tracker.n_hyperparams)
+            hyperparameters, h_value_indices = self.select_hyperparameters(
+                t_state, component_probs,
+                n_hyperparams=self.cf_tracker.n_hyperparams)
+            ml_framework = check_hyperparameters(
+                ml_framework, self.a_space, hyperparameters,
+                h_value_indices)
 
-            # increment number of hyperparameters to predict
-            if i_episode > 0 and i_episode > activate_h_controller and \
-                    i_episode % increase_n_hyperparam_every == 0:
-                n_hyperparams += increase_n_hyperparam_by
+        # ml framework evaluation
+        if ml_framework is None:
+            return t_env.error_reward
 
-            for i in range(n_iter):
-                # ml framework pipeline creation
-                pipeline, component_probs = self.select_algorithms(t_state)
-                ml_framework = check_ml_framework(self.a_space, pipeline)
-                if ml_framework is None:
-                    reward = t_env.error_reward
-                else:
-                    n_valid_frameworks += 1
+        self.cf_tracker.n_valid_hyperparams += 1
+        reward = t_env.evaluate(ml_framework)
 
-                    # hyperparameter controller inner and outer loop
-                    if i_episode > activate_h_controller:
-                        _ = self.fit_h_controller(
-                            ml_framework, t_env, t_state, component_probs,
-                            n_iter=1, n_hyperparams=n_hyperparams)
-                        hyperparameters, h_value_indices = \
-                            self.select_hyperparameters(
-                                t_state, component_probs,
-                                n_hyperparams=n_hyperparams)
-                        ml_framework = check_hyperparameters(
-                            ml_framework, self.a_space, hyperparameters,
-                            h_value_indices)
+        if reward is None:
+            return t_env.error_reward
 
-                    # ml framework evaluation
-                    if ml_framework is None:
-                        reward = t_env.error_reward
-                    else:
-                        n_valid_hyperparams += 1
-                        reward = t_env.evaluate(ml_framework)
-                        if reward is None:
-                            reward = t_env.error_reward
-                        else:
-                            valid_frameworks.append(ml_framework)
-                            n_successful += 1
-                            ml_performance.append(reward)
-                            _maintain_best_candidates(
-                                self.tracker, num_candidates, ml_framework,
-                                reward)
-                print("%d/%d valid frameworks, %d/%d valid hyperparams "
-                      "%d/%d successful frameworks" %
-                      (n_valid_frameworks, i + 1,
-                       n_valid_hyperparams, i + 1,
-                       n_successful, i + 1),
-                      sep=" ", end="\r", flush=True)
-                current_baseline_reward = utils._exponential_mean(
-                    reward, current_baseline_reward)
-                t_state = t_env.sample()
-                self.a_controller.rewards.append(reward)
-                self.h_controller.rewards.append(reward)
-
-            self.tracker = self.tracker._replace(
-                running_reward=utils._exponential_mean(
-                    self.tracker.running_reward, i))
-            self.tracker.overall_mean_reward.append(
-                np.mean(self.a_controller.rewards))
-            self.tracker.overall_ml_performance.append(
-                np.mean(ml_performance) if len(ml_performance) > 0 else np.nan)
-
-            if i_episode > activate_h_controller:
-                h_loss = self.h_controller.backward(prev_baseline_reward)
-                self.tracker.overall_h_loss.append(h_loss)
-            else:
-                self.tracker.overall_h_loss.append(np.nan)
-
-            # backward pass
-            a_loss = self.a_controller.backward(prev_baseline_reward)
-            self.tracker.overall_a_loss.append(a_loss)
-            # update baseline rewards
-            prev_baseline_reward = current_baseline_reward
-            if i_episode % log_every == 0:
-                print("\nEp%s | mean reward: %0.02f | "
-                      "mean perf: %0.02f | ep length: %d | "
-                      "running reward: %0.02f" %
-                      (i_episode, self.tracker.overall_mean_reward[i_episode],
-                       self.tracker.overall_ml_performance[i_episode], i + 1,
-                       self.tracker.running_reward))
-                if len(valid_frameworks) > 0:
-                    print("last ml framework sample: %s" %
-                          utils._ml_framework_string(valid_frameworks[-1]))
-                    print("framework diversity: %d/%d" % (
-                        len(set([utils._ml_framework_string(f)
-                                 for f in valid_frameworks])),
-                        len(valid_frameworks)))
-                if i_episode > activate_h_controller:
-                    print("n_hyperparams: %d" % n_hyperparams)
-                print("")
-        return self.tracker
+        self.cf_tracker.successful_frameworks.append(ml_framework)
+        self.p_tracker.ml_score.append(reward)
+        self.p_tracker.maintain_best_candidates(ml_framework, reward)
+        return reward
 
     def fit_h_controller(
             self, ml_framework, t_env, t_state, component_probs, n_iter,
@@ -258,6 +174,64 @@ class MLFrameworkController(object):
             prev_baseline_r = curr_baseline_r
         return inner_h_loss
 
+    def fit(self, t_env, num_episodes=10, log_every=1, n_iter=1000,
+            show_grad=False, num_candidates=10, activate_h_controller=2,
+            init_n_hyperparams=1, increase_n_hyperparam_by=3,
+            increase_n_hyperparam_every=5):
+        """Train the AlgorithmContoller RNN.
+
+        :param DataSpace t_env: An environment that generates tasks to do on a
+            particular dataset and evaluates the solution proposed by the
+            algorithm controller.
+        :param int init_n_hyperparams: starting number of hyperparameters to
+            propose.
+        :param int increase_n_hyperparam_by: increase number of hyperparameters
+            by this much.
+        :param int increase_n_hyperparam_every: increase number of
+            hyperparameters to propose after this many episodes.
+        """
+        self.p_tracker = utils.PerformanceTracker(num_candidates)
+        self.cf_tracker = utils.ControllerFitTracker(
+            activate_h_controller, init_n_hyperparams,
+            increase_n_hyperparam_by, increase_n_hyperparam_every)
+        for i_episode in range(num_episodes):
+            # sample data environment from data distribution
+            t_env.sample_data_env()
+            # sample training/test data from data environment
+            t_state = t_env.sample()
+            self.p_tracker.reset_episode()
+            self.cf_tracker.reset_episode()
+            self.cf_tracker.update_n_hyperparams(i_episode)
+
+            for i in range(n_iter):
+                reward = self.select_eval_ml_framework(
+                    t_env, t_state, i_episode > activate_h_controller)
+                self.a_controller.rewards.append(reward)
+                self.h_controller.rewards.append(reward)
+                self.cf_tracker.print_fit_progress(i)
+                self.cf_tracker.update_current_baseline_reward(reward)
+                t_state = t_env.sample()
+
+            self.p_tracker.update_performance(self.a_controller.rewards, i)
+            if i_episode > activate_h_controller:
+                h_loss = self.h_controller.backward(
+                    self.cf_tracker.previous_baseline_reward)
+                self.p_tracker.overall_h_loss.append(h_loss)
+            else:
+                self.p_tracker.overall_h_loss.append(np.nan)
+
+            # backward pass
+            a_loss = self.a_controller.backward(
+                self.cf_tracker.previous_baseline_reward)
+            self.p_tracker.overall_a_loss.append(a_loss)
+            # update baseline rewards
+            self.cf_tracker.update_prev_baseline_reward()
+            if i_episode % log_every == 0:
+                self.p_tracker.print_end_episode(i_episode, i + 1)
+                self.cf_tracker.print_end_episode(i_episode)
+                print("")
+        return self.p_tracker
+
 
 def check_ml_framework(a_space, pipeline):
     """Check if the steps in ML framework form a valid pipeline."""
@@ -281,27 +255,3 @@ def check_hyperparameters(
         return a_space.set_ml_framework_params(ml_framework, hyperparameters)
     except Exception:
         return None
-
-
-def _performance_tracker():
-    """Create a performance tracker tuple."""
-    return utils.PerformanceTracker(
-        best_candidates=[], best_scores=[], overall_mean_reward=[],
-        overall_a_loss=[], overall_h_loss=[], overall_ml_performance=[],
-        running_reward=10)
-
-
-def _maintain_best_candidates(tracker, num_candidates, ml_framework, score):
-    """Maintain the best candidates and their associated scores.
-
-    NOTE: this function is stateful i.e. appends to best_candidates and
-    best_scores list.
-    """
-    if len(tracker.best_candidates) < num_candidates:
-        tracker.best_candidates.append(ml_framework)
-        tracker.best_scores.append(score)
-    else:
-        min_index = tracker.best_scores.index(min(tracker.best_scores))
-        if score > tracker.best_scores[min_index]:
-            tracker.best_candidates[min_index] = ml_framework
-            tracker.best_scores[min_index] = score
