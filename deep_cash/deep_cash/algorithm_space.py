@@ -246,6 +246,28 @@ class AlgorithmSpace(object):
             if v != NONE_TOKEN])
         return ml_framework.set_params(**hyperparameters)
 
+    def check_ml_framework(self, pipeline):
+        """Check if the steps in ML framework form a valid pipeline."""
+        # TODO: add more structure to an ml framework:
+        # Data Preprocessor > Feature Preprocessor > Classifier
+        try:
+            assert hasattr(pipeline[-1].aclass, "predict")
+            return self.create_ml_framework(pipeline, memory=None)
+        except Exception:
+            return None
+
+    def check_hyperparameters(
+            self, ml_framework, hyperparameters, h_value_indices):
+        """Check if the selected hyperp arameters are valid."""
+        none_index = self.hyperparameter_state_space_keys.index("NONE_TOKEN")
+        try:
+            for h, i in h_value_indices.items():
+                if i not in self.h_value_index(h) and i != none_index:
+                    return None
+            return self.set_ml_framework_params(ml_framework, hyperparameters)
+        except Exception:
+            return None
+
     def _combine_dicts(self, dicts):
         combined_dicts = {}
         for d in dicts:

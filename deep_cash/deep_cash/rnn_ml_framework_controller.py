@@ -1,7 +1,6 @@
 """Module for generating algorithms sequences.
 
 TODO:
-- remove dependency of MLFrameworkController on AlgorithmSpace
 - add time cost to fitting a proposed framework
 """
 
@@ -106,7 +105,7 @@ class MLFrameworkController(object):
         """Select ML framework given task state."""
         # ml framework pipeline creation
         pipeline, component_probs = self.select_algorithms(t_state)
-        ml_framework = check_ml_framework(self.a_space, pipeline)
+        ml_framework = self.a_space.check_ml_framework(pipeline)
         if ml_framework is None:
             return t_env.error_reward
 
@@ -119,9 +118,8 @@ class MLFrameworkController(object):
             hyperparameters, h_value_indices = self.select_hyperparameters(
                 t_state, component_probs,
                 n_hyperparams=self.cf_tracker.n_hyperparams)
-            ml_framework = check_hyperparameters(
-                ml_framework, self.a_space, hyperparameters,
-                h_value_indices)
+            ml_framework = self.a_space.check_hyperparameters(
+                ml_framework, hyperparameters, h_value_indices)
 
         # ml framework evaluation
         if ml_framework is None:
@@ -152,13 +150,13 @@ class MLFrameworkController(object):
         for h_i_episode in range(n_iter):
             n_valid_hyperparams = 0
             for i in range(100):
-                _ml_framework = clone(ml_framework)
+                mlf = clone(ml_framework)
                 hyperparams, h_value_indices = \
                     self.select_hyperparameters(
                         t_state, component_probs, n_hyperparams, inner=True)
-                _ml_framework = check_hyperparameters(
-                    _ml_framework, self.a_space, hyperparams, h_value_indices)
-                if _ml_framework is None:
+                mlf = self.a_space.check_hyperparameters(
+                    mlf, hyperparams, h_value_indices)
+                if mlf is None:
                     r = t_env.error_reward
                 else:
                     n_valid_hyperparams += 1
@@ -232,26 +230,6 @@ class MLFrameworkController(object):
                 print("")
         return self.p_tracker
 
-
-def check_ml_framework(a_space, pipeline):
-    """Check if the steps in ML framework form a valid pipeline."""
-    # TODO: add more structure to an ml framework:
-    # Data Preprocessor > Feature Preprocessor > Classifier
-    try:
-        assert hasattr(pipeline[-1].aclass, "predict")
-        return a_space.create_ml_framework(pipeline, memory=None)
-    except Exception:
-        return None
-
-
-def check_hyperparameters(
-        ml_framework, a_space, hyperparameters, h_value_indices):
-    """Check if the selected hyperp arameters are valid."""
-    none_index = a_space.hyperparameter_state_space_keys.index("NONE_TOKEN")
-    try:
-        for h, i in h_value_indices.items():
-            if i not in a_space.h_value_index(h) and i != none_index:
-                return None
-        return a_space.set_ml_framework_params(ml_framework, hyperparameters)
-    except Exception:
-        return None
+    def backward(self):
+        """Joint backward pass through hyperparam and algorithm controllers."""
+        pass
