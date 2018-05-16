@@ -1,6 +1,6 @@
 from . import (
     algorithm, hyperparameter, classifiers, data_preprocessors,
-    feature_preprocessors)
+    feature_preprocessors, constants)
 
 
 __all__ = [
@@ -9,4 +9,5 @@ __all__ = [
     classifiers,
     data_preprocessors,
     feature_preprocessors,
+    constants,
 ]

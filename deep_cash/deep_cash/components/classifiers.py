@@ -8,6 +8,7 @@ from .algorithm import AlgorithmComponent
 from .hyperparameter import (
     CategoricalHyperparameter, UniformIntHyperparameter,
     UniformFloatHyperparameter)
+from . import constants
 
 
 def logistic_regression():
@@ -21,7 +22,7 @@ def logistic_regression():
     - tol
     """
     return AlgorithmComponent(
-        "LogisticRegression", LogisticRegression, [
+        "LogisticRegression", LogisticRegression, constants.CLASSIFIER, [
             CategoricalHyperparameter("penalty", ["l1", "l2"], default="l2"),
             CategoricalHyperparameter("dual", [True, False], default=False),
             CategoricalHyperparameter(
@@ -39,7 +40,8 @@ def logistic_regression():
 
 def gaussian_naive_bayes():
     """Create a naive bayes algorithm component."""
-    return AlgorithmComponent("GaussianNaiveBayes", GaussianNB)
+    return AlgorithmComponent(
+        "GaussianNaiveBayes", GaussianNB, constants.CLASSIFIER,)
 
 
 def decision_tree():
@@ -54,7 +56,8 @@ def decision_tree():
     - presort (mostly for speed up)
     """
     return AlgorithmComponent(
-        "DecisionTreeClassifier", DecisionTreeClassifier, [
+        "DecisionTreeClassifier", DecisionTreeClassifier,
+        constants.CLASSIFIER, [
             CategoricalHyperparameter(
                 "criterion", ["gini", "entropy"], default="gini"),
             CategoricalHyperparameter(

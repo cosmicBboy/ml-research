@@ -7,6 +7,7 @@ from sklearn.preprocessing import (
 )
 
 from .algorithm import AlgorithmComponent
+from . import constants
 from .hyperparameter import (
     CategoricalHyperparameter, UniformIntHyperparameter,
     UniformFloatHyperparameter, TuplePairHyperparameter)
@@ -15,7 +16,7 @@ from .hyperparameter import (
 def imputer():
     """Create an imputer component."""
     return AlgorithmComponent(
-        "Imputer", Imputer, [
+        "Imputer", Imputer, constants.IMPUTER, [
             CategoricalHyperparameter(
                 "strategy", ["mean", "median", "most_frequent"],
                 default="mean"),
@@ -35,7 +36,8 @@ def one_hot_encoder():
     For more details, see:
     http://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.OneHotEncoder.html
     """
-    return AlgorithmComponent("OneHotEncoder", OneHotEncoder)
+    return AlgorithmComponent(
+        "OneHotEncoder", OneHotEncoder, constants.ONE_HOT_ENCODER)
 
 
 def variance_threshold_filter():
@@ -44,20 +46,22 @@ def variance_threshold_filter():
     Removes features that are below a threshold variance.
     """
     return AlgorithmComponent(
-        "VarianceThresholdFilter", VarianceThreshold, [
+        "VarianceThresholdFilter", VarianceThreshold,
+        constants.FEATURE_PREPROCESSOR, [
             UniformFloatHyperparameter("threshold", 0.0, 10.0, default=0.0)
         ])
 
 
 def minmax_scaler():
     """Create a minmax scaler component."""
-    return AlgorithmComponent("MinMaxScaler", MinMaxScaler)
+    return AlgorithmComponent(
+        "MinMaxScaler", MinMaxScaler, constants.RESCALER)
 
 
 def standard_scaler():
     """Create a standard scaler component."""
     return AlgorithmComponent(
-        "StandardScaler", StandardScaler, [
+        "StandardScaler", StandardScaler, constants.RESCALER, [
             CategoricalHyperparameter(
                 "with_mean", [True, False], default=True),
             CategoricalHyperparameter(
@@ -68,7 +72,7 @@ def standard_scaler():
 def robust_scaler():
     """Create a robust scaler component."""
     return AlgorithmComponent(
-        "RobustScaler", RobustScaler, [
+        "RobustScaler", RobustScaler, constants.RESCALER, [
             CategoricalHyperparameter(
                 "with_centering", [True, False], default=True),
             CategoricalHyperparameter(
@@ -86,7 +90,7 @@ def robust_scaler():
 def normalizer():
     """Create a normalizer component."""
     return AlgorithmComponent(
-        "Normalizer", Normalizer, [
+        "Normalizer", Normalizer, constants.RESCALER, [
             CategoricalHyperparameter(
                 "norm", ["l1", "l2", "max"], default="l2")
         ])

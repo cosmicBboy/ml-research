@@ -6,22 +6,33 @@ import numpy as np
 
 import itertools
 
+from . import constants
+
 
 class AlgorithmComponent(object):
     """A component of a machine learning framework F."""
 
-    def __init__(self, aname, aclass, hyperparameters=None):
+    def __init__(self, aname, aclass, atype=None, hyperparameters=None):
         """Initialize an AlgorithmComponent.
 
         :param str aname: name of component.
         :param object aclass: of type sklearn.BaseEstimator
+        :param str atype: type of algorithm.
         :param list[Hyperparameters]|None hyperparameters: list of
             Hyperparameter objects, which specify algorithms' hyperparameter
             space.
         """
+        if atype not in constants.ALGORITHM_TYPES:
+            raise ValueError("%s is not a valid algorithm type: choose %s" % (
+                atype, constants.ALGORITHM_TYPES))
         self.aname = aname
         self.aclass = aclass
+        self.atype = atype
         self.hyperparameters = hyperparameters
+
+    def __call__(self):
+        """Instatiate the algorithm."""
+        return self.aclass()
 
     def hyperparameter_name_space(self):
         """Return list of hyperparameter names.

@@ -230,6 +230,7 @@ class AlgorithmSpace(object):
             fitten transformers of the sklearn.Pipeline. If None, no caching
             is done
         """
+        # TODO: call a() instead of a.aclass()
         ml_framework = Pipeline(
             memory=memory,
             steps=[(a.aname, a.aclass()) for a in components])

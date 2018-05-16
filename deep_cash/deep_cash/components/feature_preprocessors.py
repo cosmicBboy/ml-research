@@ -29,6 +29,7 @@ from .algorithm import AlgorithmComponent
 from .hyperparameter import (
     CategoricalHyperparameter, UniformIntHyperparameter,
     UniformFloatHyperparameter, TuplePairHyperparameter)
+from . import constants
 
 
 # constant used for rbf kernel
@@ -59,7 +60,7 @@ def fast_ica():
     - random_state
     """
     return AlgorithmComponent(
-        "FastICA", FastICA, [
+        "FastICA", FastICA, constants.FEATURE_PREPROCESSOR, [
             UniformIntHyperparameter(
                 "n_components", 10, 2000, default=100),
             CategoricalHyperparameter(
@@ -74,7 +75,8 @@ def fast_ica():
 def feature_agglomeration():
     """Create FeatureAgglomoration component."""
     return AlgorithmComponent(
-        "FeatureAgglomeration", FeatureAgglomeration, [
+        "FeatureAgglomeration", FeatureAgglomeration,
+        constants.FEATURE_PREPROCESSOR, [
             UniformIntHyperparameter("n_clusters", 2, 400, default=2, n=20),
             CategoricalHyperparameter(
                 "affinity", ["euclidean", "l1", "l2", "manhattan", "cosine"],
@@ -100,7 +102,7 @@ def kernel_pca():
     - random_state
     """
     return AlgorithmComponent(
-        "KernelPCA", KernelPCA, [
+        "KernelPCA", KernelPCA, constants.FEATURE_PREPROCESSOR, [
             UniformIntHyperparameter("n_components", 10, 2000, default=100),
             CategoricalHyperparameter(
                 "kernel", ["poly", "rdf", "sigmoid", "cosine"], default="rbf"),
@@ -114,7 +116,7 @@ def kernel_pca():
 def rbf_sampler():
     """Create RBF Sampler 'Kitchen Sink' Component."""
     return AlgorithmComponent(
-        "RBFSample", RBFSampler, [
+        "RBFSample", RBFSampler, constants.FEATURE_PREPROCESSOR, [
             UniformFloatHyperparameter("gamma", GAMMA_MIN, 8.0, default=1.0),
             UniformIntHyperparameter(
                 "n_components", 50, 10000, default=100, log=True, n=10),
@@ -130,7 +132,7 @@ def liblinear_svc_preprocessor():
 def nystroem_sampler():
     """Create Nystroem Component."""
     return AlgorithmComponent(
-        "Nystroem", Nystroem, [
+        "Nystroem", Nystroem, constants.FEATURE_PREPROCESSOR, [
             CategoricalHyperparameter(
                 "kernel", ["poly", "rbf", "sigmoid", "cosine"], default="rbf"),
             UniformIntHyperparameter(
@@ -156,7 +158,7 @@ def pca():
     - iterated_power: only used when ``svd_solver == "randomized"``
     """
     return AlgorithmComponent(
-        "PCA", PCA, [
+        "PCA", PCA, constants.FEATURE_PREPROCESSOR, [
             UniformFloatHyperparameter(
                 "n_components", 0.5, 0.999, default=0.999),
             CategoricalHyperparameter("whiten", [True, False], default=False)
@@ -166,7 +168,8 @@ def pca():
 def polynomial_features():
     """Create Polynomial Component."""
     return AlgorithmComponent(
-        "PolynomialFeatures", PolynomialFeatures, [
+        "PolynomialFeatures", PolynomialFeatures,
+        constants.FEATURE_PREPROCESSOR, [
             UniformIntHyperparameter("degree", 2, 3, default=2, n=2),
             CategoricalHyperparameter(
                 "interaction_only", [True, False], default=False),
@@ -178,7 +181,8 @@ def polynomial_features():
 def random_trees_embedding():
     """Create RandomTreesEmbedding."""
     return AlgorithmComponent(
-        "RandomTreesEmbedding", RandomTreesEmbedding, [
+        "RandomTreesEmbedding", RandomTreesEmbedding,
+        constants.FEATURE_PREPROCESSOR, [
             UniformIntHyperparameter("n_estimators", 10, 100, default=10),
             UniformIntHyperparameter("max_depth", 2, 10, default=5),
             UniformIntHyperparameter("min_samples_split", 2, 20, default=2),
@@ -204,6 +208,7 @@ def select_percentile_regression():
 
 def truncated_svd():
     return AlgorithmComponent(
-        "TruncatedSVD", TruncatedSVD, [
+        "TruncatedSVD", TruncatedSVD,
+        constants.FEATURE_PREPROCESSOR, [
             UniformIntHyperparameter("n_components", 10, 256, default=128)
         ])
