@@ -61,7 +61,7 @@ class MLFrameworkController(object):
             input_tensor = Variable(
                 utils._create_input_tensor(self.a_space, [component]))
 
-        # save log probabilities per paction
+        # save log probabilities per action
         self.a_controller.saved_log_probs.append(torch.cat(log_probs).sum())
 
         # create a flattened vector of the softmax output for all
@@ -101,11 +101,19 @@ class MLFrameworkController(object):
                 torch.cat(log_probs).sum())
         return OrderedDict(hyperparameters), OrderedDict(value_indices)
 
-    def select_eval_ml_framework(self, t_env, t_state, h_controller_is_active):
-        """Select ML framework given task state."""
+    def select_eval_ml_framework(
+            self, t_env, t_state, h_controller_is_active, sig_check):
+        """Select ML framework given task state.
+
+        TODO: implement variable reward scheme for succeed at different parts
+        of the task, e.g. creating an ml framework that passes
+        `check_ml_framework`, `check_hyperparameters`, and `t_env.evaluate`
+        so that the controller can learn the different aspects of the task.
+        """
         # ml framework pipeline creation
         pipeline, component_probs = self.select_algorithms(t_state)
-        ml_framework = self.a_space.check_ml_framework(pipeline)
+        ml_framework = self.a_space.check_ml_framework(
+            pipeline, sig_check=sig_check)
         if ml_framework is None:
             return t_env.error_reward
 
@@ -175,7 +183,7 @@ class MLFrameworkController(object):
     def fit(self, t_env, num_episodes=10, log_every=1, n_iter=1000,
             show_grad=False, num_candidates=10, activate_h_controller=2,
             init_n_hyperparams=1, increase_n_hyperparam_by=3,
-            increase_n_hyperparam_every=5):
+            increase_n_hyperparam_every=5, sig_check_interval=25):
         """Train the AlgorithmContoller RNN.
 
         :param DataSpace t_env: An environment that generates tasks to do on a
@@ -187,47 +195,65 @@ class MLFrameworkController(object):
             by this much.
         :param int increase_n_hyperparam_every: increase number of
             hyperparameters to propose after this many episodes.
+        :param int sig_check_interval: interval to increase the strictness
+            of check_ml_framework. Starts with checking just one component,
+            but then slowly increment to a_space.N_COMPONENT_TYPES.
         """
         self.p_tracker = utils.PerformanceTracker(num_candidates)
         self.cf_tracker = utils.ControllerFitTracker(
             activate_h_controller, init_n_hyperparams,
             increase_n_hyperparam_by, increase_n_hyperparam_every)
+        # sig check is the number of components to check
+        sig_check = 1
         for i_episode in range(num_episodes):
-            # sample data environment from data distribution
-            t_env.sample_data_env()
-            # sample training/test data from data environment
-            t_state = t_env.sample()
-            self.p_tracker.reset_episode()
-            self.cf_tracker.reset_episode()
-            self.cf_tracker.update_n_hyperparams(i_episode)
-
-            for i in range(n_iter):
-                reward = self.select_eval_ml_framework(
-                    t_env, t_state, i_episode > activate_h_controller)
-                self.a_controller.rewards.append(reward)
-                self.h_controller.rewards.append(reward)
-                self.cf_tracker.print_fit_progress(i)
-                self.cf_tracker.update_current_baseline_reward(reward)
+            with utils.Timer() as episode_t:
+                if i_episode > 0 and i_episode % sig_check_interval == 0 \
+                        and sig_check < self.a_space.N_COMPONENT_TYPES:
+                    sig_check += 1
+                # sample data environment from data distribution
+                t_env.sample_data_env()
+                # sample training/test data from data environment
                 t_state = t_env.sample()
+                self.p_tracker.reset_episode()
+                self.cf_tracker.reset_episode()
+                self.cf_tracker.update_n_hyperparams(i_episode)
 
-            self.p_tracker.update_performance(self.a_controller.rewards, i)
-            if i_episode > activate_h_controller:
-                h_loss = self.h_controller.backward(
-                    self.cf_tracker.previous_baseline_reward)
-                self.p_tracker.overall_h_loss.append(h_loss)
-            else:
-                self.p_tracker.overall_h_loss.append(np.nan)
+                for i in range(n_iter):
+                    with utils.Timer() as eval_mlf_t:
+                        reward = self.select_eval_ml_framework(
+                            t_env, t_state, i_episode > activate_h_controller,
+                            sig_check=sig_check)
+                        self.a_controller.rewards.append(reward)
+                        self.h_controller.rewards.append(reward)
+                        self.cf_tracker.print_fit_progress(i)
+                        self.cf_tracker.update_current_baseline_reward(reward)
+                        t_state = t_env.sample()
 
-            # backward pass
-            a_loss = self.a_controller.backward(
-                self.cf_tracker.previous_baseline_reward)
-            self.p_tracker.overall_a_loss.append(a_loss)
-            # update baseline rewards
-            self.cf_tracker.update_prev_baseline_reward()
-            if i_episode % log_every == 0:
-                self.p_tracker.print_end_episode(i_episode, i + 1)
-                self.cf_tracker.print_end_episode(i_episode)
-                print("")
+                self.p_tracker.update_performance(self.a_controller.rewards, i)
+                if i_episode > activate_h_controller:
+                    h_loss = self.h_controller.backward(
+                        self.cf_tracker.previous_baseline_reward)
+                    self.p_tracker.overall_h_loss.append(h_loss)
+                else:
+                    self.p_tracker.overall_h_loss.append(np.nan)
+
+                # backward pass
+                with utils.Timer() as a_backward_t:
+                    a_loss = self.a_controller.backward(
+                        self.cf_tracker.previous_baseline_reward)
+                self.p_tracker.overall_a_loss.append(a_loss)
+                # update baseline rewards
+                self.cf_tracker.update_prev_baseline_reward()
+                if i_episode % log_every == 0:
+                    self.p_tracker.print_end_episode(i_episode, i + 1)
+                    self.cf_tracker.print_end_episode(i_episode)
+            print("ep time: %.03f sec, algorithm backward time: %.03f sec, "
+                  "eval mlf time: %.03f sec, sigcheck: %d" % (
+                    episode_t.interval,
+                    a_backward_t.interval,
+                    eval_mlf_t.interval,
+                    sig_check))
+            print("")
         return self.p_tracker
 
     def backward(self):

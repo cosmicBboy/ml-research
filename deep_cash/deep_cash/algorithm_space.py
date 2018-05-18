@@ -26,18 +26,27 @@ from collections import OrderedDict
 from sklearn.pipeline import Pipeline
 
 from . import components
+from .components import constants
 
 START_TOKEN = "<sos>"
 END_TOKEN = "<eos>"
 NONE_TOKEN = "<none>"
 SPECIAL_TOKENS = [START_TOKEN, END_TOKEN, NONE_TOKEN]
+# ml framework pipeline must have this signature. Can eventually support
+# multiple signatures.
+ML_FRAMEWORK_SIGNATURE = [
+    constants.ONE_HOT_ENCODER,
+    constants.IMPUTER,
+    constants.RESCALER,
+    constants.FEATURE_PREPROCESSOR,
+    constants.CLASSIFIER
+]
 
 
 class AlgorithmSpace(object):
     """A class that generates machine learning frameworks."""
 
-    # currently support data preprocessor, feature preprocessor, classifer
-    N_COMPONENT_TYPES = 3
+    N_COMPONENT_TYPES = len(ML_FRAMEWORK_SIGNATURE)
 
     def __init__(self, data_preprocessors=None, feature_preprocessors=None,
                  classifiers=None, with_start_token=True,
@@ -170,6 +179,19 @@ class AlgorithmSpace(object):
         """Return number of hyperparameter"""
         return len(self.hyperparameter_state_space_flat)
 
+    def components_from_signature(self, signature=ML_FRAMEWORK_SIGNATURE):
+        return [self.sample_component(atype) for atype in signature]
+
+    def get_component(self, atype):
+        """Get all components of a particular type.
+
+        :param str atype: type of algorithm
+        :returns: list of components of `atype`
+        :rtype: list[AlgorithmComponent]
+        """
+        return [c for c in self.components if c not in SPECIAL_TOKENS and
+                c.atype == atype]
+
     def h_value_index(self, hyperparameter_name):
         """Check whether a hyperparameter value index is correct."""
         return [
@@ -177,27 +199,31 @@ class AlgorithmSpace(object):
                 self.hyperparameter_state_space_flat.items())
             if k.startswith(hyperparameter_name)]
 
+    def sample_component(self, atype):
+        """Sample a component of a particular type.
+
+        :param str atype: type of algorithm, one of {"one_hot_encoder",
+            "imputer", "rescaler", "feature_preprocessor", "classifier",
+            "regressor"}
+        :returns: a sampled algorithm component of type `atype`.
+        :rtype: AlgorithmComponent
+        """
+        component_subset = self.get_component(atype)
+        return component_subset[np.random.randint(len(component_subset))]
+
     def sample_ml_framework(self, random_state=None):
         """Sample a random ML framework from the algorithm space.
 
         :param int|None random_state: provide random state, which determines
             the ML framework sampled.
         """
-        np.random.seed(random_state)
-        components = [
-            self.data_preprocessors[
-                np.random.randint(len(self.data_preprocessors))],
-            self.feature_preprocessors[
-                np.random.randint(len(self.feature_preprocessors))],
-            self.classifiers[
-                np.random.randint(len(self.classifiers))],
-        ]
+        components = self.components_from_signature()
         framework_hyperparameters = {}
         for a in components:
             framework_hyperparameters.update(
                 a.sample_hyperparameter_state_space())
         return self.create_ml_framework(
-            components, **framework_hyperparameters)
+            components, hyperparameters=framework_hyperparameters)
 
     def framework_iterator(self):
         """Return a generator of all algorithm and hyperparameter combos.
@@ -209,19 +235,16 @@ class AlgorithmSpace(object):
         """
         return (
             self.create_ml_framework(
-                [dp, fp, clf], **self._combine_dicts([d_hp, f_hp, c_hp]))
-            for dp, fp, clf in itertools.product(
-                self.data_preprocessors,
-                self.feature_preprocessors,
-                self.classifiers)
-            for d_hp, f_hp, c_hp in itertools.product(
-                dp.hyperparameter_iterator(),
-                fp.hyperparameter_iterator(),
-                clf.hyperparameter_iterator())
+                component_list,
+                hyperparameters=self._combine_dicts(hyperparam_list_dicts))
+            for component_list in itertools.product(
+                self.components_from_signature())
+            for hyperparam_list_dicts in itertools.product(
+                [c.hyperparameter_iterator() for c in component_list])
         )
 
     def create_ml_framework(
-            self, components, memory=None):
+            self, components, memory=None, hyperparameters=None):
         """Create ML framework, in this context an sklearn pipeline object.
 
         :param list[AlgorithmComponent] components: A list of algorithm
@@ -233,7 +256,9 @@ class AlgorithmSpace(object):
         # TODO: call a() instead of a.aclass()
         ml_framework = Pipeline(
             memory=memory,
-            steps=[(a.aname, a.aclass()) for a in components])
+            steps=[(a.aname, a()) for a in components])
+        if hyperparameters is not None:
+            ml_framework.set_params(**hyperparameters)
         return ml_framework
 
     def set_ml_framework_params(self, ml_framework, hyperparameters):
@@ -247,12 +272,16 @@ class AlgorithmSpace(object):
             if v != NONE_TOKEN])
         return ml_framework.set_params(**hyperparameters)
 
-    def check_ml_framework(self, pipeline):
+    def check_ml_framework(self, pipeline, sig_check=1):
         """Check if the steps in ML framework form a valid pipeline."""
         # TODO: add more structure to an ml framework:
         # Data Preprocessor > Feature Preprocessor > Classifier
+        pipeline = [p for p in pipeline if p not in SPECIAL_TOKENS]
         try:
             assert hasattr(pipeline[-1].aclass, "predict")
+            assert len(pipeline) == len(ML_FRAMEWORK_SIGNATURE)
+            assert [a.atype for a in pipeline][:sig_check] == \
+                ML_FRAMEWORK_SIGNATURE[:sig_check]
             return self.create_ml_framework(pipeline, memory=None)
         except Exception:
             return None

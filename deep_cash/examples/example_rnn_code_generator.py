@@ -15,8 +15,8 @@ from deep_cash.rnn_code_generator import (
 # training parameters
 n_training_samples = 50000
 n_iters = 20000
-print_every = 1000
-plot_every = 1000
+print_every = 100
+plot_every = 100
 all_losses = []
 
 

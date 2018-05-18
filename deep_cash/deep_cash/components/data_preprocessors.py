@@ -33,11 +33,19 @@ def one_hot_encoder():
     Note that we defer to defaults for the following hyperparameters:
     - n_values = "auto"
 
+    The categorical_features hyperparameter is set as a
+    data-environment-dependent because the controller isn't designed to
+    propose the feature columns in which to perform feature transformations.
+    This may change in the future. By definition, data-environment-dependent
+    hyperparameters should be supplied as an element in the `hyperparameters`
+    AlgorithmComponent.__init__ argument.
+
     For more details, see:
     http://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.OneHotEncoder.html
     """
     return AlgorithmComponent(
-        "OneHotEncoder", OneHotEncoder, constants.ONE_HOT_ENCODER)
+        "OneHotEncoder", OneHotEncoder, constants.ONE_HOT_ENCODER,
+        env_dep_hyperparameters={"categorical_features": []})
 
 
 def variance_threshold_filter():

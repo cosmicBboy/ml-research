@@ -12,7 +12,8 @@ from . import constants
 class AlgorithmComponent(object):
     """A component of a machine learning framework F."""
 
-    def __init__(self, aname, aclass, atype=None, hyperparameters=None):
+    def __init__(self, aname, aclass, atype=None, hyperparameters=None,
+                 env_dep_hyperparameters=None):
         """Initialize an AlgorithmComponent.
 
         :param str aname: name of component.
@@ -21,6 +22,10 @@ class AlgorithmComponent(object):
         :param list[Hyperparameters]|None hyperparameters: list of
             Hyperparameter objects, which specify algorithms' hyperparameter
             space.
+        :param dict env_dep_hyperparameters: a set of hyperparameters in the
+            algorithm component that are dependent on the data environment.
+            For now these hyperparameters are set by the data environment and
+            are not tuned by the controller. This may change in the future.
         """
         if atype not in constants.ALGORITHM_TYPES:
             raise ValueError("%s is not a valid algorithm type: choose %s" % (
@@ -30,9 +35,18 @@ class AlgorithmComponent(object):
         self.atype = atype
         self.hyperparameters = hyperparameters
 
-    def __call__(self):
-        """Instatiate the algorithm."""
-        return self.aclass()
+        self.env_dep_hyperparameters = {} if env_dep_hyperparameters is None \
+            else env_dep_hyperparameters
+
+    def __call__(self, env_dep_hyperparameters=None):
+        """Instantiate the algorithm.
+
+        When instantiating the algorithm, optionally supply a data-envirionment
+        specific set of hyperparameters.
+        """
+        return self.aclass(
+            **self.env_dep_hyperparameters if env_dep_hyperparameters is None
+            else env_dep_hyperparameters)
 
     def hyperparameter_name_space(self):
         """Return list of hyperparameter names.

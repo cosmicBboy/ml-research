@@ -18,9 +18,9 @@ from deep_cash.task_environment import TaskEnvironment
 metafeatures = ["number_of_examples"]
 learning_rate = 0.005
 hidden_size = 100
-n_episodes = 5
-activate_h_controller = 2
-n_iter = 100
+n_episodes = 200
+activate_h_controller = 200
+n_iter = 500
 num_candidates = 10
 
 t_env = TaskEnvironment(
@@ -49,19 +49,25 @@ for n in n_layers:
         optim=torch.optim.Adam, optim_kwargs={"lr": learning_rate},
         dropout_rate=0.3, num_rnn_layers=n)
     mlf_controller = MLFrameworkController(a_controller, h_controller, a_space)
+
     tracker = mlf_controller.fit(
         t_env, num_episodes=n_episodes, n_iter=n_iter,
         num_candidates=num_candidates,
         activate_h_controller=activate_h_controller,
         increase_n_hyperparam_by=5, increase_n_hyperparam_every=5)
 
+    best_candidates = tracker.best_candidates + \
+        [None] * (num_candidates - len(tracker.best_candidates))
+    best_scores = tracker.best_scores + \
+        [None] * (num_candidates - len(tracker.best_scores))
+
     # gather metrics
     metrics["rewards_n_layers_%d" % n] = tracker.overall_mean_reward
     metrics["algorithm_losses_n_layers_%d" % n] = tracker.overall_a_loss
     metrics["hyperparam_losses_n_layers_%d" % n] = tracker.overall_h_loss
     metrics["ml_score_n_layers_%d" % n] = tracker.overall_ml_score
-    best_frameworks["best_cand_n_layers_%d" % n] = tracker.best_candidates
-    best_frameworks["best_scores_n_layers_%d" % n] = tracker.best_scores
+    best_frameworks["best_cand_n_layers_%d" % n] = best_candidates
+    best_frameworks["best_scores_n_layers_%d" % n] = best_scores
     print("\n")
 
 for n in n_layers:

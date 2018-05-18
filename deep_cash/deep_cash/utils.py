@@ -1,6 +1,7 @@
 """Utility functions."""
 
 import numpy as np
+import time
 
 import torch
 from torch.autograd import Variable
@@ -9,6 +10,16 @@ from torch.autograd import Variable
 METAFEATURES = [
     ("number_of_examples", int)
 ]
+
+
+class Timer(object):
+
+    def __enter__(self):
+        self.start = time.clock()
+        return self
+
+    def __exit__(self, *args):
+        self.interval = time.clock() - self.start
 
 
 class PerformanceTracker(object):

@@ -79,3 +79,8 @@ def decision_tree():
             UniformFloatHyperparameter(
                 "min_impurity_decrease", 0.0, 1.0, default=0.0, n=10),
         ])
+
+
+def random_forest_classifier():
+    """Create random forest classifier."""
+    pass

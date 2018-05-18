@@ -1,3 +1,4 @@
+# TODO: these should be enum
 ONE_HOT_ENCODER = "one_hot_encoder"
 IMPUTER = "imputer"
 RESCALER = "rescaler"
