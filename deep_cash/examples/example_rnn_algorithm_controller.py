@@ -18,10 +18,11 @@ from deep_cash.task_environment import TaskEnvironment
 metafeatures = ["number_of_examples"]
 learning_rate = 0.005
 hidden_size = 100
-n_episodes = 200
-activate_h_controller = 200
-n_iter = 500
+n_episodes = 300
+activate_h_controller = 1000
+n_iter = 1000
 num_candidates = 10
+sig_check_interval = 50
 
 t_env = TaskEnvironment(
     roc_auc_score, random_state=100,
@@ -48,13 +49,16 @@ for n in n_layers:
         hidden_size=hidden_size, output_size=a_space.n_hyperparameters,
         optim=torch.optim.Adam, optim_kwargs={"lr": learning_rate},
         dropout_rate=0.3, num_rnn_layers=n)
-    mlf_controller = MLFrameworkController(a_controller, h_controller, a_space)
+    mlf_controller = MLFrameworkController(
+        a_controller, h_controller, a_space,
+        optim=torch.optim.Adam, optim_kwargs={"lr": learning_rate})
 
     tracker = mlf_controller.fit(
         t_env, num_episodes=n_episodes, n_iter=n_iter,
         num_candidates=num_candidates,
         activate_h_controller=activate_h_controller,
-        increase_n_hyperparam_by=5, increase_n_hyperparam_every=5)
+        increase_n_hyperparam_by=1, increase_n_hyperparam_every=10,
+        sig_check_interval=sig_check_interval)
 
     best_candidates = tracker.best_candidates + \
         [None] * (num_candidates - len(tracker.best_candidates))
@@ -87,5 +91,6 @@ metrics.to_csv(
     "artifacts/rnn_algorithm_controller_experiment.csv", index=False)
 best_frameworks.to_csv(
     "artifacts/rnn_algorithm_controller_best.csv", index=False)
-torch.save(a_controller.state_dict(), "artifacts/rnn_algorithm_controller.pt")
+torch.save(a_controller.state_dict(),
+           "artifacts/pretrained_rnn_algorithm_controller.pt")
 torch.save(h_controller.state_dict(), "artifacts/rnn_hyperparam_controller.pt")

@@ -46,6 +46,11 @@ ML_FRAMEWORK_SIGNATURE = [
 class AlgorithmSpace(object):
     """A class that generates machine learning frameworks."""
 
+    # bonus rewards for proposing valid ml frameworks and hyperparameter
+    # settings.
+    VALID_MLF_BONUS = 25
+    VALID_MLFH_BONUS = 50
+
     N_COMPONENT_TYPES = len(ML_FRAMEWORK_SIGNATURE)
 
     def __init__(self, data_preprocessors=None, feature_preprocessors=None,

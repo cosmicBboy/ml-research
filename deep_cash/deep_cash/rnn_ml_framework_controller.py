@@ -6,6 +6,7 @@ TODO:
 
 import numpy as np
 import torch
+import torch.nn as nn
 
 from collections import OrderedDict
 
@@ -20,10 +21,19 @@ from .algorithm_space import START_TOKEN
 class MLFrameworkController(object):
     """Controller to generate machine learning frameworks."""
 
-    def __init__(self, a_controller, h_controller, a_space):
+    def __init__(
+            self, a_controller, h_controller, a_space, optim=None,
+            optim_kwargs=None):
         self.a_controller = a_controller
         self.h_controller = h_controller
         self.a_space = a_space
+        self.optim = optim
+        self.optim_kwargs = {} if optim_kwargs is None else optim_kwargs
+        if optim is not None:
+            self.optim = optim(
+                list(self.a_controller.parameters()) +
+                list(self.h_controller.parameters()),
+                **optim_kwargs)
 
     def select_algorithms(self, t_state):
         """Select ML algorithms from the algorithm controller given task state.
@@ -70,10 +80,11 @@ class MLFrameworkController(object):
         # the two controllers via the hidden state.
         component_probs = torch.cat(component_probs, dim=1)
         component_probs = component_probs.view(1, 1, component_probs.shape[1])
-        return ml_framework, component_probs
+        return ml_framework, component_probs, hidden
 
     def select_hyperparameters(
-            self, t_state, component_probs, n_hyperparams, inner=False):
+            self, t_state, component_probs, n_hyperparams, inner=False,
+            share_hidden=None):
         """Select Hyperparameters."""
         metafeature_tensor = utils._create_metafeature_tensor(
             t_state, [START_TOKEN])
@@ -81,7 +92,8 @@ class MLFrameworkController(object):
             [metafeature_tensor, component_probs], dim=2))
         hyperparam_tensor = utils._create_hyperparameter_tensor(
             self.a_space, [self.a_space.h_start_token_index])
-        hidden = self.h_controller.init_hidden()
+        hidden = self.h_controller.init_hidden() if share_hidden is None \
+            else share_hidden
         log_probs, hyperparameters, value_indices = [], [], []
         # compute joint log probability of hyperparameters
         for h_name in self.a_space.hyperparameter_name_space[:n_hyperparams]:
@@ -102,7 +114,8 @@ class MLFrameworkController(object):
         return OrderedDict(hyperparameters), OrderedDict(value_indices)
 
     def select_eval_ml_framework(
-            self, t_env, t_state, h_controller_is_active, sig_check):
+            self, t_env, t_state, h_controller_is_active, sig_check,
+            with_inner_hloop):
         """Select ML framework given task state.
 
         TODO: implement variable reward scheme for succeed at different parts
@@ -111,38 +124,91 @@ class MLFrameworkController(object):
         so that the controller can learn the different aspects of the task.
         """
         # ml framework pipeline creation
-        pipeline, component_probs = self.select_algorithms(t_state)
+        pipeline, component_probs, a_hidden = self.select_algorithms(t_state)
         ml_framework = self.a_space.check_ml_framework(
             pipeline, sig_check=sig_check)
         if ml_framework is None:
+            # fail to create a valid pipeline of algorithms
             return t_env.error_reward
 
         self.cf_tracker.n_valid_frameworks += 1
         # hyperparameter controller inner and outer loop
         if h_controller_is_active:
-            _ = self.fit_h_controller(
-                ml_framework, t_env, t_state, component_probs,
-                n_iter=1, n_hyperparams=self.cf_tracker.n_hyperparams)
+            if with_inner_hloop:
+                _ = self.fit_h_controller(
+                    ml_framework, t_env, t_state, component_probs,
+                    n_iter=1, n_hyperparams=self.cf_tracker.n_hyperparams)
             hyperparameters, h_value_indices = self.select_hyperparameters(
                 t_state, component_probs,
-                n_hyperparams=self.cf_tracker.n_hyperparams)
+                n_hyperparams=self.cf_tracker.n_hyperparams,
+                share_hidden=a_hidden)
             ml_framework = self.a_space.check_hyperparameters(
                 ml_framework, hyperparameters, h_value_indices)
 
         # ml framework evaluation
         if ml_framework is None:
-            return t_env.error_reward
+            # create valid pipeline, but fail hyperparameter specification
+            return t_env.error_reward + self.a_space.VALID_MLF_BONUS
 
         self.cf_tracker.n_valid_hyperparams += 1
         reward = t_env.evaluate(ml_framework)
 
         if reward is None:
-            return t_env.error_reward
+            # create valid pipeline and hyperparams, fail to fit and evaluate
+            # on task environment
+            return t_env.error_reward + self.a_space.VALID_MLFH_BONUS
 
         self.cf_tracker.successful_frameworks.append(ml_framework)
         self.p_tracker.ml_score.append(reward)
         self.p_tracker.maintain_best_candidates(ml_framework, reward)
         return reward
+
+    def backward(self, baseline_reward, show_grad=False):
+        """Joint backward pass through hyperparam and algorithm controllers."""
+        if self.optim is None:
+            raise ValueError(
+                "optimization object not set. You need to provide `optim` "
+                "and `optim_kwargs` when instantiating an %s object" % self)
+        loss = []
+
+        a_log_probs = self.a_controller.saved_log_probs
+        a_rewards = self.a_controller.rewards
+        h_log_probs = self.h_controller.saved_log_probs
+        h_rewards = self.h_controller.rewards
+
+        log_probs_rewards = [(a_log_probs, a_rewards)]
+        if len(h_log_probs) > 0:
+            log_probs_rewards.append((h_log_probs, h_rewards))
+
+        # compute loss
+        for log_probs, rewards in log_probs_rewards:
+            for log_prob, reward in zip(log_probs, rewards):
+                loss.append(-log_prob * (reward - baseline_reward))
+
+        # one step of gradient descent
+        self.optim.zero_grad()
+        loss = torch.cat(loss).sum().div(len(rewards))
+        loss.backward()
+        # gradient clipping to prevent exploding gradient
+        nn.utils.clip_grad_norm(self.a_controller.parameters(), 20)
+        nn.utils.clip_grad_norm(self.h_controller.parameters(), 20)
+        self.optim.step()
+
+        if show_grad:
+            print("\n\nAlgorithm controller gradients")
+            for param in self.a_controller():
+                print(param.grad.data.sum())
+            print("\n\nHyperparameter controller gradients")
+            for param in self.h_controller():
+                print(param.grad.data.sum())
+
+        # reset rewards and log probs
+        del a_log_probs[:]
+        del a_rewards[:]
+        del h_log_probs[:]
+        del h_rewards[:]
+
+        return loss.data[0]
 
     def fit_h_controller(
             self, ml_framework, t_env, t_state, component_probs, n_iter,
@@ -159,9 +225,8 @@ class MLFrameworkController(object):
             n_valid_hyperparams = 0
             for i in range(100):
                 mlf = clone(ml_framework)
-                hyperparams, h_value_indices = \
-                    self.select_hyperparameters(
-                        t_state, component_probs, n_hyperparams, inner=True)
+                hyperparams, h_value_indices = self.select_hyperparameters(
+                    t_state, component_probs, n_hyperparams, inner=True)
                 mlf = self.a_space.check_hyperparameters(
                     mlf, hyperparams, h_value_indices)
                 if mlf is None:
@@ -183,7 +248,8 @@ class MLFrameworkController(object):
     def fit(self, t_env, num_episodes=10, log_every=1, n_iter=1000,
             show_grad=False, num_candidates=10, activate_h_controller=2,
             init_n_hyperparams=1, increase_n_hyperparam_by=3,
-            increase_n_hyperparam_every=5, sig_check_interval=25):
+            increase_n_hyperparam_every=5, sig_check_interval=25,
+            with_inner_hloop=False):
         """Train the AlgorithmContoller RNN.
 
         :param DataSpace t_env: An environment that generates tasks to do on a
@@ -198,6 +264,8 @@ class MLFrameworkController(object):
         :param int sig_check_interval: interval to increase the strictness
             of check_ml_framework. Starts with checking just one component,
             but then slowly increment to a_space.N_COMPONENT_TYPES.
+        :param bool with_inner_hloop: train the hyperparameter controller with
+            an inner loop, given a particular ml framework.
         """
         self.p_tracker = utils.PerformanceTracker(num_candidates)
         self.cf_tracker = utils.ControllerFitTracker(
@@ -222,7 +290,7 @@ class MLFrameworkController(object):
                     with utils.Timer() as eval_mlf_t:
                         reward = self.select_eval_ml_framework(
                             t_env, t_state, i_episode > activate_h_controller,
-                            sig_check=sig_check)
+                            sig_check, with_inner_hloop)
                         self.a_controller.rewards.append(reward)
                         self.h_controller.rewards.append(reward)
                         self.cf_tracker.print_fit_progress(i)
@@ -230,16 +298,11 @@ class MLFrameworkController(object):
                         t_state = t_env.sample()
 
                 self.p_tracker.update_performance(self.a_controller.rewards, i)
-                if i_episode > activate_h_controller:
-                    h_loss = self.h_controller.backward(
-                        self.cf_tracker.previous_baseline_reward)
-                    self.p_tracker.overall_h_loss.append(h_loss)
-                else:
-                    self.p_tracker.overall_h_loss.append(np.nan)
+                self.p_tracker.overall_h_loss.append(np.nan)
 
                 # backward pass
                 with utils.Timer() as a_backward_t:
-                    a_loss = self.a_controller.backward(
+                    a_loss = self.backward(
                         self.cf_tracker.previous_baseline_reward)
                 self.p_tracker.overall_a_loss.append(a_loss)
                 # update baseline rewards
@@ -255,7 +318,3 @@ class MLFrameworkController(object):
                     sig_check))
             print("")
         return self.p_tracker
-
-    def backward(self):
-        """Joint backward pass through hyperparam and algorithm controllers."""
-        pass

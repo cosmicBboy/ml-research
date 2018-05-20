@@ -116,6 +116,12 @@ class ControllerFitTracker(object):
             print("n_hyperparams: %d" % self.n_hyperparams)
 
 
+def load_model(path, model_class, *args, **kwargs):
+    rnn = model_class(*args, **kwargs)
+    rnn.load_state_dict(torch.load(path))
+    return rnn
+
+
 def _create_metafeature_tensor(metafeatures, seq):
     """Convert a metafeature vector into a tensor.
 
