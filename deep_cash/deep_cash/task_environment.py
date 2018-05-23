@@ -5,7 +5,11 @@ import numpy as np
 import pynisher
 import warnings
 
-from sklearn.metrics import roc_auc_score
+from functools import partial
+
+from sklearn.base import clone
+from sklearn.metrics import roc_auc_score, f1_score
+from sklearn.exceptions import UndefinedMetricWarning
 
 from .data_environments import classification_environments
 from .errors import NoPredictMethodError, ExceededResourceLimitError
@@ -20,7 +24,9 @@ FIT_PREDICT_ERRORS = (
     TypeError,
     ValueError,
     RuntimeWarning,
-    UserWarning)
+    UserWarning,
+    UndefinedMetricWarning,
+    AttributeError)
 
 NEGATIVE_REWARD_EXCEPTIONS = tuple(
     [e for e in FIT_PREDICT_ERRORS] +
@@ -32,7 +38,7 @@ class TaskEnvironment(object):
     """Generates datasets associated with supervised learning tasks."""
 
     def __init__(
-            self, scorer=roc_auc_score, random_state=None,
+            self, scorer=f1_score, scorer_kwargs=None, random_state=None,
             per_framework_time_limit=10, per_framework_memory_limit=3072,
             error_reward=-1, reward_scale=100):
         """Initialize task environment."""
@@ -40,7 +46,7 @@ class TaskEnvironment(object):
         # scorer function to support different tasks. Currently, the default
         # is ROC AUC scorer on just classification tasks. Will need to
         # extend this for regression task error metrics.
-        self.scorer = scorer
+        self.scorer = partial(scorer, **scorer_kwargs)
         self.random_state = random_state
         self.per_framework_time_limit = per_framework_time_limit
         self.per_framework_memory_limit = per_framework_memory_limit
@@ -110,15 +116,20 @@ class TaskEnvironment(object):
 
     def evaluate(self, ml_framework):
         """Evaluate an ML framework by fitting and scoring on data."""
-        try:
-            return self._fit_score(ml_framework)
-        except NEGATIVE_REWARD_EXCEPTIONS as e:
-            return None
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            try:
+                return self._fit_score(ml_framework)
+            except NEGATIVE_REWARD_EXCEPTIONS as e:
+                return None
 
     def _fit(self, ml_framework):
         # TODO: log these warnings/errors
+        mlf = clone(ml_framework)
         ml_framework = self.ml_framework_fitter(
             ml_framework, self.X_train, self.y_train)
+        if ml_framework is None:
+            mlf.fit(self.X_train, self.y_train)
         if self.ml_framework_fitter.exit_status != 0:
             raise ExceededResourceLimitError(
                 "ml framework %s exceeded with status: %s" % (
@@ -170,7 +181,7 @@ def _binary_predict_proba(pred_proba):
 
 
 def _multiclass_predict_proba(pred_proba):
-    return np.concatenate([p[:, [1]] for p in pred_proba], axis=1)
+    return pred_proba.argmax(axis=1)
 
 
 def _ml_framework_predict(ml_framework, X, task_type):
@@ -180,26 +191,28 @@ def _ml_framework_predict(ml_framework, X, task_type):
     by the evaluation function.
     """
     # TODO: log these warnings/errors
-    with np.errstate(all="raise"):
-        try:
-            if hasattr(ml_framework, "predict_proba"):
-                pred = ml_framework.predict_proba(X)
-                if task_type == classification_environments.MULTICLASS:
-                    pred = _multiclass_predict_proba(pred)
-                elif task_type == classification_environments.BINARY:
-                    pred = _binary_predict_proba(pred)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        with np.errstate(all="raise"):
+            try:
+                if hasattr(ml_framework, "predict_proba"):
+                    pred = ml_framework.predict_proba(X)
+                    if task_type == classification_environments.MULTICLASS:
+                        pred = _multiclass_predict_proba(pred)
+                    elif task_type == classification_environments.BINARY:
+                        pred = _binary_predict_proba(pred)
+                    else:
+                        pass
+                elif hasattr(ml_framework, "predict"):
+                    pred = ml_framework.predict(X)
+                    if task_type == classification_environments.BINARY:
+                        pred = pred
                 else:
-                    pass
-            elif hasattr(ml_framework, "predict"):
-                pred = ml_framework.predict(X)
-                if task_type == classification_environments.BINARY:
-                    pred = pred
-            else:
-                raise NoPredictMethodError(
-                    "ml_framework has no prediction function")
-            return pred
-        except FIT_PREDICT_ERRORS as e:
-            LOGGER.exception(
-                "PREDICT ERROR: ml framework pipeline: [%s], error: \"%s\"" %
-                (utils._ml_framework_string(ml_framework), e))
-            return None
+                    raise NoPredictMethodError(
+                        "ml_framework has no prediction function")
+                return pred
+            except FIT_PREDICT_ERRORS as e:
+                LOGGER.exception(
+                    "PREDICT ERROR: ml framework pipeline: [%s], error: \"%s\""
+                    % (utils._ml_framework_string(ml_framework), e))
+                return None

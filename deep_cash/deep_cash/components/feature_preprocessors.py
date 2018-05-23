@@ -191,6 +191,8 @@ def random_trees_embedding():
                 "min_weight_fraction_leaf", 0.0, 1.0, default=1.0),
             UniformIntHyperparameter(
                 "max_leaf_nodes", 10, 1000, default=None, log=True),
+            CategoricalHyperparameter(
+                "sparse_output", [True, False], default=False)
         ])
 
 
