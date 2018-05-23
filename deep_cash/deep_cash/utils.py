@@ -1,15 +1,29 @@
 """Utility functions."""
 
-import numpy as np
+import logging
+import os
 import time
 
+import numpy as np
 import torch
+
 from torch.autograd import Variable
 
 # specify type of the metafeature
 METAFEATURES = [
     ("number_of_examples", int)
 ]
+
+
+def init_logging(module):
+    log_path = os.environ.get("DEEP_CASH_LOG_PATH", "/tmp/deep_cash.log")
+    # clear contents of log file
+    open(log_path, "w").close()
+    logging.basicConfig(
+        filename=log_path, level=logging.ERROR,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    print("logs written to %s" % log_path)
+    return logging.getLogger(module)
 
 
 class Timer(object):

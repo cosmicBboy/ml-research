@@ -1,5 +1,6 @@
 """A handler for generating tasks and datasets and evaluating ml frameworks."""
 
+import logging
 import numpy as np
 import pynisher
 import warnings
@@ -8,7 +9,9 @@ from sklearn.metrics import roc_auc_score
 
 from .data_environments import classification_environments
 from .errors import NoPredictMethodError, ExceededResourceLimitError
+from . import utils
 
+LOGGER = utils.init_logging(__file__)
 
 FIT_GRACE_PERIOD = 30
 
@@ -153,7 +156,10 @@ def _ml_framework_fitter(ml_framework, X, y):
             try:
                 ml_framework.fit(X, y)
                 return ml_framework
-            except FIT_PREDICT_ERRORS:
+            except FIT_PREDICT_ERRORS as e:
+                LOGGER.exception(
+                    "FIT ERROR: ml framework pipeline: [%s], error: \"%s\"" % (
+                        utils._ml_framework_string(ml_framework), e))
                 return None
             except Exception:
                 raise
@@ -192,5 +198,8 @@ def _ml_framework_predict(ml_framework, X, task_type):
                 raise NoPredictMethodError(
                     "ml_framework has no prediction function")
             return pred
-        except FIT_PREDICT_ERRORS:
+        except FIT_PREDICT_ERRORS as e:
+            LOGGER.exception(
+                "PREDICT ERROR: ml framework pipeline: [%s], error: \"%s\"" %
+                (utils._ml_framework_string(ml_framework), e))
             return None
