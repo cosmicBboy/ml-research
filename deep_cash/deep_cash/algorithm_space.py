@@ -27,6 +27,7 @@ from sklearn.pipeline import Pipeline
 
 from . import components
 from .components import constants
+from . import utils
 
 START_TOKEN = "<sos>"
 END_TOKEN = "<eos>"
@@ -41,6 +42,8 @@ ML_FRAMEWORK_SIGNATURE = [
     constants.FEATURE_PREPROCESSOR,
     constants.CLASSIFIER
 ]
+
+LOGGER = utils.init_logging(__file__)
 
 
 class AlgorithmSpace(object):
@@ -301,6 +304,7 @@ class AlgorithmSpace(object):
                     return None
             return self.set_ml_framework_params(ml_framework, hyperparameters)
         except Exception:
+            LOGGER.exception("HYPERPARAMETER CHECK FAIL")
             return None
 
     def _combine_dicts(self, dicts):

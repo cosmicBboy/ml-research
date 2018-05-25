@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import torch
 
-from sklearn.metrics import roc_auc_score, f1_score
+from sklearn.metrics import f1_score
 
 from deep_cash.algorithm_space import AlgorithmSpace
 from deep_cash.rnn_algorithm_controller import (
@@ -19,13 +19,15 @@ from deep_cash.utils import load_model
 metafeatures = ["number_of_examples"]
 learning_rate = 0.005
 hidden_size = 100
-n_episodes = 100
+n_episodes = 200
 activate_h_controller = -1
-n_iter = 1000
+n_iter = 100
 num_candidates = 10
 sig_check_interval = 50
 increase_n_hyperparam_by = 1
 increase_n_hyperparam_every = 10
+n_inner_episodes = 3
+n_inner_iter = 100
 
 t_env = TaskEnvironment(
     f1_score, scorer_kwargs={"average": "weighted"}, random_state=100,
@@ -40,10 +42,13 @@ best_frameworks = pd.DataFrame(index=range(num_candidates))
 
 print("Training controller, n_layers=%d" % n_layers)
 
-a_controller = AlgorithmControllerRNN(
-    len(metafeatures), input_size=a_space.n_components,
-    hidden_size=hidden_size, output_size=a_space.n_components,
-    dropout_rate=0.3, num_rnn_layers=n_layers)
+# load pre-trained algorithm controller
+a_controller = load_model(
+    "artifacts/pretrained_rnn_algorithm_controller_v0.1.pt",
+    AlgorithmControllerRNN, len(metafeatures),
+    input_size=a_space.n_components, hidden_size=hidden_size,
+    output_size=a_space.n_components, dropout_rate=0.3,
+    num_rnn_layers=n_layers)
 h_controller = HyperparameterControllerRNN(
     len(metafeatures) + (a_space.n_components * a_space.N_COMPONENT_TYPES),
     input_size=a_space.n_hyperparameters,
@@ -60,7 +65,10 @@ tracker = mlf_controller.fit(
     activate_h_controller=activate_h_controller,
     increase_n_hyperparam_by=increase_n_hyperparam_by,
     increase_n_hyperparam_every=increase_n_hyperparam_every,
-    sig_check_interval=sig_check_interval)
+    sig_check_init=5, sig_check_interval=sig_check_interval,
+    n_inner_episodes=n_inner_episodes,
+    n_inner_iter=n_inner_iter,
+    with_inner_hloop=True, inner_hloop_verbose=False)
 
 best_candidates = tracker.best_candidates + \
     [None] * (num_candidates - len(tracker.best_candidates))
@@ -87,10 +95,12 @@ print("\n")
 
 fig, ax = plt.subplots()
 metrics[["rewards_n_layers_%d" % i for i in [n_layers]]].plot(ax=ax)
-fig.savefig("artifacts/rnn_algorithm_controller_experiment.png")
+fig.savefig("artifacts/rnn_hyperparameter_tuning_experiment.png")
 metrics.to_csv(
-    "artifacts/rnn_algorithm_controller_experiment.csv", index=False)
+    "artifacts/rnn_hyperparameter_tuning_experiment.csv", index=False)
 best_frameworks.to_csv(
-    "artifacts/rnn_algorithm_controller_best.csv", index=False)
+    "artifacts/rnn_hyperparameter_tuning_best.csv", index=False)
 torch.save(a_controller.state_dict(),
-           "artifacts/pretrained_rnn_algorithm_controller_v0.1.pt")
+           "artifacts/pretrained_rnn_algorithm_controller_v0.2.pt")
+torch.save(h_controller.state_dict(),
+           "artifacts/pre_trained_rnn_hyperparam_controller_v0.1.pt")

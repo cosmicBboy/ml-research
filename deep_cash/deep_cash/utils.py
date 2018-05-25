@@ -15,8 +15,8 @@ METAFEATURES = [
 ]
 
 
-def init_logging(module):
-    log_path = os.environ.get("DEEP_CASH_LOG_PATH", "/tmp/deep_cash.log")
+def init_logging(module, default_path="/tmp/deep_cash.log"):
+    log_path = os.environ.get("DEEP_CASH_LOG_PATH", default_path)
     # clear contents of log file
     open(log_path, "w").close()
     logging.basicConfig(

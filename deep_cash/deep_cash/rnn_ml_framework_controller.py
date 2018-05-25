@@ -2,6 +2,14 @@
 
 TODO:
 - add time cost to fitting a proposed framework
+- add reward for each correct hyperparameter-value pair
+
+IDEAS:
+1. eval task in inner loop
+2. joint backward pass per single hyperparameter-value sample
+3. add (log_prob, reward) pair to the h_controller log_prob/reward store,
+   so that h_controller doesn't have sparse reward signal (there's a reward
+   signal per action).
 """
 
 import numpy as np
@@ -115,7 +123,8 @@ class MLFrameworkController(object):
 
     def select_eval_ml_framework(
             self, t_env, t_state, h_controller_is_active, sig_check,
-            with_inner_hloop):
+            with_inner_hloop, inner_hloop_verbose,
+            n_inner_episodes, n_inner_iter):
         """Select ML framework given task state.
 
         TODO: implement variable reward scheme for succeed at different parts
@@ -137,7 +146,10 @@ class MLFrameworkController(object):
             if with_inner_hloop:
                 _ = self.fit_h_controller(
                     ml_framework, t_env, t_state, component_probs,
-                    n_iter=1, n_hyperparams=self.cf_tracker.n_hyperparams)
+                    n_inner_episodes=n_inner_episodes,
+                    n_inner_iter=n_inner_iter,
+                    n_hyperparams=self.cf_tracker.n_hyperparams,
+                    verbose=inner_hloop_verbose)
             hyperparameters, h_value_indices = self.select_hyperparameters(
                 t_state, component_probs,
                 n_hyperparams=self.cf_tracker.n_hyperparams,
@@ -211,8 +223,9 @@ class MLFrameworkController(object):
         return loss.data[0]
 
     def fit_h_controller(
-            self, ml_framework, t_env, t_state, component_probs, n_iter,
-            n_hyperparams=1, verbose=False):
+            self, ml_framework, t_env, t_state, component_probs,
+            n_inner_episodes, n_inner_iter, n_hyperparams,
+            verbose=False):
         """Train the hyperparameter controller given an ML framework.
 
         This is a separate inner loop for training the h_controller for a
@@ -221,9 +234,9 @@ class MLFrameworkController(object):
         curr_baseline_r, prev_baseline_r = 0, 0
         if verbose:
             print("\n%s" % utils._ml_framework_string(ml_framework))
-        for h_i_episode in range(n_iter):
+        for h_i_episode in range(n_inner_episodes):
             n_valid_hyperparams = 0
-            for i in range(100):
+            for i in range(n_inner_iter):
                 mlf = clone(ml_framework)
                 hyperparams, h_value_indices = self.select_hyperparameters(
                     t_state, component_probs, n_hyperparams, inner=True)
@@ -248,8 +261,10 @@ class MLFrameworkController(object):
     def fit(self, t_env, num_episodes=10, log_every=1, n_iter=1000,
             show_grad=False, num_candidates=10, activate_h_controller=2,
             init_n_hyperparams=1, increase_n_hyperparam_by=3,
-            increase_n_hyperparam_every=5, sig_check_interval=25,
-            with_inner_hloop=False):
+            increase_n_hyperparam_every=5,
+            sig_check_init=1, sig_check_interval=25,
+            n_inner_episodes=1, n_inner_iter=100,
+            with_inner_hloop=False, inner_hloop_verbose=False):
         """Train the AlgorithmContoller RNN.
 
         :param DataSpace t_env: An environment that generates tasks to do on a
@@ -261,6 +276,7 @@ class MLFrameworkController(object):
             by this much.
         :param int increase_n_hyperparam_every: increase number of
             hyperparameters to propose after this many episodes.
+        :param int sig_check_init: starting value for sig_check
         :param int sig_check_interval: interval to increase the strictness
             of check_ml_framework. Starts with checking just one component,
             but then slowly increment to a_space.N_COMPONENT_TYPES.
@@ -272,7 +288,7 @@ class MLFrameworkController(object):
             activate_h_controller, init_n_hyperparams,
             increase_n_hyperparam_by, increase_n_hyperparam_every)
         # sig check is the number of components to check
-        sig_check = 1
+        sig_check = sig_check_init
         for i_episode in range(num_episodes):
             with utils.Timer() as episode_t:
                 if i_episode > 0 and i_episode % sig_check_interval == 0 \
@@ -290,7 +306,8 @@ class MLFrameworkController(object):
                     with utils.Timer() as eval_mlf_t:
                         reward = self.select_eval_ml_framework(
                             t_env, t_state, i_episode > activate_h_controller,
-                            sig_check, with_inner_hloop)
+                            sig_check, with_inner_hloop, inner_hloop_verbose,
+                            n_inner_episodes, n_inner_iter)
                         self.a_controller.rewards.append(reward)
                         self.h_controller.rewards.append(reward)
                         self.cf_tracker.print_fit_progress(i)
