@@ -10,6 +10,8 @@ the job of the Controller RNN.
 import itertools
 import numpy as np
 
+from . import constants
+
 N_VALUES = 5  # number of values to generate for int/float state spaces
 
 
@@ -18,18 +20,19 @@ class HyperparameterBase(object):
     def __init__(self, hname, state_space, default):
         """Create hyperparameter base class."""
         self.hname = hname
-        self._state_space = state_space
+        self._state_space = list(state_space)
         self.default = default
 
     def __repr__(self):
         return "<%s: \"%s\">" % (type(self).__name__, self.hname)
 
-    def get_state_space(self):
+    def get_state_space(self, with_none_token=False):
         if self.default in self._state_space:
-            return self._state_space
-        state_space = list(self._state_space) + [self.default]
-        if None not in state_space:
-            state_space = sorted(state_space)
+            state_space = self._state_space
+        else:
+            state_space = self._state_space + [self.default]
+        if with_none_token:
+            state_space.append(constants.NONE_TOKEN)
         return state_space
 
 

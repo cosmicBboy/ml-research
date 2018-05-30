@@ -55,7 +55,7 @@ class AlgorithmComponent(object):
         """
         return ["%s__%s" % (self.aname, h.hname) for h in self.hyperparameters]
 
-    def hyperparameter_state_space(self):
+    def hyperparameter_state_space(self, with_none_token=False):
         """Return dict of hyperparameter space.
 
         TODO: make this a property with the @property decorator
@@ -63,7 +63,8 @@ class AlgorithmComponent(object):
         if self.hyperparameters is None:
             return OrderedDict()
         return OrderedDict([
-            ("%s__%s" % (self.aname, h.hname), h.get_state_space())
+            ("%s__%s" % (self.aname, h.hname),
+                h.get_state_space(with_none_token))
             for h in self.hyperparameters])
 
     def hyperparameter_iterator(self):

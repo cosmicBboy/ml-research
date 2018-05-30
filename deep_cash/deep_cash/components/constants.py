@@ -13,3 +13,6 @@ ALGORITHM_TYPES = [
     CLASSIFIER,
     REGRESSOR,
 ]
+START_TOKEN = "<sos>"
+END_TOKEN = "<eos>"
+NONE_TOKEN = "<none>"

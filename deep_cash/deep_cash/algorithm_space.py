@@ -27,11 +27,10 @@ from sklearn.pipeline import Pipeline
 
 from . import components
 from .components import constants
+from .components.constants import START_TOKEN, END_TOKEN, NONE_TOKEN
 from . import utils
 
-START_TOKEN = "<sos>"
-END_TOKEN = "<eos>"
-NONE_TOKEN = "<none>"
+
 SPECIAL_TOKENS = [START_TOKEN, END_TOKEN, NONE_TOKEN]
 # ml framework pipeline must have this signature. Can eventually support
 # multiple signatures.
@@ -62,6 +61,7 @@ class AlgorithmSpace(object):
     ALL_INCORRECT_MULTIPLIER = 5
 
     N_COMPONENT_TYPES = len(ML_FRAMEWORK_SIGNATURE)
+    ML_FRAMEWORK_SIGNATURE = ML_FRAMEWORK_SIGNATURE
 
     def __init__(self, data_preprocessors=None, feature_preprocessors=None,
                  classifiers=None, with_start_token=True,
@@ -108,20 +108,12 @@ class AlgorithmSpace(object):
     @property
     def hyperparameter_name_space(self):
         """Return all hyperparameters for all components in the space."""
-        hyperparams = []
-        for c in self.components:
-            if c not in SPECIAL_TOKENS and c.hyperparameters is not None:
-                hyperparams.extend(c.hyperparameter_name_space())
-        return hyperparams
+        return self.h_name_space(self.components)
 
     @property
     def hyperparameter_state_space(self):
         """Return all hyperparameter name-value pairs."""
-        hyperparam_states = OrderedDict()
-        for c in self.components:
-            if c not in SPECIAL_TOKENS and c.hyperparameters is not None:
-                hyperparam_states.update(c.hyperparameter_state_space())
-        return hyperparam_states
+        return self.h_state_space(self.components)
 
     @property
     def hyperparameter_state_space_flat(self):
@@ -194,10 +186,18 @@ class AlgorithmSpace(object):
         """Return number of hyperparameter"""
         return len(self.hyperparameter_state_space_flat)
 
-    def components_from_signature(self, signature=ML_FRAMEWORK_SIGNATURE):
+    def sample_components_from_signature(self, signature=None):
+        signature = self.ML_FRAMEWORK_SIGNATURE if signature is None \
+            else signature
         return [self.sample_component(atype) for atype in signature]
 
-    def get_component(self, atype):
+    def component_dict_from_signature(self, signature=None):
+        signature = self.ML_FRAMEWORK_SIGNATURE if signature is None \
+            else signature
+        return OrderedDict([
+            (atype, self.get_components(atype)) for atype in signature])
+
+    def get_components(self, atype):
         """Get all components of a particular type.
 
         :param str atype: type of algorithm
@@ -206,6 +206,33 @@ class AlgorithmSpace(object):
         """
         return [c for c in self.components if c not in SPECIAL_TOKENS and
                 c.atype == atype]
+
+    def h_name_space(self, components):
+        """Get hyperparameter name space by components.
+
+        :param list[AlgorithmComponent] components: list of components
+        :returns: list of hyperparameter names
+        :rtype: list[str]
+        """
+        hyperparam_names = []
+        for c in components:
+            if c not in SPECIAL_TOKENS and c.hyperparameters is not None:
+                hyperparam_names.extend(c.hyperparameter_name_space())
+        return hyperparam_names
+
+    def h_state_space(self, components, with_none_token=False):
+        """Get hyperparameter state space by components.
+
+        :param list[AlgorithmComponent] components: list of components
+        :returns: list of hyperparameter names
+        :rtype: list[str]
+        """
+        hyperparam_states = OrderedDict()
+        for c in components:
+            if c not in SPECIAL_TOKENS and c.hyperparameters is not None:
+                hyperparam_states.update(
+                    c.hyperparameter_state_space(with_none_token))
+        return hyperparam_states
 
     def h_value_index(self, hyperparameter_name):
         """Check whether a hyperparameter value index is correct."""
@@ -223,7 +250,7 @@ class AlgorithmSpace(object):
         :returns: a sampled algorithm component of type `atype`.
         :rtype: AlgorithmComponent
         """
-        component_subset = self.get_component(atype)
+        component_subset = self.get_components(atype)
         return component_subset[np.random.randint(len(component_subset))]
 
     def sample_ml_framework(self, random_state=None):
@@ -232,7 +259,7 @@ class AlgorithmSpace(object):
         :param int|None random_state: provide random state, which determines
             the ML framework sampled.
         """
-        components = self.components_from_signature()
+        components = self.sample_components_from_signature()
         framework_hyperparameters = {}
         for a in components:
             framework_hyperparameters.update(
@@ -253,7 +280,7 @@ class AlgorithmSpace(object):
                 component_list,
                 hyperparameters=self._combine_dicts(hyperparam_list_dicts))
             for component_list in itertools.product(
-                self.components_from_signature())
+                self.sample_components_from_signature())
             for hyperparam_list_dicts in itertools.product(
                 [c.hyperparameter_iterator() for c in component_list])
         )
