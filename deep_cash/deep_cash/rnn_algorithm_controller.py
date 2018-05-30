@@ -1,8 +1,9 @@
 """Module for generating algorithms sequences.
 
-TODO:
-- remove dependency of MLFrameworkController on AlgorithmSpace
-- add time cost to fitting a proposed framework
+This module contains a class definitions for two of the components that
+come together in the `rnn_ml_framework_controller.py` module.
+
+NOTE: This module should be deprecated
 """
 
 import torch

@@ -1,15 +1,15 @@
 """Module for generating algorithms sequences.
 
-TODO:
-- add time cost to fitting a proposed framework
-- add reward for each correct hyperparameter-value pair
+This module contains a class definition for an RNN controller that trains two
+separate controllers: an algorithm controller and a hyperparameter controller.
+These two RNNs are trained separately, and are highly inefficient because of
+a poorly formulated architecture.
 
-IDEAS:
-1. eval task in inner loop
-2. joint backward pass per single hyperparameter-value sample
-3. add (log_prob, reward) pair to the h_controller log_prob/reward store,
-   so that h_controller doesn't have sparse reward signal (there's a reward
-   signal per action).
+In short, the RNN controllers had outputs that were softmax classifiers with
+values over the entire hyperaparameter value space such that most of the values
+were invalid for a particular hyperparameter setting.
+
+NOTE: This module should be deprecated
 """
 
 import numpy as np

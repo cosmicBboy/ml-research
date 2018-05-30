@@ -1,4 +1,7 @@
-"""Example usage of the Algorithm Controller."""
+"""Example usage of the Algorithm Controller.
+
+NOTE: This script should be deprecated
+"""
 
 import matplotlib.pyplot as plt
 import pandas as pd
