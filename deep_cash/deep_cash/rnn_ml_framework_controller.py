@@ -17,6 +17,7 @@ import torch
 import torch.nn as nn
 
 from collections import OrderedDict
+from copy import copy
 
 from sklearn.base import clone
 from torch.autograd import Variable
@@ -117,8 +118,11 @@ class MLFrameworkController(object):
             hyperparam_tensor = utils._create_hyperparameter_tensor(
                 self.a_space, [int(action)])
         log_prob_attr = "inner_saved_log_probs" if inner else "saved_log_probs"
-        getattr(self.h_controller, log_prob_attr).append(
-                torch.cat(log_probs).sum())
+        if inner:
+            getattr(self.h_controller, log_prob_attr).extend(log_probs)
+        else:
+            getattr(self.h_controller, log_prob_attr).append(
+                    torch.cat(log_probs).sum())
         return OrderedDict(hyperparameters), OrderedDict(value_indices)
 
     def select_eval_ml_framework(
@@ -231,31 +235,46 @@ class MLFrameworkController(object):
         This is a separate inner loop for training the h_controller for a
         particular ml_framework.
         """
-        curr_baseline_r, prev_baseline_r = 0, 0
+        curr_baseline_r = []
+        prev_baseline_r = [0 for _ in range(n_inner_iter * n_hyperparams)]
         if verbose:
             print("\n%s" % utils._ml_framework_string(ml_framework))
+        hyperparam_errors = []
         for h_i_episode in range(n_inner_episodes):
+            episode_errors = {}
             n_valid_hyperparams = 0
+            n_complete_hyperparams = 0
             for i in range(n_inner_iter):
                 mlf = clone(ml_framework)
                 hyperparams, h_value_indices = self.select_hyperparameters(
                     t_state, component_probs, n_hyperparams, inner=True)
-                mlf = self.a_space.check_hyperparameters(
-                    mlf, hyperparams, h_value_indices)
-                if mlf is None:
-                    r = t_env.error_reward
-                else:
-                    n_valid_hyperparams += 1
-                    r = t_env.correct_hyperparameter_reward
-                self.h_controller.inner_rewards.append(r)
-                curr_baseline_r = utils._exponential_mean(r, curr_baseline_r)
+                rewards, n_correct, errors = \
+                    self.a_space.evaluate_hyperparameters(
+                        mlf, hyperparams, h_value_indices)
+                episode_errors.update(errors)
+                n_valid_hyperparams += n_correct
+                n_complete_hyperparams += n_correct == n_hyperparams
+                self.h_controller.inner_rewards.extend(rewards)
                 if verbose:
-                    print("Ep%d, %d/%d valid hyperparams %s%s" %
-                          (h_i_episode, n_valid_hyperparams, i + 1,
-                           h_value_indices, " " * 10),
+                    print("Inner ep%d, "
+                          "%d/%d valid hyperparams, "
+                          "%d/%d completely correct hyperparameters "
+                          "%s%s" %
+                          (h_i_episode, n_valid_hyperparams,
+                           (i + 1) * n_hyperparams,
+                           n_complete_hyperparams,
+                           i + 1,
+                           utils._hyperparameter_string(hyperparams),
+                           " " * 10),
                           sep=" ", end="\r", flush=True)
+            hyperparam_errors.append(episode_errors)
+            print("")
+            r = self.h_controller.inner_rewards
+            curr_baseline_r = [
+                utils._exponential_mean(r[i], curr_baseline_r[i]) if
+                len(curr_baseline_r) > 0 else r[i] for i in range(len(r))]
             inner_h_loss = self.h_controller.inner_backward(prev_baseline_r)
-            prev_baseline_r = curr_baseline_r
+            prev_baseline_r = copy(curr_baseline_r)
         return inner_h_loss
 
     def fit(self, t_env, num_episodes=10, log_every=1, n_iter=1000,
@@ -270,8 +289,9 @@ class MLFrameworkController(object):
         :param DataSpace t_env: An environment that generates tasks to do on a
             particular dataset and evaluates the solution proposed by the
             algorithm controller.
-        :param int init_n_hyperparams: starting number of hyperparameters to
-            propose.
+        :param int|None init_n_hyperparams: starting number of hyperparameters
+            to propose. If None, then initialize fitter to propose values for
+            all hyperparameters.
         :param int increase_n_hyperparam_by: increase number of hyperparameters
             by this much.
         :param int increase_n_hyperparam_every: increase number of
@@ -283,6 +303,8 @@ class MLFrameworkController(object):
         :param bool with_inner_hloop: train the hyperparameter controller with
             an inner loop, given a particular ml framework.
         """
+        init_n_hyperparams = len(self.a_space.hyperparameter_name_space) if \
+            init_n_hyperparams is None else init_n_hyperparams
         self.p_tracker = utils.PerformanceTracker(num_candidates)
         self.cf_tracker = utils.ControllerFitTracker(
             activate_h_controller, init_n_hyperparams,
@@ -302,6 +324,8 @@ class MLFrameworkController(object):
                 self.cf_tracker.reset_episode()
                 self.cf_tracker.update_n_hyperparams(i_episode)
 
+                # sample mlf pipeline and hyperparameter settings n_iter times.
+                # get a reward per ml framework and hyperparameter settings.
                 for i in range(n_iter):
                     with utils.Timer() as eval_mlf_t:
                         reward = self.select_eval_ml_framework(

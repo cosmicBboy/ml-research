@@ -207,5 +207,9 @@ def _ml_framework_string(ml_framework):
     return " > ".join(s[0] for s in ml_framework.steps)
 
 
+def _hyperparameter_string(hyperparameters):
+    return "[%d hyperparams]" % len(hyperparameters)
+
+
 def _exponential_mean(x, x_prev):
     return x * 0.99 + x_prev * 0.01

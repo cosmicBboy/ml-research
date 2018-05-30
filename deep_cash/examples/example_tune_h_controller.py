@@ -19,12 +19,13 @@ from deep_cash.utils import load_model
 metafeatures = ["number_of_examples"]
 learning_rate = 0.005
 hidden_size = 100
-n_episodes = 200
+n_episodes = 100
 activate_h_controller = -1
 n_iter = 100
 num_candidates = 10
 sig_check_interval = 50
-increase_n_hyperparam_by = 1
+init_n_hyperparams = 5
+increase_n_hyperparam_by = 5
 increase_n_hyperparam_every = 10
 n_inner_episodes = 3
 n_inner_iter = 100
@@ -63,12 +64,13 @@ tracker = mlf_controller.fit(
     t_env, num_episodes=n_episodes, n_iter=n_iter,
     num_candidates=num_candidates,
     activate_h_controller=activate_h_controller,
+    init_n_hyperparams=init_n_hyperparams,
     increase_n_hyperparam_by=increase_n_hyperparam_by,
     increase_n_hyperparam_every=increase_n_hyperparam_every,
     sig_check_init=5, sig_check_interval=sig_check_interval,
     n_inner_episodes=n_inner_episodes,
     n_inner_iter=n_inner_iter,
-    with_inner_hloop=True, inner_hloop_verbose=False)
+    with_inner_hloop=True, inner_hloop_verbose=True)
 
 best_candidates = tracker.best_candidates + \
     [None] * (num_candidates - len(tracker.best_candidates))

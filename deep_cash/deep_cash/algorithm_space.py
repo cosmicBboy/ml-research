@@ -54,6 +54,13 @@ class AlgorithmSpace(object):
     VALID_MLF_BONUS = 25
     VALID_MLFH_BONUS = 50
 
+    # reward for getting a single hyperparameter correct, in the training
+    # regime that every hyperparameter selection action yields a reward.
+    CORRECT_HYPERPARAMETER_REWARD = 1
+    INCORRECT_HYPERPARAMETER_REWARD = -1
+    ALL_CORRECT_MULTIPLIER = 5
+    ALL_INCORRECT_MULTIPLIER = 5
+
     N_COMPONENT_TYPES = len(ML_FRAMEWORK_SIGNATURE)
 
     def __init__(self, data_preprocessors=None, feature_preprocessors=None,
@@ -294,15 +301,36 @@ class AlgorithmSpace(object):
         except Exception:
             return None
 
+    def evaluate_hyperparameters(
+            self, ml_framework, hyperparameters, h_value_indices):
+        none_index = self.hyperparameter_state_space_keys.index("NONE_TOKEN")
+        errors = {}
+        rewards = []
+        n_correct = 0
+        for h, idx in h_value_indices.items():
+            if idx not in self.h_value_index(h) and idx != none_index:
+                rewards.append(self.INCORRECT_HYPERPARAMETER_REWARD)
+                # for error analysis
+                errors.update({h: hyperparameters[h]})
+            else:
+                n_correct += 1
+                rewards.append(self.CORRECT_HYPERPARAMETER_REWARD)
+        if n_correct == len(hyperparameters):
+            rewards = [r * self.ALL_CORRECT_MULTIPLIER for r in rewards]
+        elif n_correct == 0:
+            rewards = [r * self.ALL_INCORRECT_MULTIPLIER for r in rewards]
+        return rewards, n_correct, errors
+
     def check_hyperparameters(
             self, ml_framework, hyperparameters, h_value_indices):
         """Check if the selected hyperp arameters are valid."""
         none_index = self.hyperparameter_state_space_keys.index("NONE_TOKEN")
         try:
-            for h, i in h_value_indices.items():
-                if i not in self.h_value_index(h) and i != none_index:
+            for h, idx in h_value_indices.items():
+                if idx not in self.h_value_index(h) and idx != none_index:
                     return None
-            return self.set_ml_framework_params(ml_framework, hyperparameters)
+            return self.set_ml_framework_params(
+                ml_framework, hyperparameters)
         except Exception:
             LOGGER.exception("HYPERPARAMETER CHECK FAIL")
             return None

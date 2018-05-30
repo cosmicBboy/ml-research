@@ -57,7 +57,8 @@ class _SubControllerRNN(nn.Module):
 
     def backward(
             self, baseline_reward, log_probs_attr="saved_log_probs",
-            rewards_attr="rewards", show_grad=False):
+            rewards_attr="rewards", show_grad=False,
+            baseline_aslist=False):
         """End an episode with one backpropagation step.
 
         NOTE: This should be implemented at the ML framework controller level
@@ -74,8 +75,9 @@ class _SubControllerRNN(nn.Module):
         rewards = getattr(self, rewards_attr)
 
         # compute loss
-        for log_prob, reward in zip(log_probs, rewards):
-            loss.append(-log_prob * (reward - baseline_reward))
+        for i, (log_prob, reward) in enumerate(zip(log_probs, rewards)):
+            b = baseline_reward[i] if baseline_aslist else baseline_reward
+            loss.append(-log_prob * (reward - b))
 
         # one step of gradient descent
         self.optim.zero_grad()
@@ -124,4 +126,4 @@ class HyperparameterControllerRNN(_SubControllerRNN):
         """
         self.backward(
             baseline_reward, log_probs_attr="inner_saved_log_probs",
-            rewards_attr="inner_rewards", **kwargs)
+            rewards_attr="inner_rewards", baseline_aslist=True, **kwargs)
