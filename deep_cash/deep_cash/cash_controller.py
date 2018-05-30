@@ -70,6 +70,8 @@ class CASHController(nn.Module):
         # for each algorithm component and hyperparameter value, create a
         # softmax classifier over the number of unique components/hyperparam
         # values.
+        # NOTE: What if the action space was such that the controller proposes
+        # all the algorithms first and then proposes the hyperparameters?
         self.component_dict = self.a_space.component_dict_from_signature()
         idx = 0
         for atype, components in self.component_dict.items():
