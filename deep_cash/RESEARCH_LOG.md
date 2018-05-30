@@ -33,3 +33,8 @@ that a different softmax classifier predicts the state-space for a particular
 hyperparameter setting, and a corresponding embedding layer is used to
 standardize the dimensionality so that the softmax output can be fed into
 subsequent layers.
+
+In [this implementation](https://github.com/titu1994/neural-architecture-search/blob/master/controller.py#L287)
+of the NAS RNN controller, each timestep gets it's own classifier, based on the
+state space of the hyperparameter that the controller is trying to predict at
+that time step.
