@@ -26,11 +26,16 @@ TODO:
 import torch
 import torch.nn as nn
 
+from collections import defaultdict
 from torch.autograd import Variable
+from torch.distributions import Categorical
 
 
 class CASHController(nn.Module):
     """RNN module to generate joint algorithm and hyperparameter controller."""
+
+    ALGORITHM = "algorithm"
+    HYPERPARAMETER = "hyperparameter"
 
     def __init__(
             self, metafeature_size, input_size, hidden_size, output_size,
@@ -47,6 +52,9 @@ class CASHController(nn.Module):
         :param dict optim_kwargs:
         :param float dropout_rate:
         :param int num_rnn_layers:
+        :ivar list[dict] action_classifiers:
+        :ivar list[float] log_prob_buffer:
+        :ivar list[float] reward buffer:
         """
         super(CASHController, self).__init__()
         self.a_space = a_space
@@ -57,35 +65,45 @@ class CASHController(nn.Module):
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.action_classifiers = []
+        self.atype_map = {}
+        self.algorithm_map = defaultdict(list)
+        self.log_prob_buffer = []
+        self.reward_buffer = []
+        self.baseline_reward_buffer = []
 
         # architecture specification
         self.rnn = nn.GRU(
-            self.metafeature_size + self.input_size, self.hidden_size,
-            num_layers=self.num_rnn_layers, dropout=self.dropout_rate)
+            self.input_size,
+            self.hidden_size,
+            num_layers=self.num_rnn_layers,
+            dropout=self.dropout_rate)
         self.decoder = nn.Linear(self.hidden_size, self.output_size)
         self.dropout = nn.Dropout(self.dropout_rate)
-
-        setattr(self, "softmax", nn.Softmax(1))
+        # special embedding layer for initial metafeature input
+        self.metafeature_dense = nn.Linear(
+            self.metafeature_size, self.input_size)
 
         # for each algorithm component and hyperparameter value, create a
         # softmax classifier over the number of unique components/hyperparam
         # values.
-        # NOTE: What if the action space was such that the controller proposes
-        # all the algorithms first and then proposes the hyperparameters?
+        # TODO: The architectue should be a branching structure that selects
+        # the appropriate set of hyperparameter classifiers for a particular
+        # choice of algorithm.
         self.component_dict = self.a_space.component_dict_from_signature()
         idx = 0
         for atype, components in self.component_dict.items():
             # action classifier
-            self._add_action_classifier(idx, "algorithm", atype, components)
+            self._add_action_classifier(idx, self.ALGORITHM, atype, components)
+            self.atype_map[atype] = idx
             idx += 1
-            # all hyperparameter state spaces include the special token
-            # "<none>", which effectively turns it off.
-            h_state_space = self.a_space.h_state_space(
-                components, with_none_token=True)
-            for hname, hvalues in h_state_space.items():
-                self._add_action_classifier(
-                    idx, "hyperparameter", hname, hvalues)
-                idx += 1
+            for component in components:
+                h_state_space = self.a_space.h_state_space([component])
+                for hname, hvalues in h_state_space.items():
+                    self._add_action_classifier(
+                        idx, self.HYPERPARAMETER, hname, hvalues)
+                    self.algorithm_map[component].append(idx)
+                    idx += 1
+        self.n_actions = len(self.action_classifiers)
 
         # set optimization object
         if optim is None:
@@ -94,12 +112,15 @@ class CASHController(nn.Module):
             self.optim = optim(self.parameters(), **optim_kwargs)
 
     def _add_action_classifier(self, action_index, action_type, name, choices):
-        """Adds action classifier to the nn.Module."""
+        """Add action classifier to the nn.Module."""
         dense_attr = "action_dense_%s" % action_index
         softmax_attr = "action_softmax_%s" % action_index
-        # set layer attributes
-        setattr(self, dense_attr, nn.Linear(self.output_size, len(choices)))
+        embedding_attr = "action_embedding_%s" % action_index
+        # set layer attributes for action classifiers
+        n_choices = len(choices)
+        setattr(self, dense_attr, nn.Linear(self.output_size, n_choices))
         setattr(self, softmax_attr, nn.Softmax(1))
+        setattr(self, embedding_attr, nn.Embedding(n_choices, self.input_size))
         # keep track of metadata for lookup purposes
         self.action_classifiers.append({
             "action_type": action_type,
@@ -107,25 +128,121 @@ class CASHController(nn.Module):
             "choices": choices,
             "dense_attr": dense_attr,
             "softmax_attr": softmax_attr,
+            "embedding_attr": embedding_attr,
         })
 
-    def forward(self, metafeatures, input, hidden, action_index):
-        input_concat = torch.cat((metafeatures, input), 2)
-        output, hidden = self.rnn(input_concat, hidden)
-        output = self.dropout(self.decoder(output))
+    def forward(self, input, hidden, action_index):
+        """Forward pass through controller."""
+        if action_index == 0:
+            # since the input of the first action is the metafeature vector,
+            # transform metafeature vector into input dimensions
+            input = self.metafeature_dense(input)
+        rnn_output, hidden = self.rnn(input, hidden)
+        rnn_output = self.dropout(self.decoder(rnn_output))
 
         # get appropriate action classifier for particular action_index
         action_classifier = self.action_classifiers[action_index]
         dense = getattr(self, action_classifier["dense_attr"])
         softmax = getattr(self, action_classifier["softmax_attr"])
 
-        # obtain action
-        output_flat = output.view(output.shape[0], -1)
-        action = softmax(dense(output_flat))
-        return output, hidden, action
+        # obtain action probability distribution
+        rnn_output = rnn_output.view(rnn_output.shape[0], -1)
+        action_probs = softmax(dense(rnn_output))
+        return action_probs, hidden
 
-    def backward(self):
-        pass
+    def decode(self, init_input_tensor, init_hidden, init_index=0):
+        """Decode a metafeature tensor to sequence of actions.
+
+        Where the actions are a sequence of algorithm components and
+        hyperparameter settings.
+        """
+        input_tensor, hidden = init_input_tensor, init_hidden
+        actions = []
+        # for each algorithm component type, select an algorithm
+        for atype in self.component_dict:
+            action, input_tensor, hidden = self._decode_action(
+                input_tensor, hidden, self.atype_map[atype])
+            actions.append(action)
+            # each algorithm is associated with a set of hyperparameters
+            for hyperparameter_index in self.algorithm_map[action["action"]]:
+                action, input_tensor, hidden = self._decode_action(
+                    input_tensor, hidden, hyperparameter_index)
+                actions.append(action)
+        return actions
+
+    def _decode_action(self, input_tensor, hidden, action_index):
+        action_probs, hidden = self.forward(
+            input_tensor, hidden, action_index)
+        action = self.select_action(action_probs, action_index)
+        input_tensor = self.encode_embedding(
+            action_index, action["choice_index"])
+        return action, input_tensor, hidden
+
+    def select_action(self, action_probs, action_index):
+        """Select action based on action probability distribution."""
+        # TODO: instead of choosing the max probability, sample based on
+        # the action probability distribution
+        action_classifier = self.action_classifiers[action_index]
+        action_dist = Categorical(action_probs)
+        choice_index = action_dist.sample()
+        _choice_index = int(action_dist.sample().data)
+        return {
+            "action_type": action_classifier["action_type"],
+            "action_name": action_classifier["name"],
+            "choices": action_classifier["choices"],
+            "choice_index": _choice_index,
+            "action": action_classifier["choices"][_choice_index],
+            "action_log_prob": action_dist.log_prob(choice_index)
+        }
+
+    def encode_embedding(self, action_index, choice_index):
+        """Encodes action choice into embedding at input for next action."""
+        action_classifier = self.action_classifiers[action_index]
+        embedding = getattr(self, action_classifier["embedding_attr"])
+        action_embedding = embedding(
+            Variable(torch.LongTensor([choice_index])))
+        return action_embedding.view(
+            1, action_embedding.shape[0], action_embedding.shape[1])
+
+    def backward(self, show_grad=False):
+        """End an episode with one backpropagation step.
+
+        NOTE: This should be implemented at the ML framework controller level
+        in order to implement the end-to-end RNN solution, where the
+        algorithm and hyperparameter controller of the hidden layers are
+        shared.
+        """
+        if self.optim is None:
+            raise ValueError(
+                "optimization object not set. You need to provide `optim` "
+                "and `optim_kwargs` when instantiating an %s object" % self)
+        loss = []
+        # compute loss
+        for action_log_probs, reward, baseline_reward in zip(
+                self.log_prob_buffer,
+                self.reward_buffer,
+                self.baseline_reward_buffer):
+            for log_prob in action_log_probs:
+                loss.append(-log_prob * (reward - baseline_reward))
+
+        # one step of gradient descent
+        self.optim.zero_grad()
+        loss = torch.cat(loss).sum().div(len(self.reward_buffer))
+        loss.backward()
+        # gradient clipping to prevent exploding gradient
+        nn.utils.clip_grad_norm(self.parameters(), 20)
+        self.optim.step()
+
+        if show_grad:
+            print("\n\nGradients")
+            for param in self.parameters():
+                print(param.grad.data.sum())
+
+        # reset rewards and log probs
+        del self.reward_buffer[:]
+        del self.log_prob_buffer[:]
+
+        return loss.data[0]
 
     def init_hidden(self):
         return Variable(torch.zeros(self.num_rnn_layers, 1, self.hidden_size))

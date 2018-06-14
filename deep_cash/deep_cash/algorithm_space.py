@@ -42,8 +42,6 @@ ML_FRAMEWORK_SIGNATURE = [
     constants.CLASSIFIER
 ]
 
-LOGGER = utils.init_logging(__file__)
-
 
 class AlgorithmSpace(object):
     """A class that generates machine learning frameworks."""
@@ -90,6 +88,7 @@ class AlgorithmSpace(object):
         self.hyperparam_with_start_token = hyperparam_with_start_token
         self.hyperparam_with_end_token = hyperparam_with_end_token
         self.hyperparam_with_none_token = hyperparam_with_none_token
+        self._logger = utils.init_logging(__file__)
 
     @property
     def components(self):
@@ -350,7 +349,7 @@ class AlgorithmSpace(object):
 
     def check_hyperparameters(
             self, ml_framework, hyperparameters, h_value_indices):
-        """Check if the selected hyperp arameters are valid."""
+        """Check if the selected hyperparameters are valid."""
         none_index = self.hyperparameter_state_space_keys.index("NONE_TOKEN")
         try:
             for h, idx in h_value_indices.items():
@@ -359,7 +358,7 @@ class AlgorithmSpace(object):
             return self.set_ml_framework_params(
                 ml_framework, hyperparameters)
         except Exception:
-            LOGGER.exception("HYPERPARAMETER CHECK FAIL")
+            self._logger.exception("HYPERPARAMETER CHECK FAIL")
             return None
 
     def _combine_dicts(self, dicts):

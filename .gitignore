@@ -1,6 +1,7 @@
 # Repo-specific
 *.csv
 .pytest_cache
+*.pkl
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

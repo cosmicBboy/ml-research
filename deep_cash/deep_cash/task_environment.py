@@ -20,13 +20,15 @@ LOGGER = utils.init_logging(__file__)
 FIT_GRACE_PERIOD = 30
 
 FIT_PREDICT_ERRORS = (
+    AttributeError,
     FloatingPointError,
     TypeError,
     ValueError,
     RuntimeWarning,
     UserWarning,
     UndefinedMetricWarning,
-    AttributeError)
+    ZeroDivisionError,
+)
 
 NEGATIVE_REWARD_EXCEPTIONS = tuple(
     [e for e in FIT_PREDICT_ERRORS] +
@@ -83,6 +85,7 @@ class TaskEnvironment(object):
         self.X = data_env["data"]
         self.y = data_env["target"]
         self.task_type = task_type
+        self.data_env_name = create_data_env.__name__
         if target_preprocessor is not None:
             self.y = target_preprocessor().fit_transform(self.y.reshape(-1, 1))
         self.data_env_index = np.array(range(self.X.shape[0]))
@@ -121,6 +124,9 @@ class TaskEnvironment(object):
             try:
                 return self._fit_score(ml_framework)
             except NEGATIVE_REWARD_EXCEPTIONS as e:
+                # TODO: errors in the scoring function evaluation should not be
+                # caught by this try/except expression. Figure out a way to
+                # handle exceptions in fitting and prediction separately.
                 return None
 
     def _fit(self, ml_framework):
@@ -137,6 +143,10 @@ class TaskEnvironment(object):
         return ml_framework
 
     def _score(self, ml_framework):
+        # TODO: the scorer should dictate the form that the prediction takes.
+        # for example, the f1_score can only take categorical predictions, not
+        # predicted probabilities. For now, all predictions are treated as
+        # categorical
         pred = _ml_framework_predict(
             ml_framework, self.X_test, self.task_type)
         return self.scorer(self.y_test, pred) * self._reward_scale
@@ -177,10 +187,14 @@ def _ml_framework_fitter(ml_framework, X, y):
 
 
 def _binary_predict_proba(pred_proba):
-    return pred_proba[:, 1]
+    # TODO: see note in _score method above. Keeping this function for now even
+    # though it seems reduntant with _multiclass_predict_proba
+    return pred_proba.argmax(axis=1)
 
 
 def _multiclass_predict_proba(pred_proba):
+    # TODO: see note in _score method above. Keeping this function for now even
+    # though it seems reduntant with _multiclass_predict_proba
     return pred_proba.argmax(axis=1)
 
 
@@ -190,7 +204,7 @@ def _ml_framework_predict(ml_framework, X, task_type):
     Handles errors at the predict layer, any over which need to be handled
     by the evaluation function.
     """
-    # TODO: log these warnings/errors
+    # TODO: see note in _score method above.
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         with np.errstate(all="raise"):

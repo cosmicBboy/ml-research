@@ -44,7 +44,8 @@ def one_hot_encoder():
     http://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.OneHotEncoder.html
     """
     return AlgorithmComponent(
-        "OneHotEncoder", OneHotEncoder, constants.ONE_HOT_ENCODER,
+        "OneHotEncoder", OneHotEncoder, constants.ONE_HOT_ENCODER, [
+            CategoricalHyperparameter("sparse", [True, False], default=True)],
         env_dep_hyperparameters={"categorical_features": []})
 
 
