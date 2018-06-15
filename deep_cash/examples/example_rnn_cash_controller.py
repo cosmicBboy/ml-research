@@ -1,4 +1,8 @@
-"""Example usage of the CASH Controller."""
+"""Example usage of the CASH Controller.
+
+# TODO: experiment with a different set of reward schemes,
+# e.g. -1 for error during fit, 100 scale for model validation performance.
+"""
 
 import os
 import pandas as pd
@@ -48,7 +52,7 @@ controller = CASHController(
     num_rnn_layers=n_layers)
 
 reinforce = CASHReinforce(controller, t_env)
-reinforce.fit(n_episodes=1000, n_iter=100)
+reinforce.fit(n_episodes=500, n_iter=50)
 
 
 history = pd.DataFrame(reinforce.history())
@@ -56,6 +60,7 @@ history[[
     "episode",
     "data_env_names",
     "losses",
+    "mean_rewards",
     "mean_validation_scores",
     "std_validation_scores",
     "n_successful_mlfs",

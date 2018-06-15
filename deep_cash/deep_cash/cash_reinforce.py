@@ -26,6 +26,7 @@ class CASHReinforce(object):
         # track metrics
         self.data_env_names = []
         self.losses = []
+        self.mean_rewards = []
         self.mean_validation_scores = []
         self.std_validation_scores = []
         self.n_successful_mlfs = []
@@ -75,6 +76,7 @@ class CASHReinforce(object):
             # accumulate stats
             self.data_env_names.append(self.t_env.data_env_name)
             self.losses.append(loss)
+            self.mean_rewards.append(mean_reward)
             self.mean_validation_scores.append(mean_validation_score)
             self.std_validation_scores.append(std_validation_score)
             self.n_successful_mlfs.append(n_successful_mlfs)
@@ -89,6 +91,7 @@ class CASHReinforce(object):
             "episode": range(1, self._n_episodes + 1),
             "data_env_names": self.data_env_names,
             "losses": self.losses,
+            "mean_rewards": self.mean_rewards,
             "mean_validation_scores": self.mean_validation_scores,
             "std_validation_scores": self.std_validation_scores,
             "n_successful_mlfs": self.n_successful_mlfs,
