@@ -16,3 +16,7 @@ def envs():
         (sklearn.datasets.load_wine, MULTICLASS, None),
         (sklearn.datasets.load_breast_cancer, BINARY, None),
     ]
+
+
+def env_names():
+    return [n[0].__name__ for n in envs()]

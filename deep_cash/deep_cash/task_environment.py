@@ -9,31 +9,17 @@ from functools import partial
 
 from sklearn.base import clone
 from sklearn.metrics import roc_auc_score, f1_score
-from sklearn.exceptions import UndefinedMetricWarning
+from sklearn.exceptions import ConvergenceWarning, UndefinedMetricWarning
 
 from .data_environments import classification_environments
-from .errors import NoPredictMethodError, ExceededResourceLimitError
+from .errors import NoPredictMethodError, ExceededResourceLimitError, \
+    is_valid_fit_error, is_valid_predict_error, FIT_ERROR_TYPES, \
+    FIT_WARNINGS, PREDICT_ERROR_TYPES, SCORE_WARNINGS
 from . import utils
 
 LOGGER = utils.init_logging(__file__)
 
 FIT_GRACE_PERIOD = 30
-
-FIT_PREDICT_ERRORS = (
-    AttributeError,
-    FloatingPointError,
-    TypeError,
-    ValueError,
-    RuntimeWarning,
-    UserWarning,
-    UndefinedMetricWarning,
-    ZeroDivisionError,
-)
-
-NEGATIVE_REWARD_EXCEPTIONS = tuple(
-    [e for e in FIT_PREDICT_ERRORS] +
-    [NoPredictMethodError, ExceededResourceLimitError]
-)
 
 
 class TaskEnvironment(object):
@@ -42,7 +28,7 @@ class TaskEnvironment(object):
     def __init__(
             self, scorer=f1_score, scorer_kwargs=None, random_state=None,
             per_framework_time_limit=10, per_framework_memory_limit=3072,
-            error_reward=-1, reward_scale=100):
+            error_reward=-0.1, reward_scale=10, reward_transformer=None):
         """Initialize task environment."""
         # TODO: need to add an attribute that normalizes the output of the
         # scorer function to support different tasks. Currently, the default
@@ -53,8 +39,10 @@ class TaskEnvironment(object):
         self.per_framework_time_limit = per_framework_time_limit
         self.per_framework_memory_limit = per_framework_memory_limit
         self.data_distribution = classification_environments.envs()
-        self._error_reward = -1
+        self.n_data_envs = len(self.data_distribution)
+        self._error_reward = error_reward
         self._reward_scale = reward_scale
+        self._reward_transformer = reward_transformer
 
         # enforce resource contraints on framework fitter
         # TODO: support heuristic schedule for changing these contraints
@@ -69,17 +57,21 @@ class TaskEnvironment(object):
     @property
     def error_reward(self):
         """Return reward in the situation of a fit/predict error."""
-        return self._error_reward * self._reward_scale
+        return self._reward_transformer(self._error_reward)
 
     @property
     def correct_hyperparameter_reward(self):
-        """Return reward when proposed hyperparameter is correct."""
+        """Return reward when proposed hyperparameter is correct.
+
+        TODO: Deprecate this function when removing old
+        rnn_ml_framework_controller.py scripts
+        """
         return 1 * self._reward_scale
 
     def sample_data_env(self):
         """Sample the data distribution."""
-        data_env_tuple = self.data_distribution[
-            np.random.randint(len(self.data_distribution))]
+        env_index = np.random.randint(self.n_data_envs)
+        data_env_tuple = self.data_distribution[env_index]
         create_data_env, task_type, target_preprocessor = data_env_tuple
         data_env = create_data_env()
         self.X = data_env["data"]
@@ -115,31 +107,31 @@ class TaskEnvironment(object):
         self.y_train = self.y[train_index]
         self.X_test = self.X[test_index]
         self.y_test = self.y[test_index]
-        return _metafeatures(self.X_train, self.y_train)
+        return _metafeatures(
+            self.data_env_name,
+            self.X_train,
+            self.y_train)
 
     def evaluate(self, ml_framework):
         """Evaluate an ML framework by fitting and scoring on data."""
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            try:
-                return self._fit_score(ml_framework)
-            except NEGATIVE_REWARD_EXCEPTIONS as e:
-                # TODO: errors in the scoring function evaluation should not be
-                # caught by this try/except expression. Figure out a way to
-                # handle exceptions in fitting and prediction separately.
-                return None
+        return self._fit_score(ml_framework)
+
+    def get_reward(self, r):
+        if self._reward_transformer:
+            return self._reward_transformer(r)
+        return r
 
     def _fit(self, ml_framework):
         # TODO: log these warnings/errors
         mlf = clone(ml_framework)
         ml_framework = self.ml_framework_fitter(
-            ml_framework, self.X_train, self.y_train)
-        if ml_framework is None:
-            mlf.fit(self.X_train, self.y_train)
+            mlf, self.X_train, self.y_train)
         if self.ml_framework_fitter.exit_status != 0:
-            raise ExceededResourceLimitError(
-                "ml framework %s exceeded with status: %s" % (
-                    ml_framework, self.ml_framework_fitter.exit_status))
+            msg = "ml framework %s exceeded with status: %s" % (
+                ml_framework, self.ml_framework_fitter.exit_status)
+            print(msg)
+            LOGGER.exception(msg)
+            return None
         return ml_framework
 
     def _score(self, ml_framework):
@@ -149,16 +141,31 @@ class TaskEnvironment(object):
         # categorical
         pred = _ml_framework_predict(
             ml_framework, self.X_test, self.task_type)
-        return self.scorer(self.y_test, pred) * self._reward_scale
+        if pred is None:
+            return None
+        with warnings.catch_warnings() as w:
+            for warning_type, msg in SCORE_WARNINGS:
+                warnings.filterwarnings(
+                    "ignore", message=msg, category=warning_type)
+            if w:
+                print(w)
+            return self.get_reward(self.scorer(self.y_test, pred))
 
     def _fit_score(self, ml_framework):
-        return self._score(self._fit(ml_framework))
+        mlf = self._fit(ml_framework)
+        if mlf is None:
+            return None
+        return self._score(mlf)
 
 
-def _metafeatures(X_train, y_train):
-    # For now this just creates a single metafeature:
-    # number training examples
-    return np.array([len(X_train)])
+def _metafeatures(data_env_name, X_train, y_train):
+    """Create a metafeature vector.
+
+    - data env name: categorical, e.g. "load_iris"
+    - number of examples: continuous
+    - number of features: continuous
+    """
+    return np.array([data_env_name, X_train.shape[0], X_train.shape[1]])
 
 
 def _ml_framework_fitter(ml_framework, X, y):
@@ -172,17 +179,24 @@ def _ml_framework_fitter(ml_framework, X, y):
     # raise numpy overflow errors
     # TODO: log these warnings/errors
     with warnings.catch_warnings():
-        warnings.simplefilter("error")
+        for warning_type, msg in FIT_WARNINGS:
+            warnings.filterwarnings(
+                "ignore", message=msg, category=warning_type)
         with np.errstate(all="raise"):
             try:
                 ml_framework.fit(X, y)
                 return ml_framework
-            except FIT_PREDICT_ERRORS as e:
+            except FIT_ERROR_TYPES as error:
+                if is_valid_fit_error(error):
+                    return None
+                print("error fit predict")
+                print(type(error), error)
                 LOGGER.exception(
-                    "FIT ERROR: ml framework pipeline: [%s], error: \"%s\"" % (
-                        utils._ml_framework_string(ml_framework), e))
-                return None
-            except Exception:
+                    "FIT ERROR: ml framework pipeline: [%s], error: "
+                    "<<<\"%s\">>>" % (
+                        utils._ml_framework_string(ml_framework), error))
+                raise
+            except Exception as error:
                 raise
 
 
@@ -225,8 +239,12 @@ def _ml_framework_predict(ml_framework, X, task_type):
                     raise NoPredictMethodError(
                         "ml_framework has no prediction function")
                 return pred
-            except FIT_PREDICT_ERRORS as e:
+            except PREDICT_ERROR_TYPES as error:
+                if is_valid_predict_error(error):
+                    return None
                 LOGGER.exception(
                     "PREDICT ERROR: ml framework pipeline: [%s], error: \"%s\""
-                    % (utils._ml_framework_string(ml_framework), e))
-                return None
+                    % (utils._ml_framework_string(ml_framework), error))
+                raise
+            except Exception:
+                raise

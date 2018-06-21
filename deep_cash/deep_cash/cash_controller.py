@@ -23,10 +23,12 @@ TODO:
 """
 
 
+import dill
 import torch
 import torch.nn as nn
 
 from collections import defaultdict
+from pathlib import Path
 from torch.autograd import Variable
 from torch.distributions import Categorical
 
@@ -180,8 +182,13 @@ class CASHController(nn.Module):
 
     def select_action(self, action_probs, action_index):
         """Select action based on action probability distribution."""
-        # TODO: instead of choosing the max probability, sample based on
-        # the action probability distribution
+        # TODO: parameterize epsilon for eps-greedy implementation. At first
+        # actions are sampled based on the action probability distribution,
+        # but we want to eventually fully exploit the policy that we've learned
+        # after N episodes.
+        # Implement a epsilon `eps` schedule, which modulates the value of
+        # `eps` from 0.5 (act greedy half of the time) to 1.0 (act greedy all
+        # of the time).
         action_classifier = self.action_classifiers[action_index]
         action_dist = Categorical(action_probs)
         choice_index = action_dist.sample()
@@ -192,7 +199,7 @@ class CASHController(nn.Module):
             "choices": action_classifier["choices"],
             "choice_index": _choice_index,
             "action": action_classifier["choices"][_choice_index],
-            "action_log_prob": action_dist.log_prob(choice_index)
+            "action_log_prob": action_dist.log_prob(choice_index),
         }
 
     def encode_embedding(self, action_index, choice_index):
@@ -246,3 +253,30 @@ class CASHController(nn.Module):
 
     def init_hidden(self):
         return Variable(torch.zeros(self.num_rnn_layers, 1, self.hidden_size))
+
+    def save(self, path):
+        """Save weights and configuration."""
+        path = Path(path)
+        config_fp = path.parent / (path.stem + ".pkl")
+        config = {
+            "metafeature_size": self.metafeature_size,
+            "input_size": self.input_size,
+            "hidden_size": self.hidden_size,
+            "output_size": self.output_size,
+            "a_space": self.a_space,
+            "dropout_rate": self.dropout_rate,
+            "num_rnn_layers": self.num_rnn_layers,
+        }
+        with config_fp.open("w+b") as fp:
+            dill.dump(config, fp)
+        torch.save(self.state_dict(), path)
+
+    @classmethod
+    def load(self, path):
+        """Load saved controller."""
+        path = Path(path)
+        config_fp = path.parent / (path.stem + ".pkl")
+        with config_fp.open("r+b") as fp:
+            rnn = self(**dill.load(fp))
+        rnn.load_state_dict(torch.load(path))
+        return rnn

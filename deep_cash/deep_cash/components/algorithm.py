@@ -48,6 +48,13 @@ class AlgorithmComponent(object):
             **self.env_dep_hyperparameters if env_dep_hyperparameters is None
             else env_dep_hyperparameters)
 
+    def env_dep_hyperparameter_name_space(self):
+        """Return a dictionary of hyperparameters in algorithm name space."""
+        return {
+            "%s__%s" % (self.aname, h): value
+            for h, value in self.env_dep_hyperparameters.items()
+        }
+
     def hyperparameter_name_space(self):
         """Return list of hyperparameter names.
 

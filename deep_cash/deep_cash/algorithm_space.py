@@ -295,15 +295,24 @@ class AlgorithmSpace(object):
             is done
         """
         # TODO: call a() instead of a.aclass()
-        ml_framework = Pipeline(
-            memory=memory,
-            steps=[(a.aname, a()) for a in components])
+        steps = []
+        env_dep_hyperparameters = {}
+        for a in components:
+            steps.append((a.aname, a()))
+            env_dep_hyperparameters.update(
+                a.env_dep_hyperparameter_name_space())
+        ml_framework = Pipeline(memory=memory, steps=steps)
         if hyperparameters is not None:
-            ml_framework.set_params(**hyperparameters)
+            h = hyperparameters.copy()
+            h.update(env_dep_hyperparameters)
+            ml_framework.set_params(**h)
         return ml_framework
 
     def set_ml_framework_params(self, ml_framework, hyperparameters):
         """Set parameters of ML framework.
+
+        WARNING: this will over-ride the env_dep_hyperparameters if the
+        components in the ml_framework.
 
         :param sklearn.Pipeline ml_framework: a ml framework.
         :param dict framework_hyperparameters: hyperparameters of the pipeline.
@@ -314,7 +323,11 @@ class AlgorithmSpace(object):
         return ml_framework.set_params(**hyperparameters)
 
     def check_ml_framework(self, pipeline, sig_check=1):
-        """Check if the steps in ML framework form a valid pipeline."""
+        """Check if the steps in ML framework form a valid pipeline.
+
+        WARNING: this will over-ride the env_dep_hyperparameters if the
+        components in the ml_framework.
+        """
         # TODO: add more structure to an ml framework:
         # Data Preprocessor > Feature Preprocessor > Classifier
         pipeline = [p for p in pipeline if p not in SPECIAL_TOKENS]

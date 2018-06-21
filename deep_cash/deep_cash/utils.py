@@ -1,5 +1,6 @@
 """Utility functions."""
 
+import json
 import logging
 import os
 import time
@@ -7,12 +8,20 @@ import time
 import numpy as np
 import torch
 
+from pathlib import Path
+
 from torch.autograd import Variable
+
+from .data_environments.classification_environments import env_names
 
 # specify type of the metafeature
 METAFEATURES = [
-    ("number_of_examples", int)
+    ("data_env_name", str, env_names()),
+    ("number_of_examples", int, None),
+    ("number_of_features", int, None),
 ]
+
+METAFEATURE_DIM = sum([len(m[2]) if m[1] is str else 1 for m in METAFEATURES])
 
 
 def init_logging(module, default_path="/tmp/deep_cash.log"):
@@ -146,16 +155,21 @@ def _create_metafeature_tensor(metafeatures, seq):
     """
     m = []
     for i, feature in enumerate(metafeatures):
-        metafeature_type = METAFEATURES[i][1]
-        if metafeature_type is int:
+        fname, ftype, flevels = METAFEATURES[i]
+        if ftype is int:
             metafeature_dim = 1
-            feature = metafeature_type(feature)
+            feature_val = ftype(feature)
+            feature_index = 0
+        elif ftype is str:
+            metafeature_dim = len(flevels)
+            feature_val = 1
+            feature_index = flevels.index(feature)
         else:
             raise ValueError(
-                "metafeature type %s not recognized" % metafeature_type)
+                "metafeature type %s not recognized" % ftype)
         t = torch.zeros(len(seq), 1, metafeature_dim)
         for j, _ in enumerate(seq):
-            t[j][0][metafeature_dim - 1] = feature
+            t[j][0][feature_index] = feature_val
         m.append(t)
     m = torch.cat(m, 2)
     return m
@@ -205,6 +219,10 @@ def _create_training_data_tensors(a_space, metafeatures, seq):
 
 def _ml_framework_string(ml_framework):
     return " > ".join(s[0] for s in ml_framework.steps)
+
+
+def _ml_framework_diversity(n_unique, n_successful):
+    return np.nan if n_successful == 0 else n_unique / float(n_successful)
 
 
 def _hyperparameter_string(hyperparameters):

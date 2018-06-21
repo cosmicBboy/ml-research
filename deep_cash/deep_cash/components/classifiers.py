@@ -67,15 +67,15 @@ def decision_tree():
             UniformIntHyperparameter(
                 "max_depth", 1, 1000, default=None, log=True),
             UniformFloatHyperparameter(
-                "min_samples_split", 0.0, 1.0, default=0.05),
+                "min_samples_split", 0.01, 1.0, default=0.05),
             UniformFloatHyperparameter(
-                "min_samples_leaf", 0.0, 1.0, default=1.0),
+                "min_samples_leaf", 0.01, 0.5, default=0.1),
             UniformFloatHyperparameter(
-                "min_weight_fraction_leaf", 0.0, 1.0, default=0.0),
+                "min_weight_fraction_leaf", 0.01, 0.5, default=0.0),
             UniformFloatHyperparameter(
                 "max_features", 0.0, 1.0, default=0.33),
             UniformIntHyperparameter(
-                "max_leaf_nodes", 1, 1000, default=None, log=True),
+                "max_leaf_nodes", 2, 1000, default=None, log=True),
             UniformFloatHyperparameter(
                 "min_impurity_decrease", 0.0, 1.0, default=0.0, n=10),
         ])

@@ -1,7 +1,6 @@
 """Reinforce module for training the CASH controller."""
 
 import numpy as np
-import torch
 
 from torch.autograd import Variable
 
@@ -9,13 +8,23 @@ from . import utils
 
 
 class CASHReinforce(object):
+    """Reinforce component of deep-cash algorithm."""
 
-    def __init__(self, controller, t_env):
+    def __init__(self, controller, t_env, metrics_logger=None):
+        """Initialize CASH Reinforce Algorithm.
+
+        :param pytorch.nn.Module controller: A CASH controller to select
+            actions.
+        :param TaskEnvironment t_env: task environment to sample data
+            environments and evaluate proposed ml frameworks.
+        :param callable metrics_logger:
+        """
         self.controller = controller
         self.t_env = t_env
         self._logger = utils.init_logging(__file__)
+        self._metrics_logger = metrics_logger
 
-    def fit(self, n_episodes=100, n_iter=100):
+    def fit(self, n_episodes=100, n_iter=100, verbose=True):
         """Fits the CASH controller with the REINFORCE algorithm.
 
         :param int n_episodes: number of episodes to train.
@@ -31,8 +40,7 @@ class CASHReinforce(object):
         self.std_validation_scores = []
         self.n_successful_mlfs = []
         self.n_unique_mlfs = []
-
-        # best validation scores
+        self.mlf_framework_diversity = []
         self.best_validation_scores = []
         self.best_mlfs = []
 
@@ -47,7 +55,7 @@ class CASHReinforce(object):
             self._best_mlf = None
             print("\nepisode %d, task: %s" % (
                 i_episode, self.t_env.data_env_name))
-            self._fit_episode(n_iter)
+            self._fit_episode(n_iter, verbose)
 
             # episode stats
             mean_reward = np.mean(self.controller.reward_buffer)
@@ -61,17 +69,6 @@ class CASHReinforce(object):
             n_successful_mlfs = len(self._successful_mlf)
             n_unique_mlfs = len(set(
                 [utils._ml_framework_string(m) for m in self._successful_mlf]))
-            print(
-                "\nloss: %0.02f - "
-                "mean performance: %0.02f - "
-                "mean reward: %0.02f - "
-                "mlf diversity: %d/%d" % (
-                    loss,
-                    mean_validation_score,
-                    mean_reward,
-                    n_unique_mlfs,
-                    n_successful_mlfs)
-            )
 
             # accumulate stats
             self.data_env_names.append(self.t_env.data_env_name)
@@ -81,8 +78,25 @@ class CASHReinforce(object):
             self.std_validation_scores.append(std_validation_score)
             self.n_successful_mlfs.append(n_successful_mlfs)
             self.n_unique_mlfs.append(n_unique_mlfs)
+            self.mlf_framework_diversity.append(
+                utils._ml_framework_diversity(
+                    n_unique_mlfs, n_successful_mlfs))
             self.best_validation_scores.append(self._best_validation_score)
             self.best_mlfs.append(self._best_mlf)
+            if self._metrics_logger:
+                self._metrics_logger(self)
+            else:
+                print(
+                    "\nloss: %0.02f - "
+                    "mean performance: %0.02f - "
+                    "mean reward: %0.02f - "
+                    "mlf diversity: %d/%d" % (
+                        loss,
+                        mean_validation_score,
+                        mean_reward,
+                        n_unique_mlfs,
+                        n_successful_mlfs)
+                )
         return self
 
     def history(self):
@@ -100,16 +114,17 @@ class CASHReinforce(object):
             "best_mlfs": self.best_mlfs,
         }
 
-    def _fit_episode(self, n_iter):
+    def _fit_episode(self, n_iter, verbose):
         self._n_valid_mlf = 0
         for i_iter in range(n_iter):
             self._fit_iter(self.t_env.sample())
-            print(
-                "iter %d - n valid mlf: %d/%d - "
-                "exponential mean reward: %0.02f" % (
-                    i_iter, self._n_valid_mlf, i_iter + 1,
-                    self._current_baseline_reward),
-                sep=" ", end="\r", flush=True)
+            if verbose:
+                print(
+                    "iter %d - n valid mlf: %d/%d - "
+                    "exponential mean reward: %0.02f" % (
+                        i_iter, self._n_valid_mlf, i_iter + 1,
+                        self._current_baseline_reward),
+                    sep=" ", end="\r", flush=True)
 
     def _fit_iter(self, t_state):
         actions = self.select_actions(

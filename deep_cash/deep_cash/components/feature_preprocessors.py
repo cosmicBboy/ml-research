@@ -105,7 +105,7 @@ def kernel_pca():
         "KernelPCA", KernelPCA, constants.FEATURE_PREPROCESSOR, [
             UniformIntHyperparameter("n_components", 10, 2000, default=100),
             CategoricalHyperparameter(
-                "kernel", ["poly", "rdf", "sigmoid", "cosine"], default="rbf"),
+                "kernel", ["poly", "rbf", "sigmoid", "cosine"], default="rbf"),
             UniformFloatHyperparameter(
                 "gamma", GAMMA_MIN, 8.0, default=1.0, log=True),
             UniformIntHyperparameter("degree", 2, 5, 3),
@@ -119,7 +119,7 @@ def rbf_sampler():
         "RBFSample", RBFSampler, constants.FEATURE_PREPROCESSOR, [
             UniformFloatHyperparameter("gamma", GAMMA_MIN, 8.0, default=1.0),
             UniformIntHyperparameter(
-                "n_components", 50, 10000, default=100, log=True, n=10),
+                "n_components", 5, 10000, default=100, log=True, n=10),
         ])
 
 
@@ -136,7 +136,7 @@ def nystroem_sampler():
             CategoricalHyperparameter(
                 "kernel", ["poly", "rbf", "sigmoid", "cosine"], default="rbf"),
             UniformIntHyperparameter(
-                "n_components", 50, 10000, default=100, log=True),
+                "n_components", 5, 10000, default=100, log=True),
             UniformFloatHyperparameter(
                 "gamma", GAMMA_MIN, 8.0, log=True, default=1.0),
             UniformIntHyperparameter("degree", 2, 5, 3),
@@ -188,12 +188,13 @@ def random_trees_embedding():
             UniformIntHyperparameter("min_samples_split", 2, 20, default=2),
             UniformIntHyperparameter("min_samples_leaf", 1, 20, default=1),
             UniformFloatHyperparameter(
-                "min_weight_fraction_leaf", 0.0, 1.0, default=1.0),
+                "min_weight_fraction_leaf", 0.0, 0.5, default=0.0),
             UniformIntHyperparameter(
                 "max_leaf_nodes", 10, 1000, default=None, log=True),
             CategoricalHyperparameter(
                 "sparse_output", [True, False], default=False)
-        ])
+        ],
+        env_dep_hyperparameters={"sparse_output": False})
 
 
 def select_percentile_classification():
