@@ -233,4 +233,7 @@ def _exponential_mean(x, x_prev):
     # TODO: parameterize `beta` as the degree to which previous values effect
     # the moving average, i.e. (x * beta) + (x_prev * (1 - beta))
     # TODO: tune the `beta` parameter to see if this stabilizes training.
+    # TODO: implement bias correction factor to account for underestimate of
+    # the moving average with term `exp_mean / (1 - beta^t)` where `t` is a
+    # counter of number of time-steps.
     return x * 0.99 + x_prev * 0.01
