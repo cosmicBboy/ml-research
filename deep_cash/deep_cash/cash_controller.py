@@ -218,6 +218,10 @@ class CASHController(nn.Module):
         in order to implement the end-to-end RNN solution, where the
         algorithm and hyperparameter controller of the hidden layers are
         shared.
+
+        # TODO: move this to the `cash_reinforce` module, since the learning
+        # algorithm used to train the controller can be modular (right now
+        # it's REINFORCE, but could be something else in the future).
         """
         if self.optim is None:
             raise ValueError(
@@ -230,6 +234,9 @@ class CASHController(nn.Module):
                 self.reward_buffer,
                 self.baseline_reward_buffer):
             for log_prob in action_log_probs:
+                # since REINFORCE algorithm is a gradient ascent method,
+                # negate the log probability in order to do that instead of
+                # gradient descent.
                 loss.append(-log_prob * (reward - baseline_reward))
 
         # one step of gradient descent
