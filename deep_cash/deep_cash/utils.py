@@ -230,4 +230,7 @@ def _hyperparameter_string(hyperparameters):
 
 
 def _exponential_mean(x, x_prev):
+    # TODO: parameterize `beta` as the degree to which previous values effect
+    # the moving average, i.e. (x * beta) + (x_prev * (1 - beta))
+    # TODO: tune the `beta` parameter to see if this stabilizes training.
     return x * 0.99 + x_prev * 0.01
