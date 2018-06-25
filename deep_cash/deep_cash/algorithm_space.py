@@ -294,7 +294,6 @@ class AlgorithmSpace(object):
             fitten transformers of the sklearn.Pipeline. If None, no caching
             is done
         """
-        # TODO: call a() instead of a.aclass()
         steps = []
         env_dep_hyperparameters = {}
         for a in components:
@@ -307,72 +306,6 @@ class AlgorithmSpace(object):
             h.update(env_dep_hyperparameters)
             ml_framework.set_params(**h)
         return ml_framework
-
-    def set_ml_framework_params(self, ml_framework, hyperparameters):
-        """Set parameters of ML framework.
-
-        WARNING: this will over-ride the env_dep_hyperparameters if the
-        components in the ml_framework.
-
-        :param sklearn.Pipeline ml_framework: a ml framework.
-        :param dict framework_hyperparameters: hyperparameters of the pipeline.
-        """
-        hyperparameters = OrderedDict([
-            (k, v) for k, v in hyperparameters.items()
-            if v != NONE_TOKEN])
-        return ml_framework.set_params(**hyperparameters)
-
-    def check_ml_framework(self, pipeline, sig_check=1):
-        """Check if the steps in ML framework form a valid pipeline.
-
-        WARNING: this will over-ride the env_dep_hyperparameters if the
-        components in the ml_framework.
-        """
-        # TODO: add more structure to an ml framework:
-        # Data Preprocessor > Feature Preprocessor > Classifier
-        pipeline = [p for p in pipeline if p not in SPECIAL_TOKENS]
-        try:
-            assert hasattr(pipeline[-1].aclass, "predict")
-            assert len(pipeline) == len(ML_FRAMEWORK_SIGNATURE)
-            assert [a.atype for a in pipeline][:sig_check] == \
-                ML_FRAMEWORK_SIGNATURE[:sig_check]
-            return self.create_ml_framework(pipeline, memory=None)
-        except Exception:
-            return None
-
-    def evaluate_hyperparameters(
-            self, ml_framework, hyperparameters, h_value_indices):
-        none_index = self.hyperparameter_state_space_keys.index("NONE_TOKEN")
-        errors = {}
-        rewards = []
-        n_correct = 0
-        for h, idx in h_value_indices.items():
-            if idx not in self.h_value_index(h) and idx != none_index:
-                rewards.append(self.INCORRECT_HYPERPARAMETER_REWARD)
-                # for error analysis
-                errors.update({h: hyperparameters[h]})
-            else:
-                n_correct += 1
-                rewards.append(self.CORRECT_HYPERPARAMETER_REWARD)
-        if n_correct == len(hyperparameters):
-            rewards = [r * self.ALL_CORRECT_MULTIPLIER for r in rewards]
-        elif n_correct == 0:
-            rewards = [r * self.ALL_INCORRECT_MULTIPLIER for r in rewards]
-        return rewards, n_correct, errors
-
-    def check_hyperparameters(
-            self, ml_framework, hyperparameters, h_value_indices):
-        """Check if the selected hyperparameters are valid."""
-        none_index = self.hyperparameter_state_space_keys.index("NONE_TOKEN")
-        try:
-            for h, idx in h_value_indices.items():
-                if idx not in self.h_value_index(h) and idx != none_index:
-                    return None
-            return self.set_ml_framework_params(
-                ml_framework, hyperparameters)
-        except Exception:
-            self._logger.exception("HYPERPARAMETER CHECK FAIL")
-            return None
 
     def _combine_dicts(self, dicts):
         combined_dicts = {}
