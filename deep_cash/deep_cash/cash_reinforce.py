@@ -10,18 +10,23 @@ from . import utils
 class CASHReinforce(object):
     """Reinforce component of deep-cash algorithm."""
 
-    def __init__(self, controller, t_env, metrics_logger=None):
+    def __init__(self, controller, t_env, beta=0.99, metrics_logger=None):
         """Initialize CASH Reinforce Algorithm.
 
         :param pytorch.nn.Module controller: A CASH controller to select
             actions.
         :param TaskEnvironment t_env: task environment to sample data
             environments and evaluate proposed ml frameworks.
-        :param callable metrics_logger:
+        :param float beta: hyperparameter for exponential moving average to
+            compute baseline reward (used to regularize REINFORCE).
+        :param callable metrics_logger: loggin function to use. The function
+            takes as input a CASHReinforce object and prints out a message,
+            with access to all properties in CASHReinforce.
         """
         self.controller = controller
         self.t_env = t_env
         self._logger = utils.init_logging(__file__)
+        self._beta = beta
         self._metrics_logger = metrics_logger
 
     def fit(self, n_episodes=100, n_iter=100, verbose=True):
@@ -169,7 +174,7 @@ class CASHReinforce(object):
         self.controller.baseline_reward_buffer.append(
             self._current_baseline_reward)
         self._current_baseline_reward = utils._exponential_mean(
-            reward, self._current_baseline_reward)
+            reward, self._current_baseline_reward, beta=self._beta)
 
     def _get_mlf_components(self, actions):
         algorithms = []

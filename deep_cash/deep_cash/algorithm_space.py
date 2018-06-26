@@ -16,6 +16,10 @@ The sequence follows the general structure
 
 where there can be n data preprocessors (imputation, scaling, encoding,
 filtering).
+
+TODO: Clean up the AlgorithmSpace API: since the MLF algorithm and
+hyperparameter space is baked into the CASH controller, we no longer need
+AlgorithmSpace methods/properties that have to do with hyperparameters
 """
 
 import itertools
