@@ -53,18 +53,6 @@ a_space = AlgorithmSpace(
     hyperparam_with_none_token=False)
 
 
-controller = CASHController(
-    metafeature_size=METAFEATURE_DIM,
-    input_size=a_space.n_components,
-    hidden_size=hidden_size,
-    output_size=output_size,
-    a_space=a_space,
-    optim=torch.optim.Adam,
-    optim_kwargs={"lr": learning_rate},
-    dropout_rate=0.2,
-    num_rnn_layers=n_layers)
-
-
 fit_kwargs = {
     "n_episodes": n_episodes,
     "n_iter": n_iter,
@@ -81,12 +69,21 @@ def worker(procnum, reinforce, return_dict):
 
 manager = mp.Manager()
 return_dict = manager.dict()
-controller.share_memory()
 num_processes = 4
 processes = []
 betas = [0.99, 0.9, 0.75, 0.5]
 for i, beta in enumerate(betas):
     _logger = functools.partial(logger, prefix="beta_%0.02f" % beta)
+    controller = CASHController(
+        metafeature_size=METAFEATURE_DIM,
+        input_size=a_space.n_components,
+        hidden_size=hidden_size,
+        output_size=output_size,
+        a_space=a_space,
+        optim=torch.optim.Adam,
+        optim_kwargs={"lr": learning_rate},
+        dropout_rate=0.2,
+        num_rnn_layers=n_layers)
     reinforce = CASHReinforce(
         controller, t_env, beta=beta, metrics_logger=_logger)
     p = mp.Process(target=worker, args=(i, reinforce, return_dict))
