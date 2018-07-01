@@ -1,7 +1,73 @@
 # Research Log
 
-05/29/2018
-----------
+## 07/01/2018
+
+There have been a few developments since the last log entry, the main one being
+a complete re-implementation of the controller agent. The new architecture
+is a more faithful adaptation of the
+[neural architecture search paper](https://arxiv.org/pdf/1611.01578.pdf).
+
+The `deep_cash` library now implements a `CASHController`, which specifies an
+end-to-end architecture that proposes both the estimators/transformers and
+hyperparameters that compose together to form an ML framework (MLF). This
+architecture is a GRU recurrent neural network that has a special decoder
+that has access to the `AlgorithmSpace` from which to choose
+estimators/transformers and their corresponding hyperparameters (actions).
+
+The `CASHReinforce` module, implements the REINFORCE policy gradient algorithm,
+which learns the actions that maximize the expected reward based on the
+observed rewards obtained from a batch of proposed MLFs. A baseline function
+is used for the purposes of regularization in order to reduce the variance of
+the learned policy.
+
+Need to add units tests to be confident about the implementation of the
+architecture, since it seems like the 4 toy classification datasets that the
+controller currently has access to are trivial problems to solve, where the
+controller is able to propose MLFs that achieve 95 - 100%
+[f1-scores](https://en.wikipedia.org/wiki/F1_score).
+
+### Learning Rate Tuning
+
+I ran several experiments on floydhub to get more intuition on the behavior
+of the controller. Based on these
+[learning curves](https://www.floydhub.com/nielsbantilan/projects/deep-cash/68),
+it looks like a learning rate of `0.0025` leads to learning behavior with a
+particular signature:
+
+- the `mean_reward` over episodes steadily increases over time, accompanied
+  by an increase in the `loss`, which is the negative log of expected rewards
+  based on a batch of proposed MLFs action log probabilities.
+- on further training, the `loss` fluctuates around `0`, with a corresponding
+  fluctuation of `mean_rewards`.
+- as training proceeds, `n_unique_mlfs` (the number unique MLFs proposed by
+  the controller) decreases, suggesting that the controller converges on a
+  few MLFs that it consistently proposes.
+- by the end to training (`1000` episodes), the controller's behavior seems
+  quite erratic, with certain episodes having a `mean_reward` close to `-1`
+  (all proposed MLFs throw an exception).
+
+I also tried a few other learning rates, essentially any setting lower than
+`0.0025` displays a fairly flat learning curve, and settings higher than
+`0.0025` displaying the erratic behavior described above.
+
+- [learning rate=0.001](https://www.floydhub.com/nielsbantilan/projects/deep-cash/60)
+- [learning rate=0.005](https://www.floydhub.com/nielsbantilan/projects/deep-cash/46)
+
+
+### Next Steps
+
+- Articulate a clear set of hypotheses around the expected behavior of the
+  controller, and the ideal behavior of the controller, e.g. "`mean_reward`
+  and `loss` should converge to a stable value".
+- Need to come up with a way of concisely visualizing the performance of the
+  controller.
+- Add more datasets to the task environment. It seems that the controller is
+  proposing performant MLFs from the beginning of training, it might be that
+  introducing more challenging datasets will change the learning curve profile
+  to have more stable convergence properties.
+
+
+## 05/29/2018
 
 Need to re-think how algorithms/hyperparameters are being chosen. Currently,
 there are two separate controllers for algorithms (sklearn Transformers
