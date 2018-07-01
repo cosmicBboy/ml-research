@@ -23,8 +23,8 @@ exp_path = data_path / "tuning_exponential_mean_beta"
 exp_path.mkdir(exist_ok=True)
 
 # hyperparameters
-n_episodes = int(os.environ.get("DEEP_CASH_N_EPISODES", 500))
-n_iter = int(os.environ.get("DEEP_CASH_N_ITER", 50))
+n_episodes = int(os.environ.get("DEEP_CASH_N_EPISODES", 300))
+n_iter = int(os.environ.get("DEEP_CASH_N_ITER", 100))
 learning_rate = float(os.environ.get("DEEP_CASH_LEARNING_RATE", 0.005))
 error_reward = int(os.environ.get("DEEP_CASH_ERROR_REWARD", -1))
 logger_name = os.environ.get("DEEP_CASH_LOGGER", None)
@@ -88,7 +88,7 @@ for i, beta in enumerate(betas):
         controller,
         t_env,
         beta=beta,
-        with_baseline=True,
+        with_baseline=False,
         metrics_logger=_logger)
     p = mp.Process(target=worker, args=(i, reinforce, return_dict))
     p.start()
