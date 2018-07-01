@@ -85,7 +85,11 @@ for i, beta in enumerate(betas):
         dropout_rate=0.2,
         num_rnn_layers=n_layers)
     reinforce = CASHReinforce(
-        controller, t_env, beta=beta, metrics_logger=_logger)
+        controller,
+        t_env,
+        beta=beta,
+        with_baseline=True,
+        metrics_logger=_logger)
     p = mp.Process(target=worker, args=(i, reinforce, return_dict))
     p.start()
     processes.append(p)

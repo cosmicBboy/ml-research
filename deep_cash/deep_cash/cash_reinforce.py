@@ -10,7 +10,8 @@ from . import utils
 class CASHReinforce(object):
     """Reinforce component of deep-cash algorithm."""
 
-    def __init__(self, controller, t_env, beta=0.99, metrics_logger=None):
+    def __init__(self, controller, t_env, beta=0.99, with_baseline=True,
+                 metrics_logger=None):
         """Initialize CASH Reinforce Algorithm.
 
         :param pytorch.nn.Module controller: A CASH controller to select
@@ -19,6 +20,8 @@ class CASHReinforce(object):
             environments and evaluate proposed ml frameworks.
         :param float beta: hyperparameter for exponential moving average to
             compute baseline reward (used to regularize REINFORCE).
+        :param bool with_baseline: whether or not to regularize the controller
+            with the exponential moving average of past rewards.
         :param callable metrics_logger: loggin function to use. The function
             takes as input a CASHReinforce object and prints out a message,
             with access to all properties in CASHReinforce.
@@ -27,6 +30,7 @@ class CASHReinforce(object):
         self.t_env = t_env
         self._logger = utils.init_logging(__file__)
         self._beta = beta
+        self._with_baseline = with_baseline
         self._metrics_logger = metrics_logger
 
     def fit(self, n_episodes=100, n_iter=100, verbose=True):
@@ -65,7 +69,7 @@ class CASHReinforce(object):
 
             # episode stats
             mean_reward = np.mean(self.controller.reward_buffer)
-            loss = self.controller.backward()
+            loss = self.controller.backward(self._with_baseline)
             if len(self._validation_score) > 0:
                 mean_validation_score = np.mean(self._validation_score)
                 std_validation_score = np.std(self._validation_score)

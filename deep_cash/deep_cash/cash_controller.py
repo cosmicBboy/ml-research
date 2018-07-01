@@ -211,7 +211,7 @@ class CASHController(nn.Module):
         return action_embedding.view(
             1, action_embedding.shape[0], action_embedding.shape[1])
 
-    def backward(self, show_grad=False):
+    def backward(self, show_grad=False, with_baseline=True):
         """End an episode with one backpropagation step.
 
         NOTE: This should be implemented at the ML framework controller level
@@ -235,9 +235,10 @@ class CASHController(nn.Module):
                 self.baseline_reward_buffer):
             for log_prob in action_log_probs:
                 # since REINFORCE algorithm is a gradient ascent method,
-                # negate the log probability in order to do that instead of
-                # gradient descent.
-                loss.append(-log_prob * (reward - baseline_reward))
+                # negate the log probability in order to do gradient descent
+                # on the negative expected rewards.
+                r = reward - baseline_reward if with_baseline else reward
+                loss.append(-log_prob * (r))
 
         # one step of gradient descent
         self.optim.zero_grad()
