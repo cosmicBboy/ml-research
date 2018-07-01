@@ -64,7 +64,8 @@ controller = CASHController(
     dropout_rate=0.2,
     num_rnn_layers=n_layers)
 
-reinforce = CASHReinforce(controller, t_env, metrics_logger=logger)
+reinforce = CASHReinforce(
+    controller, t_env, with_baseline=False, metrics_logger=logger)
 reinforce.fit(n_episodes=n_episodes, n_iter=n_iter, verbose=fit_verbose)
 
 
