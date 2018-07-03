@@ -72,12 +72,12 @@ class TaskEnvironment(object):
         """Sample the data distribution."""
         env_index = np.random.randint(self.n_data_envs)
         data_env_tuple = self.data_distribution[env_index]
-        create_data_env, task_type, target_preprocessor = data_env_tuple
-        data_env = create_data_env()
+        env_name, env_fn, task_type, target_preprocessor = data_env_tuple
+        data_env = env_fn()
         self.X = data_env["data"]
         self.y = data_env["target"]
         self.task_type = task_type
-        self.data_env_name = create_data_env.__name__
+        self.data_env_name = env_name
         if target_preprocessor is not None:
             self.y = target_preprocessor().fit_transform(self.y.reshape(-1, 1))
         self.data_env_index = np.array(range(self.X.shape[0]))
