@@ -15,6 +15,9 @@ from torch.autograd import Variable
 from .data_environments.classification_environments import env_names
 
 
+# TODO: anything related to metafeatures should be in task_environment, since
+# the metadata feature space is governed by the task environment and data
+# environment.
 METAFEATURES = [
     ("data_env_name", str, env_names()),
     ("number_of_examples", int, None),
