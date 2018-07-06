@@ -12,5 +12,5 @@ deps:
 		pytest \
 		floydhub \
 		floyd-cli
-	pip install pynisher openml
+	pip install pynisher openml==0.7.0
 	python -m ipykernel install --name 'ml-research' --display-name 'ml-research'

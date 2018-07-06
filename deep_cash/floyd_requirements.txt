@@ -3,6 +3,6 @@ pandas
 matplotlib
 nose
 numpy
-openml
+openml==0.7.0
 pynisher
 scikit-learn==0.19.1
