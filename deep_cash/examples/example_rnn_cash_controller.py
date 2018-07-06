@@ -18,7 +18,7 @@ from deep_cash.task_environment import TaskEnvironment
 from deep_cash.cash_controller import CASHController
 from deep_cash.cash_reinforce import CASHReinforce
 from deep_cash.loggers import get_loggers
-from deep_cash.utils import METAFEATURE_DIM
+from deep_cash.utils import get_metafeatures_dim
 
 
 data_path = Path(os.environ.get(
@@ -33,6 +33,7 @@ logger_name = os.environ.get("DEEP_CASH_LOGGER", None)
 logger = get_loggers().get(os.environ.get("DEEP_CASH_LOGGER", None), None)
 fit_verbose = int(os.environ.get("DEEP_CASH_FIT_VERBOSE", 1))
 
+metafeatures_dim = get_metafeatures_dim()
 hidden_size = 30
 output_size = 30
 n_layers = 3
@@ -54,7 +55,7 @@ a_space = AlgorithmSpace(
     hyperparam_with_none_token=False)
 
 controller = CASHController(
-    metafeature_size=METAFEATURE_DIM,
+    metafeature_size=metafeatures_dim,
     input_size=a_space.n_components,
     hidden_size=hidden_size,
     output_size=output_size,

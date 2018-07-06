@@ -14,14 +14,18 @@ from torch.autograd import Variable
 
 from .data_environments.classification_environments import env_names
 
-# specify type of the metafeature
-METAFEATURES = [
-    ("data_env_name", str, env_names()),
-    ("number_of_examples", int, None),
-    ("number_of_features", int, None),
-]
 
-METAFEATURE_DIM = sum([len(m[2]) if m[1] is str else 1 for m in METAFEATURES])
+def _metafeatures():
+    return [
+        ("data_env_name", str, env_names()),
+        ("number_of_examples", int, None),
+        ("number_of_features", int, None),
+    ]
+
+
+def get_metafeatures_dim():
+    """Gets dimensionality of metafeatures."""
+    return sum([len(m[2]) if m[1] is str else 1 for m in _metafeatures()])
 
 
 def init_logging(module, default_path="/tmp/deep_cash.log"):
@@ -155,7 +159,7 @@ def _create_metafeature_tensor(metafeatures, seq):
     """
     m = []
     for i, feature in enumerate(metafeatures):
-        fname, ftype, flevels = METAFEATURES[i]
+        fname, ftype, flevels = _metafeatures()[i]
         if ftype is int:
             metafeature_dim = 1
             feature_val = ftype(feature)
