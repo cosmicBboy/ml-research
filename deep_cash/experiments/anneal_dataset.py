@@ -25,7 +25,7 @@ exp_path = data_path / "anneal_dataset"
 exp_path.mkdir(exist_ok=True)
 
 # hyperparameters
-beta = int(os.environ.get("DEEP_CASH_BETA", 0.99))
+beta = float(os.environ.get("DEEP_CASH_BETA", 0.99))
 n_episodes = int(os.environ.get("DEEP_CASH_N_EPISODES", 300))
 n_iter = int(os.environ.get("DEEP_CASH_N_ITER", 100))
 learning_rate = float(os.environ.get("DEEP_CASH_LEARNING_RATE", 0.005))
