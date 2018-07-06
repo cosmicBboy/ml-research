@@ -1,7 +1,8 @@
 dill
 pandas
-numpy
 matplotlib
-scikit-learn==0.19.1
 nose
+numpy
+openml
 pynisher
+scikit-learn==0.19.1
