@@ -15,14 +15,14 @@ def test_float_hyperparameter():
 def test_float_log_hyperparameter():
     num_hp = hyperparameter.UniformFloatHyperparameter(
         "num_hyperparam", 1e-3, 1e-6, default=1e-7, log=True, n=4)
-    expected = np.array([1e-7, 1e-6, 1e-5, 1e-4, 1e-3])
+    expected = np.array([1e-6, 1e-5, 1e-4, 1e-3, 1e-7])
     assert (num_hp.get_state_space() == expected).all()
 
 
 def test_int_hyperparameter():
     num_hp = hyperparameter.UniformIntHyperparameter(
         "num_hyperparam", 0, 100, default=5, log=False, n=5)
-    expected = np.array([0, 5, 25, 50, 75, 100])
+    expected = np.array([0, 25, 50, 75, 100, 5])
     assert (num_hp.get_state_space() == expected).all()
 
 
