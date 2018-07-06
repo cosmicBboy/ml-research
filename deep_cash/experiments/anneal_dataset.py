@@ -25,6 +25,7 @@ exp_path = data_path / "anneal_dataset"
 exp_path.mkdir(exist_ok=True)
 
 # hyperparameters
+beta = int(os.environ.get("DEEP_CASH_BETA", 0.99))
 n_episodes = int(os.environ.get("DEEP_CASH_N_EPISODES", 300))
 n_iter = int(os.environ.get("DEEP_CASH_N_ITER", 100))
 learning_rate = float(os.environ.get("DEEP_CASH_LEARNING_RATE", 0.005))
@@ -69,7 +70,7 @@ controller = CASHController(
     num_rnn_layers=n_layers)
 
 reinforce = CASHReinforce(
-    controller, t_env, with_baseline=False, metrics_logger=logger)
+    controller, t_env, beta=beta, with_baseline=False, metrics_logger=logger)
 reinforce.fit(n_episodes=n_episodes, n_iter=n_iter, verbose=fit_verbose)
 
 

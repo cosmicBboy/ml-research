@@ -185,8 +185,8 @@ def parse_dataset(dataset, dataset_metadata=None):
         raise ValueError("Cannot parse dataset: %s" % dataset.name)
 
 
-def classification_envs(n_default_results=N_CLASSIFICATION_ENVS):
-    clf_dataset_metadata = list_classification_datasets(n_default_results)
+def classification_envs():
+    clf_dataset_metadata = list_classification_datasets(N_CLASSIFICATION_ENVS)
     clf_dataset_ids = [did for did in clf_dataset_metadata]
     custom_dataset_ids = [
         i for i, c in CUSTOM_DATA_CONFIG.items()
