@@ -46,7 +46,9 @@ def one_hot_encoder():
     return AlgorithmComponent(
         "OneHotEncoder", OneHotEncoder, constants.ONE_HOT_ENCODER, [
             CategoricalHyperparameter("sparse", [True, False], default=True)],
-        env_dep_hyperparameters={"categorical_features": []})
+        env_dep_hyperparameters={
+            "categorical_features": [],
+            "sparse": False})
 
 
 def variance_threshold_filter():

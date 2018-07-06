@@ -12,6 +12,7 @@ from sklearn.metrics import roc_auc_score, f1_score
 from sklearn.exceptions import ConvergenceWarning, UndefinedMetricWarning
 
 from .data_environments import classification_environments
+from .data_types import FeatureType, TargetType
 from .errors import NoPredictMethodError, ExceededResourceLimitError, \
     is_valid_fit_error, is_valid_predict_error, FIT_ERROR_TYPES, \
     FIT_WARNINGS, PREDICT_ERROR_TYPES, SCORE_WARNINGS
@@ -28,7 +29,8 @@ class TaskEnvironment(object):
     def __init__(
             self, scorer=f1_score, scorer_kwargs=None, random_state=None,
             per_framework_time_limit=10, per_framework_memory_limit=3072,
-            error_reward=-0.1, reward_scale=10, reward_transformer=None):
+            dataset_names=None, error_reward=-0.1, reward_scale=10,
+            reward_transformer=None):
         """Initialize task environment."""
         # TODO: need to add an attribute that normalizes the output of the
         # scorer function to support different tasks. Currently, the default
@@ -38,7 +40,9 @@ class TaskEnvironment(object):
         self.random_state = random_state
         self.per_framework_time_limit = per_framework_time_limit
         self.per_framework_memory_limit = per_framework_memory_limit
-        self.data_distribution = classification_environments.envs()
+        self.dataset_names = dataset_names
+        self.data_distribution = classification_environments.envs(
+            names=self.dataset_names)
         self.n_data_envs = len(self.data_distribution)
         self._error_reward = error_reward
         self._reward_scale = reward_scale
@@ -71,17 +75,34 @@ class TaskEnvironment(object):
     def sample_data_env(self):
         """Sample the data distribution."""
         env_index = np.random.randint(self.n_data_envs)
-        data_env_tuple = self.data_distribution[env_index]
-        env_name, env_fn, task_type, target_preprocessor = data_env_tuple
-        data_env = env_fn()
+        data_env = self.data_distribution[env_index]
         self.X = data_env["data"]
         self.y = data_env["target"]
-        self.task_type = task_type
-        self.data_env_name = env_name
-        if target_preprocessor is not None:
-            self.y = target_preprocessor().fit_transform(self.y.reshape(-1, 1))
+        self.task_type = data_env["task_type"]
+        self.data_env_name = data_env["dataset_name"]
+        self.feature_types = data_env["feature_types"]
+        self.feature_indices = data_env["feature_indices"]
+        if data_env["target_preprocessor"] is not None:
+            # NOTE: this feature isn't really executed currently since none of
+            # the classification environments have a specified
+            # target_preprocessor. This capability would be used in the case
+            # of multi-label or multi-headed tasks.
+            self.y = data_env["target_preprocessor"]().fit_transform(self.y)
         self.data_env_index = np.array(range(self.X.shape[0]))
         self.n_samples = len(self.data_env_index)
+
+    def env_dep_hyperparameters(self):
+        """Get data environment-dependent hyperparameters.
+
+        Currently the only hyperparameter that dictionary would apply to is
+        the OneHotEncoder component.
+        """
+        return {
+            "OneHotEncoder__categorical_features": [
+                index for f, index in
+                zip(self.feature_types, self.feature_indices)
+                if f == FeatureType.CATEGORICAL]
+        }
 
     def sample(self):
         """Sample the current data_env for features and targets.
@@ -143,13 +164,20 @@ class TaskEnvironment(object):
             ml_framework, self.X_test, self.task_type)
         if pred is None:
             return None
-        with warnings.catch_warnings() as w:
+        with warnings.catch_warnings() as warning:
+            # raise exception for warnings not explicitly in SCORE_WARNINGS
+            warnings.filterwarnings("error")
             for warning_type, msg in SCORE_WARNINGS:
+                # TODO: calling this every time an mlf is evaluated seems
+                # inefficient... figure out a way of ignoring these warnings
+                # once instead of with each call to _score
                 warnings.filterwarnings(
                     "ignore", message=msg, category=warning_type)
-            if w:
-                print(w)
-            return self.get_reward(self.scorer(self.y_test, pred))
+            if warning:
+                # TODO: log this
+                print(warning)
+            score = self.scorer(self.y_test, pred)
+            return self.get_reward(score)
 
     def _fit_score(self, ml_framework):
         mlf = self._fit(ml_framework)
@@ -179,6 +207,9 @@ def _ml_framework_fitter(ml_framework, X, y):
     # raise numpy overflow errors
     # TODO: log these warnings/errors
     with warnings.catch_warnings():
+        # TODO: calling this every time an mlf is evaluated seems
+        # inefficient... figure out a way of ignoring these warnings
+        # once instead of with each call to _score
         for warning_type, msg in FIT_WARNINGS:
             warnings.filterwarnings(
                 "ignore", message=msg, category=warning_type)
@@ -225,15 +256,15 @@ def _ml_framework_predict(ml_framework, X, task_type):
             try:
                 if hasattr(ml_framework, "predict_proba"):
                     pred = ml_framework.predict_proba(X)
-                    if task_type == classification_environments.MULTICLASS:
+                    if task_type == TargetType.MULTICLASS:
                         pred = _multiclass_predict_proba(pred)
-                    elif task_type == classification_environments.BINARY:
+                    elif task_type == TargetType.BINARY:
                         pred = _binary_predict_proba(pred)
                     else:
                         pass
                 elif hasattr(ml_framework, "predict"):
                     pred = ml_framework.predict(X)
-                    if task_type == classification_environments.BINARY:
+                    if task_type == TargetType.BINARY:
                         pred = pred
                 else:
                     raise NoPredictMethodError(

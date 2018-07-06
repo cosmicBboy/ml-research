@@ -153,7 +153,8 @@ class CASHReinforce(object):
         """Evaluate actions on the validation set of the data environment."""
         algorithms, hyperparameters = self._get_mlf_components(actions)
         mlf = self.controller.a_space.create_ml_framework(
-            algorithms, hyperparameters=hyperparameters)
+            algorithms, hyperparameters=hyperparameters,
+            env_dep_hyperparameters=self.t_env.env_dep_hyperparameters())
         reward = self.t_env.evaluate(mlf)
         if reward is None:
             return self.t_env.error_reward

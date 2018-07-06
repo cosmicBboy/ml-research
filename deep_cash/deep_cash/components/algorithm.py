@@ -38,15 +38,13 @@ class AlgorithmComponent(object):
         self.env_dep_hyperparameters = {} if env_dep_hyperparameters is None \
             else env_dep_hyperparameters
 
-    def __call__(self, env_dep_hyperparameters=None):
+    def __call__(self):
         """Instantiate the algorithm.
 
         When instantiating the algorithm, optionally supply a data-envirionment
         specific set of hyperparameters.
         """
-        return self.aclass(
-            **self.env_dep_hyperparameters if env_dep_hyperparameters is None
-            else env_dep_hyperparameters)
+        return self.aclass()
 
     def env_dep_hyperparameter_name_space(self):
         """Return a dictionary of hyperparameters in algorithm name space."""

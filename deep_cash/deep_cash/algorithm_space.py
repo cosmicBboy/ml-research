@@ -289,7 +289,8 @@ class AlgorithmSpace(object):
         )
 
     def create_ml_framework(
-            self, components, memory=None, hyperparameters=None):
+            self, components, memory=None, hyperparameters=None,
+            env_dep_hyperparameters=None):
         """Create ML framework, in this context an sklearn pipeline object.
 
         :param list[AlgorithmComponent] components: A list of algorithm
@@ -299,16 +300,15 @@ class AlgorithmSpace(object):
             is done
         """
         steps = []
-        env_dep_hyperparameters = {}
+        hyperparameters = {} if hyperparameters is None else hyperparameters
+        if env_dep_hyperparameters:
+            hyperparameters.update(env_dep_hyperparameters)
         for a in components:
             steps.append((a.aname, a()))
-            env_dep_hyperparameters.update(
+            hyperparameters.update(
                 a.env_dep_hyperparameter_name_space())
         ml_framework = Pipeline(memory=memory, steps=steps)
-        if hyperparameters is not None:
-            h = hyperparameters.copy()
-            h.update(env_dep_hyperparameters)
-            ml_framework.set_params(**h)
+        ml_framework.set_params(**hyperparameters)
         return ml_framework
 
     def _combine_dicts(self, dicts):
