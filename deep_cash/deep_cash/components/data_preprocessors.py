@@ -14,7 +14,15 @@ from .hyperparameter import (
 
 
 def imputer():
-    """Create an imputer component."""
+    """Create an imputer component.
+
+    TODO: when this project gets to processing datasets with missing values,
+    need to create another imputer function the explicitly handles numerical
+    and categorical data. This will involve also modifying the
+    ML_FRAMEWORK_SIGNATURE is algorithm_space.py such that there are two types
+    of imputers. Will also probably need to position the OneHotEncoder
+    component after the imputers.
+    """
     return AlgorithmComponent(
         "Imputer", Imputer, constants.IMPUTER, [
             CategoricalHyperparameter(
