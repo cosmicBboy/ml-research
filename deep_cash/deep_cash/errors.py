@@ -2,6 +2,7 @@
 
 import re
 
+from scipy.optimize.optimize import LineSearchWarning
 from sklearn.exceptions import ConvergenceWarning, UndefinedMetricWarning
 
 
@@ -40,12 +41,18 @@ FIT_ERROR_MESSAGES = [
         "Unsupported set of arguments: The combination of penalty='l1' and "
         "loss='logistic_regression' are not supported when dual=True"),
     (FloatingPointError, "overflow encountered in exp"),
+    (FloatingPointError, "overflow encountered in power"),
+    (FloatingPointError, "underflow encountered in multiply"),
     (FloatingPointError, "underflow encountered in square"),
+    (FloatingPointError, "underflow encountered in power"),
     (FloatingPointError, "divide by zero encountered in true_divide"),
     (FloatingPointError, "invalid value encountered in true_divide"),
+    (FloatingPointError, "underflow encountered in true_divide"),
     (FloatingPointError, "invalid value encountered in sqrt"),
     (FloatingPointError, "invalid value encountered in reduce"),
+    (FloatingPointError, "overflow encountered in reduce"),
     (FloatingPointError, "underflow encountered in exp"),
+    (FloatingPointError, "underflow encountered in reciprocal"),
     (TypeError, "'str' object is not callable"),
     (ZeroDivisionError,
         "Current sag implementation does not handle the case step_size"),
@@ -65,6 +72,8 @@ FIT_WARNINGS = [
     (ImportWarning,
         "can't resolve package from __spec__ or __package__, falling back on "
         "__name__ and __path__"),
+    (LineSearchWarning, "The line search algorithm did not converge"),
+    (UserWarning, "Line Search failed"),
     (UserWarning, "n_components > n_samples. This is not possible."),
     (UserWarning, "n_components is too large: it will be set to"),
     (UserWarning, "Ignoring n_components with whiten=False."),
@@ -79,8 +88,14 @@ FIT_WARNINGS = [
 PREDICT_ERROR_MESSAGES = [
     (FloatingPointError, "overflow encountered in exp"),
     (FloatingPointError, "underflow encountered in exp"),
+    (FloatingPointError, "overflow encountered in power"),
+    (FloatingPointError, "underflow encountered in multiply"),
     (FloatingPointError, "divide by zero encountered in log"),
     (FloatingPointError, "divide by zero encountered in true_divide"),
+    (FloatingPointError, "underflow encountered in true_divide"),
+    (FloatingPointError, "overflow encountered in reduce"),
+    (FloatingPointError, "underflow encountered in power"),
+    (FloatingPointError, "underflow encountered in reciprocal"),
 ]
 
 PREDICT_ERROR_TYPES = tuple(set([i for i, _ in PREDICT_ERROR_MESSAGES]))
@@ -88,7 +103,10 @@ PREDICT_ERROR_TYPES = tuple(set([i for i, _ in PREDICT_ERROR_MESSAGES]))
 SCORE_WARNINGS = [
     (UndefinedMetricWarning,
         "F-score is ill-defined and being set to 0.0 in labels with no "
-        "predicted samples")
+        "predicted samples"),
+    (UndefinedMetricWarning,
+        "F-score is ill-defined and being set to 0.0 in labels with no true "
+        "samples."),
 ]
 
 
