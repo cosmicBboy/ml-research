@@ -81,6 +81,9 @@ class CASHReinforce(object):
                 [utils._ml_framework_string(m) for m in self._successful_mlf]))
 
             # accumulate stats
+            # TODO: track unique hyperparameter settings in order to compute
+            # number of unique hyperparameter settings, and number of unique
+            # hyperparameter settings per mlf pipeline.
             self.data_env_names.append(self.t_env.data_env_name)
             self.losses.append(loss)
             self.mean_rewards.append(mean_reward)

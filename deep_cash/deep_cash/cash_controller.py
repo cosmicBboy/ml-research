@@ -236,7 +236,11 @@ class CASHController(nn.Module):
             for log_prob in action_log_probs:
                 # since REINFORCE algorithm is a gradient ascent method,
                 # negate the log probability in order to do gradient descent
-                # on the negative expected rewards.
+                # on the negative expected rewards. If the reward is high and
+                # the associated action log probabilities are close to 1, then
+                # policy loss will be close to 0 (good). If reward is high and
+                # the action log probs are close to 0, then policy loss will be
+                # a large positive number (bad).
                 r = reward - baseline_reward if with_baseline else reward
                 loss.append(-log_prob * r)
 
