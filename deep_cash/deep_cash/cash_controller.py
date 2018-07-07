@@ -238,7 +238,7 @@ class CASHController(nn.Module):
                 # negate the log probability in order to do gradient descent
                 # on the negative expected rewards.
                 r = reward - baseline_reward if with_baseline else reward
-                loss.append(-log_prob * (r))
+                loss.append(-log_prob * r)
 
         # one step of gradient descent
         self.optim.zero_grad()
