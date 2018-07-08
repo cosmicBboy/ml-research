@@ -214,11 +214,6 @@ class CASHController(nn.Module):
     def backward(self, show_grad=False, with_baseline=True):
         """End an episode with one backpropagation step.
 
-        NOTE: This should be implemented at the ML framework controller level
-        in order to implement the end-to-end RNN solution, where the
-        algorithm and hyperparameter controller of the hidden layers are
-        shared.
-
         # TODO: move this to the `cash_reinforce` module, since the learning
         # algorithm used to train the controller can be modular (right now
         # it's REINFORCE, but could be something else in the future).
