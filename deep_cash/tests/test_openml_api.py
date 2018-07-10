@@ -11,8 +11,8 @@ def test_parse_dataset():
     assert datasets[0]["target"].shape == (898, )  # 898 obs, one class
 
 
-def test_list_classification_datasets():
-    dataset_metadata = openml_api.list_classification_datasets(n_results=10)
+def test_list_clf_datasets():
+    dataset_metadata = openml_api.list_clf_datasets(n_results=10)
     assert len(dataset_metadata) == 10
     for metadata in dataset_metadata.values():
         assert metadata["NumberOfMissingValues"] == 0

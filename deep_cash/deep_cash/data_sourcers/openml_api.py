@@ -8,6 +8,7 @@ import numpy as np
 import openml
 
 from ..data_types import FeatureType, TargetType
+from ..errors import TargetNotCompatible
 
 
 N_CLASSIFICATION_ENVS = 10
@@ -70,7 +71,7 @@ def _reassign_categorical_data(col_vector):
     return col_vector
 
 
-def list_classification_datasets(n_results=None, exclude_missing=True):
+def list_clf_datasets(n_results=None, exclude_missing=True):
     """Get classification datasets.
 
     :param int n_results: number of dataset metadata to list
@@ -111,7 +112,7 @@ def _open_ml_dataset(
     }
 
 
-def parse_dataset(dataset, dataset_metadata=None):
+def parse_clf_dataset(dataset, dataset_metadata=None):
     """Parses OpenML dataset to follow the sklearn general dataset API.
 
     For more information, see:
@@ -162,8 +163,11 @@ def parse_dataset(dataset, dataset_metadata=None):
                 raise ValueError(
                     "deep_cash currently does not support data with missing "
                     "values.")
-
             if feature.name == target_column:
+                if feature.data_type != "nominal":
+                    raise TargetNotCompatible(
+                        'dataset "%s" has a continuos target, skipping...' %
+                        dataset.name)
                 target_index = key
             else:
                 feature_indices.append(key)
@@ -186,10 +190,15 @@ def parse_dataset(dataset, dataset_metadata=None):
 
 
 def classification_envs():
-    clf_dataset_metadata = list_classification_datasets(N_CLASSIFICATION_ENVS)
+    clf_dataset_metadata = list_clf_datasets(N_CLASSIFICATION_ENVS)
     clf_dataset_ids = [did for did in clf_dataset_metadata]
-    custom_dataset_ids = [
-        i for i, c in CUSTOM_DATA_CONFIG.items()
-        if c["task_type"] in [TargetType.BINARY, TargetType.MULTICLASS]]
     datasets = get_datasets(ids=clf_dataset_ids + list(CUSTOM_DATASET_IDS))
-    return [parse_dataset(d, clf_dataset_metadata) for d in datasets]
+    out = []
+    for ds in datasets:
+        try:
+            out.append(parse_clf_dataset(ds, clf_dataset_metadata))
+        except TargetNotCompatible as e:
+            # TODO: log this
+            print("DATA ENVIRONMENT ERROR: %s" % e)
+            continue
+    return out
