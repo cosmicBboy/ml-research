@@ -5,21 +5,6 @@ pipelines and their associated hyperparameter settings. It does so via an RNN
 that has a separate softmax classifier at each time step, where the classifier
 has to predict either an algorithm to add to the pipeline or a hyperparameter
 for the most recently chosen algorithm.
-
-TODO:
-- create an embedding layer for each algorithm/hyperparameter state space. This
-  layer takes as input the action prediction and outputs a vector of size
-  `embedding_size`. This should be the input_size.
-  see https://github.com/titu1994/neural-architecture-search/blob/f9063db4e5d475f960e0aeb01600f5da78f13d0b/controller.py#L283  # noqa
-- handle creation of an initial input vector.
-  - option 1: create a randomly initialized vector that's the same
-    dimensionality as the embedding (i.e. input) vector.
-  - option 2: select a random one-hot encoded vector of the first state space,
-    which would be fed into the RNN to get subsequent action predictions.
-    This is how it's done here:
-    https://github.com/titu1994/neural-architecture-search/blob/f9063db4e5d475f960e0aeb01600f5da78f13d0b/controller.py#L108
-- implement get_action method, which takes as input previous action and outputs
-  next action.
 """
 
 
@@ -232,9 +217,9 @@ class CASHController(nn.Module):
           loss (make it more negative) by making the selected action
           probability even more negative (push the selected action prob closer
           to 0, which discourages the selection of this action).
-        - If reward is negative and selected action prob is close to,
-          (-log prob < 0), then the policy loss will be negative, and the
-          gradients will make the selected action prob even less likely.
+        - If reward is negative and selected action prob is close to 0,
+          (-log prob > 0), then the policy loss will be a large negative number
+          and the gradients will make the selected action prob even less likely
         """
         # TODO: move this to the `cash_reinforce` module, since the learning
         # algorithm used to train the controller can be modular (right now
