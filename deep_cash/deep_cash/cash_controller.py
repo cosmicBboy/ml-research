@@ -188,7 +188,7 @@ class CASHController(nn.Module):
         }
 
     def encode_embedding(self, action_index, choice_index):
-        """Encodes action choice into embedding at input for next action."""
+        """Encode action choice into embedding at input for next action."""
         action_classifier = self.action_classifiers[action_index]
         embedding = getattr(self, action_classifier["embedding_attr"])
         action_embedding = embedding(
