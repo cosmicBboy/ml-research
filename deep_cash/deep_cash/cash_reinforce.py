@@ -54,7 +54,6 @@ class CASHReinforce(object):
         self.best_mlfs = []
 
         # baseline reward
-        # TODO: should this be reset at the beginning of each episode?
         self._previous_baseline_reward = 0
         self._current_baseline_reward = 0
         for i_episode in range(self._n_episodes):

@@ -1,8 +1,4 @@
-"""Example usage of the CASH Controller.
-
-# TODO: experiment with a different set of reward schemes,
-# e.g. -1 for error during fit, 100 scale for model validation performance.
-"""
+"""Example usage of the CASH Controller."""
 
 import os
 import pandas as pd
