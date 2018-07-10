@@ -214,10 +214,31 @@ class CASHController(nn.Module):
     def backward(self, show_grad=False, with_baseline=True):
         """End an episode with one backpropagation step.
 
+        Since REINFORCE algorithm is a gradient ascent method, negate the log
+        probability in order to do gradient descent on the negative expected
+        rewards.
+        - If reward is positive and selected action prob is close to 1
+          (-log prob ~= 0), policy loss will be positive and close to 0,
+          controller's weights will be adjusted by gradients such that the
+          selected action is more likely and the non-selected actions are less
+          likely.
+        - If reward is positive and selection action prob is close to 0
+          (-log prob > 0), policy loss will be a large positive number,
+          controller's weights will be adjusted such that selected
+          action is less likely and non-selected actions are more likely.
+        - If reward is negative and selected action prob is close to 1
+          (-log prob ~= 0), policy loss will be negative but close to 0,
+          meaning that gradients will adjust the weights to minimize policy
+          loss (make it more negative) by making the selected action
+          probability even more negative (push the selected action prob closer
+          to 0, which discourages the selection of this action).
+        - If reward is negative and selected action prob is close to,
+          (-log prob < 0), then the policy loss will be negative, and the
+          gradients will make the selected action prob even less likely.
+        """
         # TODO: move this to the `cash_reinforce` module, since the learning
         # algorithm used to train the controller can be modular (right now
         # it's REINFORCE, but could be something else in the future).
-        """
         if self.optim is None:
             raise ValueError(
                 "optimization object not set. You need to provide `optim` "
@@ -229,13 +250,6 @@ class CASHController(nn.Module):
                 self.reward_buffer,
                 self.baseline_reward_buffer):
             for log_prob in action_log_probs:
-                # since REINFORCE algorithm is a gradient ascent method,
-                # negate the log probability in order to do gradient descent
-                # on the negative expected rewards. If the reward is high and
-                # the associated action log probabilities are close to 1, then
-                # policy loss will be close to 0 (good). If reward is high and
-                # the action log probs are close to 0, then policy loss will be
-                # a large positive number (bad).
                 r = reward - baseline_reward if with_baseline else reward
                 loss.append(-log_prob * r)
 
