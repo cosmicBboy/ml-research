@@ -8,12 +8,11 @@ import warnings
 from functools import partial
 
 from sklearn.base import clone
-from sklearn.metrics import roc_auc_score, f1_score
-from sklearn.exceptions import ConvergenceWarning, UndefinedMetricWarning
+from sklearn.metrics import f1_score
 
 from .data_environments import classification_environments
 from .data_types import FeatureType, TargetType
-from .errors import NoPredictMethodError, ExceededResourceLimitError, \
+from .errors import NoPredictMethodError, \
     is_valid_fit_error, is_valid_predict_error, FIT_ERROR_TYPES, \
     FIT_WARNINGS, PREDICT_ERROR_TYPES, SCORE_WARNINGS
 from . import utils
@@ -129,6 +128,10 @@ class TaskEnvironment(object):
         return self._fit_score(ml_framework)
 
     def get_reward(self, r):
+        """Retrieve reward using the reward transformer if specified.
+
+        Identity function if not.
+        """
         if self._reward_transformer:
             return self._reward_transformer(r)
         return r
