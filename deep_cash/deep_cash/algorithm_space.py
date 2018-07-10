@@ -50,21 +50,6 @@ ML_FRAMEWORK_SIGNATURE = [
 class AlgorithmSpace(object):
     """A class that generates machine learning frameworks."""
 
-    # bonus rewards for proposing valid ml frameworks and hyperparameter
-    # settings.
-    VALID_MLF_BONUS = 25
-    VALID_MLFH_BONUS = 50
-
-    # reward for getting a single hyperparameter correct, in the training
-    # regime that every hyperparameter selection action yields a reward.
-    CORRECT_HYPERPARAMETER_REWARD = 1
-    INCORRECT_HYPERPARAMETER_REWARD = -1
-    ALL_CORRECT_MULTIPLIER = 5
-    ALL_INCORRECT_MULTIPLIER = 5
-
-    N_COMPONENT_TYPES = len(ML_FRAMEWORK_SIGNATURE)
-    ML_FRAMEWORK_SIGNATURE = ML_FRAMEWORK_SIGNATURE
-
     def __init__(self, data_preprocessors=None, feature_preprocessors=None,
                  classifiers=None, with_start_token=True,
                  with_end_token=False, with_none_token=False,
@@ -109,93 +94,19 @@ class AlgorithmSpace(object):
         return components
 
     @property
-    def hyperparameter_name_space(self):
-        """Return all hyperparameters for all components in the space."""
-        return self.h_name_space(self.components)
-
-    @property
-    def hyperparameter_state_space(self):
-        """Return all hyperparameter name-value pairs."""
-        return self.h_state_space(self.components)
-
-    @property
-    def hyperparameter_state_space_flat(self):
-        """Return all hyperparameter values in flat structure.
-
-        In the following form:
-        {
-            "Algorithm__hyperparameter__value_0": value_0,
-            "Algorithm__hyperparameter__value_1": value_1,
-            ...
-            "Algorithm__hyperparameter__value_n": value_n,
-        }
-        """
-        hyperparam_values = OrderedDict()
-        for name, space in self.hyperparameter_state_space.items():
-            for i, value in enumerate(space):
-                hyperparam_values["%s__state_%d" % (name, i)] = value
-        if self.hyperparam_with_start_token:
-            hyperparam_values["START_TOKEN"] = START_TOKEN
-        if self.hyperparam_with_end_token:
-            hyperparam_values["END_TOKEN"] = END_TOKEN
-        if self.hyperparam_with_none_token:
-            hyperparam_values["NONE_TOKEN"] = NONE_TOKEN
-        return hyperparam_values
-
-    @property
-    def hyperparameter_state_space_values(self):
-        return list(self.hyperparameter_state_space_flat.values())
-
-    @property
-    def hyperparameter_state_space_keys(self):
-        return list(self.hyperparameter_state_space_flat.keys())
-
-    @property
-    def start_token_index(self):
-        """Return index of the start of sequence token."""
-        return self.components.index(START_TOKEN) if self.with_start_token \
-            else None
-
-    @property
-    def end_token_index(self):
-        """Return index of the end of sequence token."""
-        return self.components.index(END_TOKEN) if self.with_end_token \
-            else None
-
-    @property
-    def none_token_index(self):
-        """Return index of the none token."""
-        return self.components.index(NONE_TOKEN) if self.with_none_token \
-            else None
-
-    @property
-    def h_start_token_index(self):
-        """Return index of hyperparameter start token."""
-        return self.hyperparameter_state_space_values.index(START_TOKEN) if \
-            self.with_start_token else None
-
-    @property
     def n_components(self):
         """Return number of components in the algorithm space."""
         return len(self.components)
 
-    @property
-    def n_hyperparameter_names(self):
-        """Return number of hyperparameter"""
-        return len(self.hyperparameter_name_space)
-
-    @property
-    def n_hyperparameters(self):
-        """Return number of hyperparameter"""
-        return len(self.hyperparameter_state_space_flat)
-
     def sample_components_from_signature(self, signature=None):
-        signature = self.ML_FRAMEWORK_SIGNATURE if signature is None \
+        """Sample algorithm components from ML signature."""
+        signature = ML_FRAMEWORK_SIGNATURE if signature is None \
             else signature
         return [self.sample_component(atype) for atype in signature]
 
     def component_dict_from_signature(self, signature=None):
-        signature = self.ML_FRAMEWORK_SIGNATURE if signature is None \
+        """Return dictionary of algorithm types and list of compoenents."""
+        signature = ML_FRAMEWORK_SIGNATURE if signature is None \
             else signature
         return OrderedDict([
             (atype, self.get_components(atype)) for atype in signature])
@@ -210,19 +121,6 @@ class AlgorithmSpace(object):
         return [c for c in self.components if c not in SPECIAL_TOKENS and
                 c.atype == atype]
 
-    def h_name_space(self, components):
-        """Get hyperparameter name space by components.
-
-        :param list[AlgorithmComponent] components: list of components
-        :returns: list of hyperparameter names
-        :rtype: list[str]
-        """
-        hyperparam_names = []
-        for c in components:
-            if c not in SPECIAL_TOKENS and c.hyperparameters is not None:
-                hyperparam_names.extend(c.hyperparameter_name_space())
-        return hyperparam_names
-
     def h_state_space(self, components, with_none_token=False):
         """Get hyperparameter state space by components.
 
@@ -236,13 +134,6 @@ class AlgorithmSpace(object):
                 hyperparam_states.update(
                     c.hyperparameter_state_space(with_none_token))
         return hyperparam_states
-
-    def h_value_index(self, hyperparameter_name):
-        """Check whether a hyperparameter value index is correct."""
-        return [
-            i for i, (k, v) in enumerate(
-                self.hyperparameter_state_space_flat.items())
-            if k.startswith(hyperparameter_name)]
 
     def sample_component(self, atype):
         """Sample a component of a particular type.

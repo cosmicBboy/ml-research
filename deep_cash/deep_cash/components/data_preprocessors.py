@@ -19,7 +19,7 @@ def imputer():
     TODO: when this project gets to processing datasets with missing values,
     need to create another imputer function the explicitly handles numerical
     and categorical data. This will involve also modifying the
-    ML_FRAMEWORK_SIGNATURE is algorithm_space.py such that there are two types
+    ML_FRAMEWORK_SIGNATURE in algorithm_space.py such that there are two types
     of imputers. Will also probably need to position the OneHotEncoder
     component after the imputers.
     """

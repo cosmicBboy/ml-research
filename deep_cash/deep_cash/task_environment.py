@@ -63,15 +63,6 @@ class TaskEnvironment(object):
         """Return reward in the situation of a fit/predict error."""
         return self._reward_transformer(self._error_reward)
 
-    @property
-    def correct_hyperparameter_reward(self):
-        """Return reward when proposed hyperparameter is correct.
-
-        TODO: Deprecate this function when removing old
-        rnn_ml_framework_controller.py scripts
-        """
-        return 1 * self._reward_scale
-
     def sample_data_env(self):
         """Sample the data distribution."""
         env_index = np.random.randint(self.n_data_envs)
@@ -143,7 +134,6 @@ class TaskEnvironment(object):
         return r
 
     def _fit(self, ml_framework):
-        # TODO: log these warnings/errors
         mlf = clone(ml_framework)
         ml_framework = self.ml_framework_fitter(
             mlf, self.X_train, self.y_train)
@@ -205,7 +195,6 @@ def _ml_framework_fitter(ml_framework, X, y):
         calling the `fit` method leads to
     """
     # raise numpy overflow errors
-    # TODO: log these warnings/errors
     with warnings.catch_warnings():
         # TODO: calling this every time an mlf is evaluated seems
         # inefficient... figure out a way of ignoring these warnings
@@ -233,7 +222,7 @@ def _ml_framework_fitter(ml_framework, X, y):
 
 def _binary_predict_proba(pred_proba):
     # TODO: see note in _score method above. Keeping this function for now even
-    # though it seems reduntant with _multiclass_predict_proba
+    # though it seems redundant with _multiclass_predict_proba
     return pred_proba.argmax(axis=1)
 
 

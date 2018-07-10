@@ -4,19 +4,6 @@ This module should provide an interface to generate the following training data
 
 create a set of utility functions that creates the following tuples:
 (is_executable, creates_estimator, creates_pipeline, code_string)
-
-TODO:
-- create an ML framework class that takes as input the AlgorithmEnv and
-  creates a sequence of sklearn BaseEstimators in the form:
-  `[Data Preprocessor, Feature Preprocessor, Supervised Estimator]`
-  as formulated by Feurer et al:
-
-  Efficient and Robust Automated Machine Learning, Feurer et al.,
-  Advances in Neural Information Processing Systems 28 (NIPS 2015).
-
-- The ML framework has two main components:
-  i. a sequence of sklearn BaseEstimator classes
-  ii. a sequence of hyperparameter specifications for each class in i.
 """
 
 
