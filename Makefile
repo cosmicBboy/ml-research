@@ -1,6 +1,7 @@
 deps:
 	conda install pytorch torchvision -y -c pytorch
 	conda install -c conda-forge \
+		click \
 		dill \
 		pandas \
 		numpy \
