@@ -53,8 +53,6 @@ def run_experiment(
     output_fp = os.path.dirname(__file__) + "/../output" if \
         output_fp is None else output_fp
     data_path = Path(output_fp)
-    exp_path = data_path / "anneal_dataset"
-    exp_path.mkdir(exist_ok=True)
     logger = get_loggers().get(logger, empty_logger)
     metafeatures_dim = get_metafeatures_dim()
 
