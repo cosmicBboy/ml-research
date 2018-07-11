@@ -20,6 +20,12 @@ cd ..
 rm -rf openml-python
 ```
 
+Install jupyter lab extensions:
+
+```
+jupyter labextension install @jupyterlab/plotly-extension
+```
+
 # Projects
 
 ## Generative Adversarial Networks for Gaussian Distributions

@@ -7,6 +7,9 @@ deps:
 		numpy \
 		matplotlib \
 		ipython \
+		jupyter \
+		jupyterlab \
+		plotly \
 		seaborn \
 		scikit-learn \
 		ipykernel \
