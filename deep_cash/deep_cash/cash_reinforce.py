@@ -1,4 +1,10 @@
-"""Reinforce module for training the CASH controller."""
+"""Reinforce module for training the CASH controller.
+
+TODO: Add `tol` param to enforce convergence rule, i.e. if loss between
+consecutive iterations has stopped improving by some small number e.g. 1e-4.
+In this case, since losses can be positive and negative, this convergence
+rule should consider absolute(loss - loss_prev).
+"""
 
 import numpy as np
 
