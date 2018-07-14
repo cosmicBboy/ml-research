@@ -166,7 +166,7 @@ def parse_clf_dataset(dataset, dataset_metadata=None):
             if feature.name == target_column:
                 if feature.data_type != "nominal":
                     raise TargetNotCompatible(
-                        'dataset "%s" has a continuos target, skipping...' %
+                        'dataset "%s" has a continuous target, skipping...' %
                         dataset.name)
                 target_index = key
             else:
