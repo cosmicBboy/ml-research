@@ -1,4 +1,5 @@
 # Repo-specific
+*/output
 */floyd_outputs/*
 *.csv
 .pytest_cache
