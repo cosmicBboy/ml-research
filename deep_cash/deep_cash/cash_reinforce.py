@@ -74,7 +74,7 @@ class CASHReinforce(object):
 
             # episode stats
             mean_reward = np.mean(self.controller.reward_buffer)
-            loss = self.controller.backward(self._with_baseline)
+            loss = self.controller.backward(with_baseline=self._with_baseline)
             if len(self._validation_score) > 0:
                 mean_validation_score = np.mean(self._validation_score)
                 std_validation_score = np.std(self._validation_score)

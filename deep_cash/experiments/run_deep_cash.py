@@ -30,6 +30,7 @@ ENV_NAMES = env_names()
 @click.option("--n_layers", default=3)
 @click.option("--dropout_rate", default=0.2)
 @click.option("--beta", default=0.9)
+@click.option("--with_baseline/--without_baseline", default=True)
 @click.option("--n_episodes", default=1000)
 @click.option("--n_iter", default=10)
 @click.option("--learning_rate", default=0.005)
@@ -40,7 +41,7 @@ ENV_NAMES = env_names()
 @click.option("--fit_verbose", default=1)
 def run_experiment(
         datasets, output_fp, hidden_size, output_size, n_layers, dropout_rate,
-        beta, n_episodes, n_iter, learning_rate, error_reward,
+        beta, with_baseline, n_episodes, n_iter, learning_rate, error_reward,
         per_framework_time_limit, per_framework_memory_limit, logger,
         fit_verbose):
     """Run deep cash experiment with single configuration."""
@@ -84,7 +85,9 @@ def run_experiment(
         num_rnn_layers=n_layers)
 
     reinforce = CASHReinforce(
-        controller, t_env, beta=beta, with_baseline=False,
+        controller, t_env,
+        beta=beta,
+        with_baseline=with_baseline,
         metrics_logger=logger)
     reinforce.fit(n_episodes=n_episodes, n_iter=n_iter, verbose=fit_verbose)
 
