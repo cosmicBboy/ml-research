@@ -1,10 +1,4 @@
-"""Reinforce module for training the CASH controller.
-
-TODO: Add `tol` param to enforce convergence rule, i.e. if loss between
-consecutive iterations has stopped improving by some small number e.g. 1e-4.
-In this case, since losses can be positive and negative, this convergence
-rule should consider absolute(loss - loss_prev).
-"""
+"""Reinforce module for training the CASH controller."""
 
 import numpy as np
 
@@ -25,8 +19,8 @@ class CASHReinforce(object):
         :param TaskEnvironment t_env: task environment to sample data
             environments and evaluate proposed ml frameworks.
         :param float tol: convergence rule tolerance for stopping the training
-            process. rule: if loss - loss_previous < tol, consider the model
-            converged.
+            process. rule: if absolute(loss - loss_previous) < tol, consider
+            the model converged.
         :param float beta: hyperparameter for exponential moving average to
             compute baseline reward (used to regularize REINFORCE).
         :param bool with_baseline: whether or not to regularize the controller
@@ -122,7 +116,8 @@ class CASHReinforce(object):
                 )
 
             # convergence check
-            if abs(loss) < self._tol:
+            if len(self.losses) >= 2 and \
+                    abs(self.losses[-1] - self.losses[-2]) < self._tol:
                 self._final_episode = i_episode + 1
                 print("model converged on episode %d" % i_episode)
                 break
