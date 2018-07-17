@@ -10,7 +10,7 @@ from . import utils
 class CASHReinforce(object):
     """Reinforce component of deep-cash algorithm."""
 
-    def __init__(self, controller, t_env, tol=1e-4, beta=0.99,
+    def __init__(self, controller, t_env, beta=0.99,
                  with_baseline=True, metrics_logger=None):
         """Initialize CASH Reinforce Algorithm.
 
@@ -18,9 +18,6 @@ class CASHReinforce(object):
             actions.
         :param TaskEnvironment t_env: task environment to sample data
             environments and evaluate proposed ml frameworks.
-        :param float tol: convergence rule tolerance for stopping the training
-            process. rule: if absolute(loss - loss_previous) < tol, consider
-            the model converged.
         :param float beta: hyperparameter for exponential moving average to
             compute baseline reward (used to regularize REINFORCE).
         :param bool with_baseline: whether or not to regularize the controller
@@ -31,20 +28,23 @@ class CASHReinforce(object):
         """
         self.controller = controller
         self.t_env = t_env
-        self._tol = tol
         self._logger = utils.init_logging(__file__)
         self._beta = beta
         self._with_baseline = with_baseline
         self._metrics_logger = metrics_logger
 
-    def fit(self, n_episodes=100, n_iter=100, verbose=True):
+    def fit(self, n_episodes=100, n_iter=100, ignore_convergence=False,
+            verbose=True):
         """Fits the CASH controller with the REINFORCE algorithm.
 
         :param int n_episodes: number of episodes to train.
         :param int n_iter: number of iterations per episode.
+        :param bool ignore_convergence: if True, then convergence rule is
+            ignored and training proceeds until the last episode.
+        :param bool verbose: whether or not to print the exponential mean
+            reward per iteration.
         """
         self._n_episodes = n_episodes
-        self._final_episode = self._n_episodes
 
         # track metrics
         self.data_env_names = []
@@ -114,19 +114,12 @@ class CASHReinforce(object):
                         n_unique_mlfs,
                         n_successful_mlfs)
                 )
-
-            # convergence check
-            if len(self.losses) >= 2 and \
-                    abs(self.losses[-1] - self.losses[-2]) < self._tol:
-                self._final_episode = i_episode + 1
-                print("model converged on episode %d" % i_episode)
-                break
         return self
 
     def history(self):
         """Get metadata history."""
         return {
-            "episode": range(1, self._final_episode + 1),
+            "episode": range(1, self._n_episodes + 1),
             "data_env_names": self.data_env_names,
             "losses": self.losses,
             "mean_rewards": self.mean_rewards,
