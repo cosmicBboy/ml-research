@@ -1,6 +1,7 @@
 floyd run --env pytorch-0.3 $@ \
     ". ./.env && \
     python experiments/run_deep_cash.py \
+    mfeat-morphological \
     --output_fp=/output \
     --n_trials=10 \
     --n_layers=30 \
