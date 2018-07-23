@@ -40,6 +40,9 @@ FIT_ERROR_MESSAGES = [
     (ValueError,
         "Unsupported set of arguments: The combination of penalty='l1' and "
         "loss='logistic_regression' are not supported when dual=True"),
+    (ValueError,
+        "Input contains NaN, infinity or a value too large for "
+        "dtype('float64')"),
     (FloatingPointError, "overflow encountered in exp"),
     (FloatingPointError, "overflow encountered in power"),
     (FloatingPointError, "underflow encountered in multiply"),

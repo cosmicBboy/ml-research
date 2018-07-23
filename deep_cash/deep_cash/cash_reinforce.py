@@ -33,16 +33,15 @@ class CASHReinforce(object):
         self._with_baseline = with_baseline
         self._metrics_logger = metrics_logger
 
-    def fit(self, n_episodes=100, n_iter=100, ignore_convergence=False,
-            verbose=True):
+    def fit(self, n_episodes=100, n_iter=100, verbose=True, procnum=None):
         """Fits the CASH controller with the REINFORCE algorithm.
 
         :param int n_episodes: number of episodes to train.
         :param int n_iter: number of iterations per episode.
-        :param bool ignore_convergence: if True, then convergence rule is
-            ignored and training proceeds until the last episode.
         :param bool verbose: whether or not to print the exponential mean
             reward per iteration.
+        :param int procnum: optional argument to indicate the process number
+            used for multiprocessing.
         """
         self._n_episodes = n_episodes
 
@@ -67,8 +66,11 @@ class CASHReinforce(object):
             self._successful_mlf = []
             self._best_validation_score = None
             self._best_mlf = None
-            print("\nepisode %d, task: %s" % (
-                i_episode, self.t_env.data_env_name))
+            msg = "episode %d, task: %s" % (
+                i_episode, self.t_env.data_env_name)
+            if procnum:
+                msg = "proc num: %d, %s" % (procnum, msg)
+            print("\n" + msg)
             self._fit_episode(n_iter, verbose)
 
             # episode stats

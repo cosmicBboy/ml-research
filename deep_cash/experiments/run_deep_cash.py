@@ -4,6 +4,7 @@ import click
 import os
 import pandas as pd
 import torch
+import torch.multiprocessing as mp
 
 from pathlib import Path
 from shutil import rmtree
@@ -25,6 +26,7 @@ ENV_NAMES = env_names()
 @click.command()
 @click.argument("datasets", nargs=-1)
 @click.option("--output_fp", default=DEFAULT_OUTPUT)
+@click.option("--n_trials", default=1)
 @click.option("--hidden_size", default=30)
 @click.option("--output_size", default=30)
 @click.option("--n_layers", default=3)
@@ -40,11 +42,13 @@ ENV_NAMES = env_names()
 @click.option("--logger", default=None)
 @click.option("--fit_verbose", default=1)
 def run_experiment(
-        datasets, output_fp, hidden_size, output_size, n_layers, dropout_rate,
-        beta, with_baseline, n_episodes, n_iter, learning_rate, error_reward,
-        per_framework_time_limit, per_framework_memory_limit, logger,
-        fit_verbose):
+        datasets, output_fp, n_trials, hidden_size, output_size, n_layers,
+        dropout_rate, beta, with_baseline, n_episodes, n_iter, learning_rate,
+        error_reward, per_framework_time_limit, per_framework_memory_limit,
+        logger, fit_verbose):
     """Run deep cash experiment with single configuration."""
+    print("Running cash controller experiment with %d %s" % (
+        n_trials, "trials" if n_trials > 1 else "trial"))
     datasets = list(datasets)
     for ds in datasets:
         if ds not in ENV_NAMES:
@@ -57,41 +61,77 @@ def run_experiment(
     logger = get_loggers().get(logger, empty_logger)
     metafeatures_dim = get_metafeatures_dim()
 
-    t_env = TaskEnvironment(
-        f1_score,
-        scorer_kwargs={"average": "weighted"},
-        random_state=100,
-        per_framework_time_limit=per_framework_time_limit,
-        per_framework_memory_limit=per_framework_memory_limit,
-        dataset_names=datasets,
-        error_reward=error_reward,
-        reward_transformer=lambda x: x)
+    def worker(procnum, reinforce, return_dict):
+        """Fit REINFORCE Helper function."""
+        reinforce.fit(
+            n_episodes=n_episodes,
+            n_iter=n_iter,
+            verbose=fit_verbose,
+            procnum=procnum)
+        # serialize reinforce controller here
+        reinforce.controller.save(data_path / ("controller_trial_%d.pt" % i))
+        return_dict[procnum] = reinforce.history()
 
-    # create algorithm space
-    a_space = AlgorithmSpace(
-        with_end_token=False,
-        hyperparam_with_start_token=False,
-        hyperparam_with_none_token=False)
+    # multiprocessing manager
+    manager = mp.Manager()
+    return_dict = manager.dict()
+    processes = []
 
-    controller = CASHController(
-        metafeature_size=metafeatures_dim,
-        input_size=a_space.n_components,
-        hidden_size=hidden_size,
-        output_size=output_size,
-        a_space=a_space,
-        optim=torch.optim.Adam,
-        optim_kwargs={"lr": learning_rate},
-        dropout_rate=dropout_rate,
-        num_rnn_layers=n_layers)
+    for i in range(n_trials):
+        t_env = TaskEnvironment(
+            f1_score,
+            scorer_kwargs={"average": "weighted"},
+            random_state=100,
+            per_framework_time_limit=per_framework_time_limit,
+            per_framework_memory_limit=per_framework_memory_limit,
+            dataset_names=datasets,
+            error_reward=error_reward,
+            reward_transformer=lambda x: x)
 
-    reinforce = CASHReinforce(
-        controller, t_env,
-        beta=beta,
-        with_baseline=with_baseline,
-        metrics_logger=logger)
-    reinforce.fit(n_episodes=n_episodes, n_iter=n_iter, verbose=fit_verbose)
+        # create algorithm space
+        a_space = AlgorithmSpace(
+            with_end_token=False,
+            hyperparam_with_start_token=False,
+            hyperparam_with_none_token=False)
 
-    history = pd.DataFrame(reinforce.history())
+        controller = CASHController(
+            metafeature_size=metafeatures_dim,
+            input_size=a_space.n_components,
+            hidden_size=hidden_size,
+            output_size=output_size,
+            a_space=a_space,
+            optim=torch.optim.Adam,
+            optim_kwargs={"lr": learning_rate},
+            dropout_rate=dropout_rate,
+            num_rnn_layers=n_layers)
+
+        reinforce = CASHReinforce(
+            controller, t_env,
+            beta=beta,
+            with_baseline=with_baseline,
+            metrics_logger=logger)
+
+        p = mp.Process(target=worker, args=(i, reinforce, return_dict))
+        p.start()
+        processes.append(p)
+
+    for p in processes:
+        p.join()
+
+    history = []
+    for i, h in return_dict.items():
+        h = pd.DataFrame(h).assign(trial_number=i)
+        history.append(h)
+        # save best mlfs per trial per episode
+        mlf_path = data_path / ("cash_controller_mlfs_trial_%d" % i)
+        if mlf_path.exists():
+            rmtree(mlf_path)
+        mlf_path.mkdir()
+        for ep, mlf in enumerate(h.best_mlfs):
+            joblib.dump(mlf, mlf_path / ("best_mlf_episode_%d.pkl" % (ep + 1)))
+    history = pd.concat(history)
+
+    # save history of all trials
     history[[
         "episode",
         "data_env_names",
@@ -102,17 +142,10 @@ def run_experiment(
         "n_successful_mlfs",
         "n_unique_mlfs",
         "best_validation_scores",
+        "trial_number",
     ]].to_csv(
-        str(data_path / "rnn_cash_controller_experiment.csv"), index=False)
-
-    mlf_path = data_path / "rnn_cash_controller_experiment_mlfs"
-    if mlf_path.exists():
-        rmtree(mlf_path)
-    mlf_path.mkdir()
-    for i, mlf in enumerate(history.best_mlfs):
-        joblib.dump(mlf, mlf_path / ("best_mlf_episode_%d.pkl" % (i + 1)))
-
-    controller.save(data_path / "rnn_cash_controller_experiment.pt")
+        str(data_path / "rnn_cash_controller_experiment.csv"),
+        index=False)
 
 
 if __name__ == "__main__":
