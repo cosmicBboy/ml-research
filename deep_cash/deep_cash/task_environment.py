@@ -167,8 +167,7 @@ class TaskEnvironment(object):
                 warnings.filterwarnings(
                     "ignore", message=msg, category=warning_type)
             if warning:
-                # TODO: log this
-                print(warning)
+                print("SCORE WARNING: %s" % warning)
             score = self.scorer(self.y_test, pred)
             return self.get_reward(score)
 

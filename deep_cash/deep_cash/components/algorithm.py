@@ -54,17 +54,11 @@ class AlgorithmComponent(object):
         }
 
     def hyperparameter_name_space(self):
-        """Return list of hyperparameter names.
-
-        TODO: make this a property with the @property decorator
-        """
+        """Return list of hyperparameter names."""
         return ["%s__%s" % (self.aname, h.hname) for h in self.hyperparameters]
 
     def hyperparameter_state_space(self, with_none_token=False):
-        """Return dict of hyperparameter space.
-
-        TODO: make this a property with the @property decorator
-        """
+        """Return dict of hyperparameter space."""
         if self.hyperparameters is None:
             return OrderedDict()
         return OrderedDict([
