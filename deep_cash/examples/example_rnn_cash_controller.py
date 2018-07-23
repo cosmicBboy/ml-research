@@ -21,8 +21,8 @@ data_path = Path(os.environ.get(
     "DEEP_CASH_OUT_PATH", os.path.dirname(__file__) + "/artifacts"))
 
 # hyperparameters
-n_episodes = int(os.environ.get("DEEP_CASH_N_EPISODES", 500))
-n_iter = int(os.environ.get("DEEP_CASH_N_ITER", 50))
+n_episodes = int(os.environ.get("DEEP_CASH_N_EPISODES", 5))
+n_iter = int(os.environ.get("DEEP_CASH_N_ITER", 5))
 learning_rate = float(os.environ.get("DEEP_CASH_LEARNING_RATE", 0.005))
 error_reward = int(os.environ.get("DEEP_CASH_ERROR_REWARD", -1))
 logger_name = os.environ.get("DEEP_CASH_LOGGER", None)
@@ -76,6 +76,7 @@ history[[
     "std_validation_scores",
     "n_successful_mlfs",
     "n_unique_mlfs",
+    "n_unique_hyperparameters",
     "best_validation_scores",
 ]].to_csv(str(data_path / "rnn_cash_controller_experiment.csv"), index=False)
 

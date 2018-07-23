@@ -53,6 +53,7 @@ class CASHReinforce(object):
         self.std_validation_scores = []
         self.n_successful_mlfs = []
         self.n_unique_mlfs = []
+        self.n_unique_hyperparameters = []
         self.mlf_framework_diversity = []
         self.best_validation_scores = []
         self.best_mlfs = []
@@ -62,8 +63,10 @@ class CASHReinforce(object):
         self._current_baseline_reward = 0
         for i_episode in range(self._n_episodes):
             self.t_env.sample_data_env()
-            self._validation_score = []
-            self._successful_mlf = []
+            self._validation_scores = []
+            self._successful_mlfs = []
+            self._algorithm_sets = []
+            self._hyperparameter_sets = []
             self._best_validation_score = None
             self._best_mlf = None
             msg = "episode %d, task: %s" % (
@@ -76,16 +79,16 @@ class CASHReinforce(object):
             # episode stats
             mean_reward = np.mean(self.controller.reward_buffer)
             loss = self.controller.backward(with_baseline=self._with_baseline)
-            if len(self._validation_score) > 0:
-                mean_validation_score = np.mean(self._validation_score)
-                std_validation_score = np.std(self._validation_score)
+            if len(self._validation_scores) > 0:
+                mean_validation_score = np.mean(self._validation_scores)
+                std_validation_score = np.std(self._validation_scores)
             else:
                 mean_validation_score = np.nan
                 std_validation_score = np.nan
-            n_successful_mlfs = len(self._successful_mlf)
-            n_unique_mlfs = len(set(
-                [utils._ml_framework_string(m) for m in self._successful_mlf]))
-
+            n_successful_mlfs = len(self._successful_mlfs)
+            n_unique_mlfs = len(set((tuple(s) for s in self._algorithm_sets)))
+            n_unique_hyperparameters = len(set(
+                [str(d.items()) for d in self._hyperparameter_sets]))
             # accumulate stats
             # TODO: track unique hyperparameter settings in order to compute
             # number of unique hyperparameter settings, and number of unique
@@ -97,6 +100,7 @@ class CASHReinforce(object):
             self.std_validation_scores.append(std_validation_score)
             self.n_successful_mlfs.append(n_successful_mlfs)
             self.n_unique_mlfs.append(n_unique_mlfs)
+            self.n_unique_hyperparameters.append(n_unique_hyperparameters)
             self.mlf_framework_diversity.append(
                 utils._ml_framework_diversity(
                     n_unique_mlfs, n_successful_mlfs))
@@ -129,6 +133,7 @@ class CASHReinforce(object):
             "std_validation_scores": self.std_validation_scores,
             "n_successful_mlfs": self.n_successful_mlfs,
             "n_unique_mlfs": self.n_unique_mlfs,
+            "n_unique_hyperparameters": self.n_unique_hyperparameters,
             "best_validation_scores": self.best_validation_scores,
             "best_mlfs": self.best_mlfs,
         }
@@ -169,8 +174,10 @@ class CASHReinforce(object):
             return self.t_env.error_reward
         else:
             self._n_valid_mlf += 1
-            self._validation_score.append(reward)
-            self._successful_mlf.append(mlf)
+            self._validation_scores.append(reward)
+            self._successful_mlfs.append(mlf)
+            self._algorithm_sets.append(algorithms)
+            self._hyperparameter_sets.append(hyperparameters)
             if self._best_validation_score is None or \
                     reward > self._best_validation_score:
                 self._best_validation_score = reward

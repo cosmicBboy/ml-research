@@ -141,6 +141,7 @@ def run_experiment(
         "std_validation_scores",
         "n_successful_mlfs",
         "n_unique_mlfs",
+        "n_unique_hyperparameters",
         "best_validation_scores",
         "trial_number",
     ]].to_csv(
