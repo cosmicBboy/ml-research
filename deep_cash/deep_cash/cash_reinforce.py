@@ -71,7 +71,7 @@ class CASHReinforce(object):
             self._best_mlf = None
             msg = "episode %d, task: %s" % (
                 i_episode, self.t_env.data_env_name)
-            if procnum:
+            if procnum is not None:
                 msg = "proc num: %d, %s" % (procnum, msg)
             print("\n" + msg)
             self._fit_episode(n_iter, verbose)
