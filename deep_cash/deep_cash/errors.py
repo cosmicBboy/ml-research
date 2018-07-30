@@ -45,10 +45,12 @@ FIT_ERROR_MESSAGES = [
         "dtype\('float64'\)"),
     (FloatingPointError, "overflow encountered in exp"),
     (FloatingPointError, "overflow encountered in power"),
+    (FloatingPointError, "overflow encountered in multiply"),
     (FloatingPointError, "underflow encountered in multiply"),
     (FloatingPointError, "underflow encountered in square"),
     (FloatingPointError, "underflow encountered in power"),
     (FloatingPointError, "divide by zero encountered in true_divide"),
+    (FloatingPointError, "divide by zero encountered in double_scalars"),
     (FloatingPointError, "invalid value encountered in true_divide"),
     (FloatingPointError, "underflow encountered in true_divide"),
     (FloatingPointError, "invalid value encountered in sqrt"),
@@ -90,15 +92,17 @@ FIT_WARNINGS = [
 
 PREDICT_ERROR_MESSAGES = [
     (FloatingPointError, "overflow encountered in exp"),
-    (FloatingPointError, "underflow encountered in exp"),
+    (FloatingPointError, "overflow encountered in multiply"),
     (FloatingPointError, "overflow encountered in power"),
-    (FloatingPointError, "underflow encountered in multiply"),
+    (FloatingPointError, "overflow encountered in reduce"),
     (FloatingPointError, "divide by zero encountered in log"),
     (FloatingPointError, "divide by zero encountered in true_divide"),
+    (FloatingPointError, "divide by zero encountered in double_scalars"),
     (FloatingPointError, "underflow encountered in true_divide"),
-    (FloatingPointError, "overflow encountered in reduce"),
     (FloatingPointError, "underflow encountered in power"),
     (FloatingPointError, "underflow encountered in reciprocal"),
+    (FloatingPointError, "underflow encountered in exp"),
+    (FloatingPointError, "underflow encountered in multiply"),
 ]
 
 PREDICT_ERROR_TYPES = tuple(set([i for i, _ in PREDICT_ERROR_MESSAGES]))

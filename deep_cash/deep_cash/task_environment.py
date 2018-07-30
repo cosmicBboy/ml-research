@@ -141,9 +141,10 @@ class TaskEnvironment(object):
         ml_framework = self.ml_framework_fitter(
             mlf, self.X_train, self.y_train)
         if self.ml_framework_fitter.exit_status != 0:
-            msg = "ml framework %s exceeded with status: %s" % (
-                ml_framework, self.ml_framework_fitter.exit_status)
-            print(msg)
+            msg = (
+                "LIMIT ERROR ml framework %s exceeded fit limitations "
+                "with status: %s" % (
+                       ml_framework, self.ml_framework_fitter.exit_status))
             LOGGER.exception(msg)
             return None
         return ml_framework
@@ -209,14 +210,15 @@ def _ml_framework_fitter(ml_framework, X, y):
                 ml_framework.fit(X, y)
                 return ml_framework
             except FIT_ERROR_TYPES as error:
+                mlf_str = utils._ml_framework_string(ml_framework)
                 if is_valid_fit_error(error):
+                    LOGGER.info(
+                        "VALID FIT ERROR: %s, no pipeline returned by "
+                        "mlf framework %s" % (error, mlf_str))
                     return None
-                print("error fit predict")
-                print(type(error), error)
                 LOGGER.exception(
-                    "FIT ERROR: ml framework pipeline: [%s], error: "
-                    "<<<\"%s\">>>" % (
-                        utils._ml_framework_string(ml_framework), error))
+                    "INVALID FIT ERROR: ml framework pipeline: [%s], error: "
+                    "<<<\"%s\">>>" % (mlf_str, error))
                 raise
             except Exception as error:
                 raise
