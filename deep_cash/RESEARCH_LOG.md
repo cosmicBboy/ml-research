@@ -1,5 +1,24 @@
 # Research Log
 
+## 07/30/2018
+
+Adding notes on research ideas:
+- implement the meta-RL algorithm as described here in this
+  [paper](https://arxiv.org/pdf/1611.05763.pdf) (NIPS 2017 video
+  [here](https://www.youtube.com/watch?v=9kQ-6VcdtNQ)).
+  - RNN takes in auxiliary inputs:
+    - previous reward r_{t-1}
+    - previous actions. NOTE: in the paper it's really the previous action
+      a_{t-1}, but in the deep cash context, it could be implemented as
+      a set of actions from the previously proposed MLF, or the activation
+      of the last unrolled layer of the RNN from t-1)
+    - implement memory of past exploration through a simple lookup table
+      of contexts (data envs) and their most recent hidden state (the hidden
+      state of the RNN at the last time step).
+    - idea: extend the memory functionality to ensemble MLFs proposed by
+      running the controller RNN using the hidden states from the
+      top `n` most similar contexts (similarity measured by knn)
+
 ## 07/01/2018
 
 There have been a few developments since the last log entry, the main one being
