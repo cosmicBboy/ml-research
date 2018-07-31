@@ -66,7 +66,7 @@ def run_experiment(
         reinforce.fit(
             n_episodes=n_episodes,
             n_iter=n_iter,
-            verbose=fit_verbose,
+            verbose=bool(int(fit_verbose)),
             procnum=procnum)
         # serialize reinforce controller here
         reinforce.controller.save(data_path / ("controller_trial_%d.pt" % i))

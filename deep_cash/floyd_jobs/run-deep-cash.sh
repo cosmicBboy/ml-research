@@ -1,8 +1,9 @@
 floyd run --env pytorch-0.3 $@ \
     ". ./.env && \
     python experiments/run_deep_cash.py \
+    digits
     --output_fp=/output \
-    --n_trials=3 \
+    --n_trials=5 \
     --n_layers=30 \
     --beta=0.9 \
     --n_episodes=1000 \
