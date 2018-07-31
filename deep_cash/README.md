@@ -2,6 +2,21 @@
 
 **Using a Sequence Models to Propose Machine Learning Frameworks for AutoML**
 
+DeepCASH is an artificial neural net architecture for parameterizing the API
+of machine learning software, in this case the [sklearn API][sklearn], in
+order to select a complete machine learning pipeline in an end-to-end fashion,
+from raw data representation, imputation, normalizing, feature representation,
+and classification/regression.
+
+
+# Why?
+
+As the diversity of data and machine learning use cases increases, we also need
+to accelerate and scale the process of training performant machine learning
+systems. We'll need tools that are adaptable to the problem domain, and the
+nature of the dataset, such as structured, unstructured, or semi-structured
+data.
+
 
 # Relevant Work
 
@@ -60,7 +75,7 @@ we can condition the output of the `decoder` network metadata on `D` to propose
 customized `frameworks`.
 
 
-# Implementation
+# High-level Approach
 
 There are two general approaches to take, with substantial tradeoffs to
 consider:
@@ -88,27 +103,23 @@ and how to interpret the output of the Controller so as to fit a model, but
 the advantage is that the Controller mainly has to learn a function that
 generates performant algorithm and hyperparameter combinations.
 
-One example of how to implement a domain-specific controller would be
-to create an `AlgorithmRNN` and a `HyperparameterRNN` to predict a sequence of
-algorithms and hyperparameter settings set using a softmax for each step of an
-ML `framework`:
+In the DeepCash project, a `CashController` represents the policy approximator,
+which selects actions based on a tree-structured set of softmax classifiers,
+each one representing some part of the algorithm and hyperparameter space.
+The controller selects estimators/transformers and hyperparameters in a
+pre-defined manner (interpreted as embedding priors into the architecture
+of the system). The ordering is the following:
 
-- imputation (e.g. mean, median, mode)
 - one hot encoding
+- one hot encoder hyperparameters
+- imputation (e.g. mean, median, mode)
+- imputer hyperparameters
 - rescaling (e.g. min-max, mean-variance)
+- rescaler hyperparameters
 - feature preprocessing (e.g. PCA)
+- feature processor hyperparameters
 - classification/regression
-
-
-## Notes
-
-- The Controller can possibly be pre-trained using a GAN, where the generator
-  is an RNN that outputs a string of code and the discriminator tries to predict
-  whether that code (i) is executable and (ii) evaluates to an sklearn
-  `Estimator`.
-- Another alternative to training a character-level model is to tokenize
-  the code, e.g. `sklearn.linear_model -> "sklearn", ".", "linear_model"` in
-  order to reduce dimensionality of the output space.
+- classifier/regressor hyperparameters
 
 
 # Extensions
@@ -124,83 +135,55 @@ the `encoder` are trained jointly as part of the gradient computed using the
 REINFORCE algorithm.
 
 
-# Why?
+# Roadmap: Milestones
 
-As the diversity of data and machine learning use cases increases, we also need
-to accelerate and scale the process of training performant machine learning
-systems. We'll need tools that are adaptable to the problem domain, and the
-nature of the dataset, such as structured, unstructured, or semi-structured
-data.
-
-
-# Roadmap
-
-## 1. Obtain dataset using OpenML
-
-**estimate: 2 months**
-
-- The [OpenML][openml] platform enables users to evaluate and track their
-  experiments against a particular task. This project will create a set
-  of modules that will generate the auto-ml meta-dataset by programmatically
-  generating ML `frameworks` and `hyperparameters` using the sklearn API.
-  - each example in the auto-ml meta-dataset is a tuple of:
-    `[is_executable, creates_estimator, framework_string, hyperparameter_string]`
-- Run each `framework` and `hyperparameters` string against a set of datasets
-  and supervised learning tasks, available on OpenML, in order to evaluate their
-  performance on the validation set.
+- [X] implementation of the naive (unstructured) `AlgorithmRNN`/
+  `HyperparameterRNN` that seperately predict the estimators/transformers and
+  hyperparameters of the ML Framework.
+- [X] basic implementation of the structured `CashController` architecture
+- [ ] refine `CashController` with baseline function prior such that each data
+  environment maps to its own value function (in this case, the exponential
+  mean of rewards per episode).
+- [ ] add support for normalizing the reward signal before computing gradients,
+  as in the [pytorch REINFORCE implementation][pytorch-reinforce]
+- [ ] implement basic meta-RL algorithm as described here in this
+  [paper][meta-rl] in particular, feed `CashController` auxiliary inputs:
+  - previous reward
+  - previous actions
+- [ ] extend meta-RL algorithm by implementing memory as a lookup table that
+  maps data environments to the most recent hidden state from the same data
+  environment.
+- [ ] extend deep cash to support regression problems.
 
 
-## 2. Create proof-of-concept sequence model to generate `frameworks`
+# Analyses
 
-**estimate: 1-2 months**
-
-To verify that such a model can generate executable code, train an RNN to
-generate a string that successfully executes in the Python environment and
-evaluates to an `Estimator` object.
-
-- This RNN should be conditioned on two binary variables: `is_executable`,
-  and `creates_estimator`. The input should be these two binary variables, and
-  the output should be a string.
-- Evaluate the RNN by generating samples and measuring the proportion that are
-  executable and the proportion of those that evaluate to `Pipeline` objects.
-  - Start with **approach 1**, and if the RNN is unable to generate valid
-    sklearn `Pipelines` at least `50%` of the time, pivot to **approach 2**.
-- Run each `framework` and `hyperparameters` input against a set of datasets
-  and supervised learning tasks, available on OpenML, in order to evaluate their
-  performance on the validation set.
-
-
-## 3. Create the Controller model by using the pre-trained sequence model from (2)
-
-**estimate: 1-2 months**
-
-- Extend the controller RNN such that it takes as input the following
-  variables:
-  - `is_executable`, `creates_estimator`, latent vector `z`, and metadata
-    features (see [auto-sklearn supplemental material][autosklearn-supp])
-- Use the proposed `frameworks` to train a model on some data `D` using the
-  training set and evaluate them on the validation set.
-- Use the REINFORCE algorithm to learn the policy gradient to fine-tune the
-  Controller.
-
-
-## 4 For some set of datasets, compare `DeepCASH` to other AutoML methods
-
-**estimate: 1-2 months**
-
-- Specify some dataset `{D_1, D_0, ..., D_n}`
-- Compare against [`autosklearn`][autosklearn-package], [`tpot`][tpot], and
-  [`H20.ai`][h20].
+The `./analysis` subfolder contains jupyter notebooks that visualize the
+performance of the cash controller over time. Currently there are 5 analyses
+in the project `analysis` subfolder:
+- `rnn_cash_controller_experiment_analysis.ipynb`: analyzing the output of
+  running `examples/example_rnn_cash_controller.py` with static plots.
+- `cash_controller_analysis.ipynb`: a basic interactive analysis
+  of a single job's outputs.
+- `cash_controller_multi_experiment_analysis.ipynb`: analyzes multiple
+  job outputs, all assumed to have one trial (training run) per job.
+- `cash_controller_multi_trail_analysis.ipynb`: analyzes the
+  output of one job, but that job has multiple trials.
+- `cash_controller_multi_trial_experiment_analysis.ipynb`: analyzes
+  the output of multiple jobs, each with multiple trials.
 
 
 [neuralarchsearch]: https://arxiv.org/abs/1611.01578
 [autosklearn]: papers.nips.cc/paper/5872-efficient-and-robust-automated-machine-learning.pdf
 [autosklearn-package]: https://automl.github.io/auto-sklearn/stable/
 [autosklearn-supp]: http://ml.informatik.uni-freiburg.de/papers/15-NIPS-auto-sklearn-supplementary.pdf
+[meta-rl]: https://arxiv.org/pdf/1611.05763.pdf
 [smac]: https://www.cs.ubc.ca/~hutter/papers/10-TR-SMAC.pdf
 [gru]: https://arxiv.org/pdf/1406.1078.pdf
 [reinforce]: https://www.quora.com/What-is-the-REINFORCE-algorithm
 [tpot]: https://github.com/EpistasisLab/tpot
 [h20]: http://docs.h2o.ai/h2o/latest-stable/h2o-docs/automl.html
 [openml]: https://www.openml.org/
+[pytorch-reinforce]: https://github.com/pytorch/examples/blob/master/reinforcement_learning/reinforce.py
+[sklearn]: http://scikit-learn.org/stable/
 [sklearn-pipeline]: http://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html
