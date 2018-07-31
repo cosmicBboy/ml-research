@@ -3,6 +3,16 @@
 ## 07/30/2018
 
 Adding notes on research ideas:
+- try modifying the baseline function to be dependent on the data env, i.e.
+  maintain an exponential mean for each data environment. The problem with the
+  current implementation is that the baseline function is an exponential mean
+  of the previous MLF validation performances across all data environments
+  sampled by the task environment. This might be distorting the reward signal
+  since we compute `reward` - `baseline`, which is a simplified version of the
+  advantage function in the actor-critic RL framework. We want to use a
+  baseline function conditioned on the data environment.
+- mean-center and normalize by standard deviation of the reward, as seen here:
+  https://github.com/pytorch/examples/blob/master/reinforcement_learning/reinforce.py#L6
 - implement the meta-RL algorithm as described here in this
   [paper](https://arxiv.org/pdf/1611.05763.pdf) (NIPS 2017 video
   [here](https://www.youtube.com/watch?v=9kQ-6VcdtNQ)).
