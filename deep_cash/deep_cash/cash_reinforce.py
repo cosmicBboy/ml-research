@@ -1,6 +1,8 @@
 """Reinforce module for training the CASH controller."""
 
 import numpy as np
+import torch
+import torch.nn as nn
 
 from torch.autograd import Variable
 
@@ -33,9 +35,12 @@ class CASHReinforce(object):
         self._with_baseline = with_baseline
         self._metrics_logger = metrics_logger
 
-    def fit(self, n_episodes=100, n_iter=100, verbose=True, procnum=None):
+    def fit(self, optim, optim_kwargs, n_episodes=100, n_iter=100,
+            verbose=True, procnum=None):
         """Fits the CASH controller with the REINFORCE algorithm.
 
+        :param torch.optim optim: type of optimization to use for backprop.
+        :param dict optim_kwargs: arguments to pass to optim constructor
         :param int n_episodes: number of episodes to train.
         :param int n_iter: number of iterations per episode.
         :param bool verbose: whether or not to print the exponential mean
@@ -43,6 +48,8 @@ class CASHReinforce(object):
         :param int procnum: optional argument to indicate the process number
             used for multiprocessing.
         """
+        # set optimization object
+        self.optim = optim(self.controller.parameters(), **optim_kwargs)
         self._n_episodes = n_episodes
 
         # track metrics
@@ -59,7 +66,6 @@ class CASHReinforce(object):
         self.best_mlfs = []
 
         # baseline reward
-        self._previous_baseline_reward = 0
         self._current_baseline_reward = 0
         for i_episode in range(self._n_episodes):
             self.t_env.sample_data_env()
@@ -78,7 +84,7 @@ class CASHReinforce(object):
 
             # episode stats
             mean_reward = np.mean(self.controller.reward_buffer)
-            loss = self.controller.backward(with_baseline=self._with_baseline)
+            loss = self.backward(with_baseline=self._with_baseline)
             if len(self._validation_scores) > 0:
                 mean_validation_score = np.mean(self._validation_scores)
                 std_validation_score = np.std(self._validation_scores)
@@ -158,6 +164,70 @@ class CASHReinforce(object):
         self._update_reward_buffer(reward)
         self._update_baseline_reward_buffer(reward)
 
+    def backward(self, show_grad=False, with_baseline=True):
+        """End an episode with one backpropagation step.
+
+        Since REINFORCE algorithm is a gradient ascent method, negate the log
+        probability in order to do gradient descent on the negative expected
+        rewards.
+        - If reward is positive and selected action prob is close to 1
+          (-log prob ~= 0), policy loss will be positive and close to 0,
+          controller's weights will be adjusted by gradients such that the
+          selected action is more likely and the non-selected actions are less
+          likely.
+        - If reward is positive and selection action prob is close to 0
+          (-log prob > 0), policy loss will be a large positive number,
+          controller's weights will be adjusted such that selected
+          action is less likely and non-selected actions are more likely.
+        - If reward is negative and selected action prob is close to 1
+          (-log prob ~= 0), policy loss will be negative but close to 0,
+          meaning that gradients will adjust the weights to minimize policy
+          loss (make it more negative) by making the selected action
+          probability even more negative (push the selected action prob closer
+          to 0, which discourages the selection of this action).
+        - If reward is negative and selected action prob is close to 0,
+          (-log prob > 0), then the policy loss will be a large negative number
+          and the gradients will make the selected action prob even less likely
+        """
+        loss = []
+        n_lpb = len(self.controller.log_prob_buffer)
+        n_rwb = len(self.controller.reward_buffer)
+        n_brb = len(self.controller.baseline_reward_buffer)
+        if not n_lpb == n_rwb == n_brb:
+            raise ValueError(
+                "all buffers need the same length, found:\n"
+                "log_prob_buffer = %d\n"
+                "reward_buffer = %d\n"
+                "baseline_reward_buffer = %d" % (
+                    n_lpb, n_rwb, n_brb))
+        # compute loss
+        for log_probs, r, b in zip(
+                self.controller.log_prob_buffer,
+                self.controller.reward_buffer,
+                self.controller.baseline_reward_buffer):
+            for a in log_probs:
+                r = r - b if with_baseline else r
+                loss.append(-a * r)
+
+        # one step of gradient descent
+        self.optim.zero_grad()
+        loss = torch.cat(loss).sum().div(len(self.controller.reward_buffer))
+        loss.backward()
+        # gradient clipping to prevent exploding gradient
+        nn.utils.clip_grad_norm(self.controller.parameters(), 20)
+        self.optim.step()
+
+        if show_grad:
+            print("\n\nGradients")
+            for param in self.controller.parameters():
+                print(param.grad.data.sum())
+
+        # reset rewards and log probs
+        del self.controller.reward_buffer[:]
+        del self.controller.log_prob_buffer[:]
+
+        return loss.data[0]
+
     def select_actions(self, init_input_tensor, init_hidden):
         """Select action sequence given initial input and hidden tensors."""
         actions = self.controller.decode(init_input_tensor, init_hidden)
@@ -194,6 +264,11 @@ class CASHReinforce(object):
     def _update_baseline_reward_buffer(self, reward):
         self.controller.baseline_reward_buffer.append(
             self._current_baseline_reward)
+        # don't let the baseline_reward buffer exceed the length of the reward
+        # buffer.
+        if len(self.controller.baseline_reward_buffer) > \
+                len(self.controller.reward_buffer):
+            self.controller.baseline_reward_buffer.pop(0)
         self._current_baseline_reward = utils._exponential_mean(
             reward, self._current_baseline_reward, beta=self._beta)
 

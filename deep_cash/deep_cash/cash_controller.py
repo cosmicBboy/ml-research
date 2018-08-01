@@ -26,8 +26,7 @@ class CASHController(nn.Module):
 
     def __init__(
             self, metafeature_size, input_size, hidden_size, output_size,
-            a_space, optim=None, optim_kwargs=None, dropout_rate=0.1,
-            num_rnn_layers=1):
+            a_space, dropout_rate=0.1, num_rnn_layers=1):
         """Initialize Cash Controller.
 
         :param int metafeature_size:
@@ -35,8 +34,6 @@ class CASHController(nn.Module):
         :param int hidden_size:
         :param int output_size:
         :param AlgorithmSpace a_space:
-        :param torch.optim optim:
-        :param dict optim_kwargs:
         :param float dropout_rate:
         :param int num_rnn_layers:
         :ivar list[dict] action_classifiers:
@@ -88,12 +85,6 @@ class CASHController(nn.Module):
                     self.algorithm_map[component].append(idx)
                     idx += 1
         self.n_actions = len(self.action_classifiers)
-
-        # set optimization object
-        if optim is None:
-            self.optim = optim
-        else:
-            self.optim = optim(self.parameters(), **optim_kwargs)
 
     def _add_action_classifier(self, action_index, action_type, name, choices):
         """Add action classifier to the nn.Module."""
@@ -193,68 +184,8 @@ class CASHController(nn.Module):
         return action_embedding.view(
             1, action_embedding.shape[0], action_embedding.shape[1])
 
-    def backward(self, show_grad=False, with_baseline=True):
-        """End an episode with one backpropagation step.
-
-        Since REINFORCE algorithm is a gradient ascent method, negate the log
-        probability in order to do gradient descent on the negative expected
-        rewards.
-        - If reward is positive and selected action prob is close to 1
-          (-log prob ~= 0), policy loss will be positive and close to 0,
-          controller's weights will be adjusted by gradients such that the
-          selected action is more likely and the non-selected actions are less
-          likely.
-        - If reward is positive and selection action prob is close to 0
-          (-log prob > 0), policy loss will be a large positive number,
-          controller's weights will be adjusted such that selected
-          action is less likely and non-selected actions are more likely.
-        - If reward is negative and selected action prob is close to 1
-          (-log prob ~= 0), policy loss will be negative but close to 0,
-          meaning that gradients will adjust the weights to minimize policy
-          loss (make it more negative) by making the selected action
-          probability even more negative (push the selected action prob closer
-          to 0, which discourages the selection of this action).
-        - If reward is negative and selected action prob is close to 0,
-          (-log prob > 0), then the policy loss will be a large negative number
-          and the gradients will make the selected action prob even less likely
-        """
-        # TODO: move this to the `cash_reinforce` module, since the learning
-        # algorithm used to train the controller can be modular (right now
-        # it's REINFORCE, but could be something else in the future).
-        if self.optim is None:
-            raise ValueError(
-                "optimization object not set. You need to provide `optim` "
-                "and `optim_kwargs` when instantiating an %s object" % self)
-        loss = []
-        # compute loss
-        for action_log_probs, reward, baseline_reward in zip(
-                self.log_prob_buffer,
-                self.reward_buffer,
-                self.baseline_reward_buffer):
-            for log_prob in action_log_probs:
-                r = reward - baseline_reward if with_baseline else reward
-                loss.append(-log_prob * r)
-
-        # one step of gradient descent
-        self.optim.zero_grad()
-        loss = torch.cat(loss).sum().div(len(self.reward_buffer))
-        loss.backward()
-        # gradient clipping to prevent exploding gradient
-        nn.utils.clip_grad_norm(self.parameters(), 20)
-        self.optim.step()
-
-        if show_grad:
-            print("\n\nGradients")
-            for param in self.parameters():
-                print(param.grad.data.sum())
-
-        # reset rewards and log probs
-        del self.reward_buffer[:]
-        del self.log_prob_buffer[:]
-
-        return loss.data[0]
-
     def init_hidden(self):
+        """Initialize hidden layer with zeros."""
         return Variable(torch.zeros(self.num_rnn_layers, 1, self.hidden_size))
 
     def save(self, path):

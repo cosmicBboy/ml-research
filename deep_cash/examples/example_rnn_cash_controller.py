@@ -4,7 +4,6 @@ import os
 import pandas as pd
 import torch
 
-from pathlib import Path
 from shutil import rmtree
 from sklearn.externals import joblib
 from sklearn.metrics import f1_score
@@ -13,21 +12,18 @@ from deep_cash.algorithm_space import AlgorithmSpace
 from deep_cash.task_environment import TaskEnvironment
 from deep_cash.cash_controller import CASHController
 from deep_cash.cash_reinforce import CASHReinforce
-from deep_cash.loggers import get_loggers
 from deep_cash.utils import get_metafeatures_dim
 
 
-data_path = Path(os.environ.get(
-    "DEEP_CASH_OUT_PATH", os.path.dirname(__file__) + "/artifacts"))
+data_path = os.path.dirname(__file__) + "/artifacts"
 
 # hyperparameters
-n_episodes = int(os.environ.get("DEEP_CASH_N_EPISODES", 5))
-n_iter = int(os.environ.get("DEEP_CASH_N_ITER", 5))
-learning_rate = float(os.environ.get("DEEP_CASH_LEARNING_RATE", 0.005))
-error_reward = int(os.environ.get("DEEP_CASH_ERROR_REWARD", -1))
-logger_name = os.environ.get("DEEP_CASH_LOGGER", None)
-logger = get_loggers().get(os.environ.get("DEEP_CASH_LOGGER", None), None)
-fit_verbose = int(os.environ.get("DEEP_CASH_FIT_VERBOSE", 1))
+n_episodes = 5
+n_iter = 5
+learning_rate = 0.005
+error_reward = 0
+logger = None
+fit_verbose = True
 
 metafeatures_dim = get_metafeatures_dim()
 hidden_size = 30
@@ -56,14 +52,21 @@ controller = CASHController(
     hidden_size=hidden_size,
     output_size=output_size,
     a_space=a_space,
-    optim=torch.optim.Adam,
-    optim_kwargs={"lr": learning_rate},
     dropout_rate=0.2,
     num_rnn_layers=n_layers)
 
 reinforce = CASHReinforce(
-    controller, t_env, with_baseline=False, metrics_logger=logger)
-reinforce.fit(n_episodes=n_episodes, n_iter=n_iter, verbose=fit_verbose)
+    controller,
+    t_env,
+    with_baseline=False,
+    metrics_logger=logger)
+
+reinforce.fit(
+    optim=torch.optim.Adam,
+    optim_kwargs={"lr": learning_rate},
+    n_episodes=n_episodes,
+    n_iter=n_iter,
+    verbose=fit_verbose)
 
 
 history = pd.DataFrame(reinforce.history())

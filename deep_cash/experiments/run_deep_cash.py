@@ -64,6 +64,8 @@ def run_experiment(
     def worker(procnum, reinforce, return_dict):
         """Fit REINFORCE Helper function."""
         reinforce.fit(
+            optim=torch.optim.Adam,
+            optim_kwargs={"lr": learning_rate},
             n_episodes=n_episodes,
             n_iter=n_iter,
             verbose=bool(int(fit_verbose)),
@@ -100,8 +102,6 @@ def run_experiment(
             hidden_size=hidden_size,
             output_size=output_size,
             a_space=a_space,
-            optim=torch.optim.Adam,
-            optim_kwargs={"lr": learning_rate},
             dropout_rate=dropout_rate,
             num_rnn_layers=n_layers)
 
