@@ -4,7 +4,8 @@ from deep_cash.data_sourcers import openml_api
 
 
 def test_parse_dataset():
-    datasets = [openml_api.parse_dataset(d) for d in openml_api.get_datasets()]
+    datasets = [openml_api.parse_clf_dataset(d)
+                for d in openml_api.get_datasets()]
     assert len(datasets) == 1
     assert datasets[0]["dataset_name"] == "anneal"
     assert datasets[0]["data"].shape == (898, 38)  # 898 obs, 38 features
@@ -22,5 +23,5 @@ def test_list_clf_datasets():
 
 def test_classification_envs():
     datasets = openml_api.classification_envs()
-    # the 10 default classification datasets + 1 custom dataset
-    assert len(datasets) == 11
+    # the 9 default classification datasets + 1 custom dataset
+    assert len(datasets) == 10
