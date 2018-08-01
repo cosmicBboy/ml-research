@@ -6,6 +6,7 @@ import pandas as pd
 import torch
 import torch.multiprocessing as mp
 
+from functools import partial
 from pathlib import Path
 from shutil import rmtree
 from sklearn.externals import joblib
@@ -109,7 +110,7 @@ def run_experiment(
             controller, t_env,
             beta=beta,
             with_baseline=with_baseline,
-            metrics_logger=logger)
+            metrics_logger=partial(logger, prefix="proc_num_%d_" % i))
 
         p = mp.Process(target=worker, args=(i, reinforce, return_dict))
         p.start()
