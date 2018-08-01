@@ -190,16 +190,7 @@ class CASHReinforce(object):
           and the gradients will make the selected action prob even less likely
         """
         loss = []
-        n_lpb = len(self.controller.log_prob_buffer)
-        n_rwb = len(self.controller.reward_buffer)
-        n_brb = len(self.controller.baseline_reward_buffer)
-        if not n_lpb == n_rwb == n_brb:
-            raise ValueError(
-                "all buffers need the same length, found:\n"
-                "log_prob_buffer = %d\n"
-                "reward_buffer = %d\n"
-                "baseline_reward_buffer = %d" % (
-                    n_lpb, n_rwb, n_brb))
+        self._check_buffers()
         # compute loss
         for log_probs, r, b in zip(
                 self.controller.log_prob_buffer,
@@ -225,6 +216,7 @@ class CASHReinforce(object):
         # reset rewards and log probs
         del self.controller.reward_buffer[:]
         del self.controller.log_prob_buffer[:]
+        del self.controller.baseline_reward_buffer[:]
 
         return loss.data[0]
 
@@ -281,6 +273,18 @@ class CASHReinforce(object):
             if action["action_type"] == self.controller.HYPERPARAMETER:
                 hyperparameters[action["action_name"]] = action["action"]
         return algorithms, hyperparameters
+
+    def _check_buffers(self):
+        n_abuf = len(self.controller.log_prob_buffer)
+        n_rbuf = len(self.controller.reward_buffer)
+        n_bbuf = len(self.controller.baseline_reward_buffer)
+        if n_abuf != n_rbuf != n_bbuf:
+            raise ValueError(
+                "all buffers need the same length, found:\n"
+                "log_prob_buffer = %d\n"
+                "reward_buffer = %d\n"
+                "baseline_reward_buffer = %d" % (
+                    n_abuf, n_rbuf, n_bbuf))
 
 
 def metafeature_tensor(t_state):

@@ -1,4 +1,4 @@
-"""End to end test for fitting a cash controllers"""
+"""End to end tests for fitting a cash controllers."""
 
 import pandas as pd
 import torch
@@ -14,8 +14,7 @@ from deep_cash.utils import get_metafeatures_dim
 
 def test_cash_reinforce_fit():
     """Ensure DeepCASH training routine executes."""
-
-    n_episodes = 3
+    n_episodes = 5
 
     # hyperparameters
     t_env = TaskEnvironment(
@@ -47,6 +46,7 @@ def test_cash_reinforce_fit():
     reinforce = CASHReinforce(
         controller,
         t_env,
+        beta=0.9,
         with_baseline=False,
         metrics_logger=None)
 
@@ -55,7 +55,7 @@ def test_cash_reinforce_fit():
         optim_kwargs={"lr": 0.005},
         n_episodes=n_episodes,
         n_iter=3,
-        verbose=True)
+        verbose=False)
 
     history = pd.DataFrame(reinforce.history())
     assert history.shape[0] == n_episodes
