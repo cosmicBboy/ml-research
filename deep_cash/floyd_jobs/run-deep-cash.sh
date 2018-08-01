@@ -5,6 +5,7 @@ floyd run --env pytorch-0.3 $@ \
     --n_trials=5 \
     --n_layers=30 \
     --beta=0.9 \
+    --multi_baseline \
     --n_episodes=1000 \
     --n_iter=10 \
     --per_framework_time_limit=600 \
