@@ -4,16 +4,21 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from collections import defaultdict
+from copy import deepcopy
 from torch.autograd import Variable
 
 from . import utils
+
+SINGLE_BASELINE = "all_data_envs"
 
 
 class CASHReinforce(object):
     """Reinforce component of deep-cash algorithm."""
 
     def __init__(self, controller, t_env, beta=0.99,
-                 with_baseline=True, metrics_logger=None):
+                 with_baseline=True, single_baseline=True,
+                 metrics_logger=None):
         """Initialize CASH Reinforce Algorithm.
 
         :param pytorch.nn.Module controller: A CASH controller to select
@@ -24,15 +29,22 @@ class CASHReinforce(object):
             compute baseline reward (used to regularize REINFORCE).
         :param bool with_baseline: whether or not to regularize the controller
             with the exponential moving average of past rewards.
+        :param bool single_baseline: if True, maintains a single baseline
+            reward buffer, otherwise maintain a separate baseline buffer for
+            each data environment available to the task environment.
         :param callable metrics_logger: loggin function to use. The function
             takes as input a CASHReinforce object and prints out a message,
             with access to all properties in CASHReinforce.
+        :ivar defaultdict[str -> list] _baseline_fn: a map that keeps track
+            of the baseline function for a particular task environment state
+            (i.e. the sampled data environment at a particular episode).
         """
         self.controller = controller
         self.t_env = t_env
         self._logger = utils.init_logging(__file__)
         self._beta = beta
         self._with_baseline = with_baseline
+        self._single_baseline = single_baseline
         self._metrics_logger = metrics_logger
 
     def fit(self, optim, optim_kwargs, n_episodes=100, n_iter=100,
@@ -66,7 +78,13 @@ class CASHReinforce(object):
         self.best_mlfs = []
 
         # baseline reward
-        self._current_baseline_reward = 0
+        self._baseline_fn = {
+            "buffer": defaultdict(list),
+            "current": defaultdict(int),
+        }
+        # the buffer history keeps track of baseline rewards across all the
+        # episodes, used for record-keeping and testing purposes.
+        self._baseline_buffer_history = defaultdict(list)
         for i_episode in range(self._n_episodes):
             self.t_env.sample_data_env()
             self._validation_scores = []
@@ -84,7 +102,7 @@ class CASHReinforce(object):
 
             # episode stats
             mean_reward = np.mean(self.controller.reward_buffer)
-            loss = self.backward(with_baseline=self._with_baseline)
+            loss = self.backward()
             if len(self._validation_scores) > 0:
                 mean_validation_score = np.mean(self._validation_scores)
                 std_validation_score = np.std(self._validation_scores)
@@ -150,10 +168,8 @@ class CASHReinforce(object):
             self._fit_iter(self.t_env.sample())
             if verbose:
                 print(
-                    "iter %d - n valid mlf: %d/%d - "
-                    "exponential mean reward: %0.02f" % (
-                        i_iter, self._n_valid_mlf, i_iter + 1,
-                        self._current_baseline_reward),
+                    "iter %d - n valid mlf: %d/%d" % (
+                        i_iter, self._n_valid_mlf, i_iter + 1),
                     sep=" ", end="\r", flush=True)
 
     def _fit_iter(self, t_state):
@@ -163,8 +179,10 @@ class CASHReinforce(object):
         self._update_log_prob_buffer(actions)
         self._update_reward_buffer(reward)
         self._update_baseline_reward_buffer(reward)
+        for k, v in self._baseline_fn["buffer"].items():
+            self._baseline_buffer_history[k].extend(v)
 
-    def backward(self, show_grad=False, with_baseline=True):
+    def backward(self, show_grad=False):
         """End an episode with one backpropagation step.
 
         Since REINFORCE algorithm is a gradient ascent method, negate the log
@@ -190,14 +208,18 @@ class CASHReinforce(object):
           and the gradients will make the selected action prob even less likely
         """
         loss = []
-        self._check_buffers()
+        baseline_reward_buffer = self._baseline_buffer()
+        _check_buffers(
+            self.controller.log_prob_buffer,
+            self.controller.reward_buffer,
+            baseline_reward_buffer)
         # compute loss
         for log_probs, r, b in zip(
                 self.controller.log_prob_buffer,
                 self.controller.reward_buffer,
-                self.controller.baseline_reward_buffer):
+                baseline_reward_buffer):
             for a in log_probs:
-                r = r - b if with_baseline else r
+                r = r - b if self._with_baseline else r
                 loss.append(-a * r)
 
         # one step of gradient descent
@@ -216,7 +238,7 @@ class CASHReinforce(object):
         # reset rewards and log probs
         del self.controller.reward_buffer[:]
         del self.controller.log_prob_buffer[:]
-        del self.controller.baseline_reward_buffer[:]
+        del baseline_reward_buffer[:]
 
         return loss.data[0]
 
@@ -254,15 +276,24 @@ class CASHReinforce(object):
         self.controller.reward_buffer.append(reward)
 
     def _update_baseline_reward_buffer(self, reward):
-        self.controller.baseline_reward_buffer.append(
-            self._current_baseline_reward)
-        # don't let the baseline_reward buffer exceed the length of the reward
-        # buffer.
-        if len(self.controller.baseline_reward_buffer) > \
-                len(self.controller.reward_buffer):
-            self.controller.baseline_reward_buffer.pop(0)
-        self._current_baseline_reward = utils._exponential_mean(
-            reward, self._current_baseline_reward, beta=self._beta)
+        buffer = self._baseline_buffer()
+        current = self._baseline_current()
+        buffer.append(current)
+        self._update_current_baseline(
+            utils._exponential_mean(reward, current, beta=self._beta))
+
+    def _baseline_fn_key(self):
+        return SINGLE_BASELINE if self._single_baseline else \
+            self.t_env.data_env_name
+
+    def _baseline_buffer(self):
+        return self._baseline_fn["buffer"][self._baseline_fn_key()]
+
+    def _baseline_current(self):
+        return self._baseline_fn["current"][self._baseline_fn_key()]
+
+    def _update_current_baseline(self, new_baseline):
+        self._baseline_fn["current"][self._baseline_fn_key()] = new_baseline
 
     def _get_mlf_components(self, actions):
         algorithms = []
@@ -274,17 +305,18 @@ class CASHReinforce(object):
                 hyperparameters[action["action_name"]] = action["action"]
         return algorithms, hyperparameters
 
-    def _check_buffers(self):
-        n_abuf = len(self.controller.log_prob_buffer)
-        n_rbuf = len(self.controller.reward_buffer)
-        n_bbuf = len(self.controller.baseline_reward_buffer)
-        if n_abuf != n_rbuf != n_bbuf:
-            raise ValueError(
-                "all buffers need the same length, found:\n"
-                "log_prob_buffer = %d\n"
-                "reward_buffer = %d\n"
-                "baseline_reward_buffer = %d" % (
-                    n_abuf, n_rbuf, n_bbuf))
+
+def _check_buffers(log_prob_buffer, reward_buffer, baseline_reward_buffer):
+    n_abuf = len(log_prob_buffer)
+    n_rbuf = len(reward_buffer)
+    n_bbuf = len(baseline_reward_buffer)
+    if n_abuf != n_rbuf != n_bbuf:
+        raise ValueError(
+            "all buffers need the same length, found:\n"
+            "log_prob_buffer = %d\n"
+            "reward_buffer = %d\n"
+            "baseline_reward_buffer = %d" % (
+                n_abuf, n_rbuf, n_bbuf))
 
 
 def metafeature_tensor(t_state):

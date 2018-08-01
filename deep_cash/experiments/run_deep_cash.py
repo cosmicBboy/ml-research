@@ -34,6 +34,7 @@ ENV_NAMES = env_names()
 @click.option("--dropout_rate", default=0.2)
 @click.option("--beta", default=0.9)
 @click.option("--with_baseline/--without_baseline", default=True)
+@click.option("--single_baseline/--multi_baseline", default=True)
 @click.option("--n_episodes", default=1000)
 @click.option("--n_iter", default=10)
 @click.option("--learning_rate", default=0.005)
@@ -44,9 +45,9 @@ ENV_NAMES = env_names()
 @click.option("--fit_verbose", default=1)
 def run_experiment(
         datasets, output_fp, n_trials, hidden_size, output_size, n_layers,
-        dropout_rate, beta, with_baseline, n_episodes, n_iter, learning_rate,
-        error_reward, per_framework_time_limit, per_framework_memory_limit,
-        logger, fit_verbose):
+        dropout_rate, beta, with_baseline, single_baseline, n_episodes, n_iter,
+        learning_rate, error_reward, per_framework_time_limit,
+        per_framework_memory_limit, logger, fit_verbose):
     """Run deep cash experiment with single configuration."""
     print("Running cash controller experiment with %d %s" % (
         n_trials, "trials" if n_trials > 1 else "trial"))
@@ -110,6 +111,7 @@ def run_experiment(
             controller, t_env,
             beta=beta,
             with_baseline=with_baseline,
+            single_baseline=single_baseline,
             metrics_logger=partial(logger, prefix="proc_num_%d_" % i))
 
         p = mp.Process(target=worker, args=(i, reinforce, return_dict))

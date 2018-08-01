@@ -53,7 +53,6 @@ class CASHController(nn.Module):
         self.algorithm_map = defaultdict(list)
         self.log_prob_buffer = []
         self.reward_buffer = []
-        self.baseline_reward_buffer = []
 
         # architecture specification
         self.rnn = nn.GRU(
@@ -155,13 +154,6 @@ class CASHController(nn.Module):
 
     def select_action(self, action_probs, action_index):
         """Select action based on action probability distribution."""
-        # TODO: parameterize epsilon for eps-greedy implementation. At first
-        # actions are sampled based on the action probability distribution,
-        # but we want to eventually fully exploit the policy that we've learned
-        # after N episodes.
-        # Implement a epsilon `eps` schedule, which modulates the value of
-        # `eps` from 0.5 (act greedy half of the time) to 1.0 (act greedy all
-        # of the time).
         action_classifier = self.action_classifiers[action_index]
         action_dist = Categorical(action_probs)
         choice_index = action_dist.sample()

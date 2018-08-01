@@ -1,6 +1,5 @@
 """A handler for generating tasks and datasets and evaluating ml frameworks."""
 
-import logging
 import numpy as np
 import pynisher
 import warnings
@@ -39,9 +38,9 @@ class TaskEnvironment(object):
         self.random_state = random_state
         self.per_framework_time_limit = per_framework_time_limit
         self.per_framework_memory_limit = per_framework_memory_limit
-        self.dataset_names = dataset_names
+        self._dataset_names = dataset_names
         self.data_distribution = classification_environments.envs(
-            names=self.dataset_names)
+            names=self._dataset_names)
         self.n_data_envs = len(self.data_distribution)
         self._error_reward = error_reward
         self._reward_scale = reward_scale
@@ -56,6 +55,15 @@ class TaskEnvironment(object):
             grace_period_in_s=FIT_GRACE_PERIOD)(_ml_framework_fitter)
 
         np.random.seed(self.random_state)
+
+    @property
+    def dataset_names(self):
+        """Get dataset names in the task environment.
+
+        :returns: a list of dataset names.
+        :rtype: list[str]
+        """
+        return [d["dataset_name"] for d in self.data_distribution]
 
     @property
     def error_reward(self):
