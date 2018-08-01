@@ -144,8 +144,6 @@ REINFORCE algorithm.
 - [X] refine `CashController` with baseline function prior such that each data
   environment maps to its own value function (in this case, the exponential
   mean of rewards per episode).
-- [ ] add support for normalizing the reward signal before computing gradients,
-  as in the [pytorch REINFORCE implementation][pytorch-reinforce]
 - [ ] implement basic meta-RL algorithm as described here in this
   [paper][meta-rl] in particular, feed `CashController` auxiliary inputs:
   - previous reward
