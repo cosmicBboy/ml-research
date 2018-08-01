@@ -34,8 +34,7 @@ def _algorithm_space():
 def _cash_controller(a_space):
     return CASHController(
         metafeature_size=get_metafeatures_dim(),
-        # TODO: don't need input_size anymore, since a_space is an argument.
-        input_size=a_space.n_components,
+        input_size=20,
         hidden_size=10,
         output_size=10,
         a_space=a_space,

@@ -25,17 +25,28 @@ class CASHController(nn.Module):
     HYPERPARAMETER = "hyperparameter"
 
     def __init__(
-            self, metafeature_size, input_size, hidden_size, output_size,
-            a_space, dropout_rate=0.1, num_rnn_layers=1):
+            self,
+            metafeature_size,
+            input_size,
+            hidden_size,
+            output_size,
+            a_space,
+            metafeature_encoding_size=20,
+            aux_reward_size=1,
+            dropout_rate=0.1,
+            num_rnn_layers=1):
         """Initialize Cash Controller.
 
-        :param int metafeature_size:
-        :param int input_size:
-        :param int hidden_size:
-        :param int output_size:
+        :param int metafeature_size: dimensionality of metafeatures
+        :param int input_size: dimensionality of input features (actions)
+        :param int hidden_size: dimensionality of hidden RNN layer.
+        :param int output_size: dimensionality of output space.
         :param AlgorithmSpace a_space:
+        :param int metafeature_encoding_size: dim of metafeatures embedding
         :param float dropout_rate:
         :param int num_rnn_layers:
+        :ivar int aux_size: dimensionality of auxiliary inputs (reward and
+            action from previous time-step).
         :ivar list[dict] action_classifiers:
         :ivar list[float] log_prob_buffer:
         :ivar list[float] reward buffer:
@@ -46,8 +57,11 @@ class CASHController(nn.Module):
         self.num_rnn_layers = num_rnn_layers
         self.metafeature_size = metafeature_size
         self.input_size = input_size
+        # action dim for previous action + 1 for previous reward
+        self.aux_reward_size = aux_reward_size
         self.hidden_size = hidden_size
         self.output_size = output_size
+        self.metafeature_encoding_size = metafeature_encoding_size
         self.action_classifiers = []
         self.atype_map = {}
         self.algorithm_map = defaultdict(list)
@@ -56,15 +70,16 @@ class CASHController(nn.Module):
 
         # architecture specification
         self.rnn = nn.GRU(
-            self.input_size,
+            self.input_size + self.aux_reward_size +
+            self.metafeature_encoding_size,
             self.hidden_size,
             num_layers=self.num_rnn_layers,
             dropout=self.dropout_rate)
         self.decoder = nn.Linear(self.hidden_size, self.output_size)
         self.dropout = nn.Dropout(self.dropout_rate)
-        # special embedding layer for initial metafeature input
+        # special encoding layer for initial metafeature input
         self.metafeature_dense = nn.Linear(
-            self.metafeature_size, self.input_size)
+            self.metafeature_size, self.metafeature_encoding_size)
 
         # for each algorithm component and hyperparameter value, create a
         # softmax classifier over the number of unique components/hyperparam
@@ -105,13 +120,11 @@ class CASHController(nn.Module):
             "embedding_attr": embedding_attr,
         })
 
-    def forward(self, input, hidden, action_index):
+    def forward(self, input, aux, metafeatures, hidden, action_index):
         """Forward pass through controller."""
-        if action_index == 0:
-            # since the input of the first action is the metafeature vector,
-            # transform metafeature vector into input dimensions
-            input = self.metafeature_dense(input)
-        rnn_output, hidden = self.rnn(input, hidden)
+        input_concat = torch.cat([
+            input, aux, self.metafeature_dense(metafeatures)], 2)
+        rnn_output, hidden = self.rnn(input_concat, hidden)
         rnn_output = self.dropout(self.decoder(rnn_output))
 
         # get appropriate action classifier for particular action_index
@@ -124,7 +137,8 @@ class CASHController(nn.Module):
         action_probs = softmax(dense(rnn_output))
         return action_probs, hidden
 
-    def decode(self, init_input_tensor, init_hidden, init_index=0):
+    def decode(
+            self, init_input_tensor, aux, metafeatures, init_hidden):
         """Decode a metafeature tensor to sequence of actions.
 
         Where the actions are a sequence of algorithm components and
@@ -135,18 +149,20 @@ class CASHController(nn.Module):
         # for each algorithm component type, select an algorithm
         for atype in self.component_dict:
             action, input_tensor, hidden = self._decode_action(
-                input_tensor, hidden, self.atype_map[atype])
+                input_tensor, aux, metafeatures, hidden, self.atype_map[atype])
             actions.append(action)
             # each algorithm is associated with a set of hyperparameters
             for hyperparameter_index in self.algorithm_map[action["action"]]:
                 action, input_tensor, hidden = self._decode_action(
-                    input_tensor, hidden, hyperparameter_index)
+                    input_tensor, aux, metafeatures, hidden,
+                    hyperparameter_index)
                 actions.append(action)
-        return actions
+        return actions, Variable(input_tensor.data)
 
-    def _decode_action(self, input_tensor, hidden, action_index):
+    def _decode_action(
+            self, input_tensor, aux, metafeatures, hidden, action_index):
         action_probs, hidden = self.forward(
-            input_tensor, hidden, action_index)
+            input_tensor, aux, metafeatures, hidden, action_index)
         action = self.select_action(action_probs, action_index)
         input_tensor = self.encode_embedding(
             action_index, action["choice_index"])
@@ -179,6 +195,10 @@ class CASHController(nn.Module):
     def init_hidden(self):
         """Initialize hidden layer with zeros."""
         return Variable(torch.zeros(self.num_rnn_layers, 1, self.hidden_size))
+
+    def init_action(self):
+        """Initialize action input state."""
+        return Variable(torch.zeros(1, 1, self.input_size))
 
     def save(self, path):
         """Save weights and configuration."""

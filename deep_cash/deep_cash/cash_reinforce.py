@@ -5,7 +5,6 @@ import torch
 import torch.nn as nn
 
 from collections import defaultdict
-from copy import deepcopy
 from torch.autograd import Variable
 
 from . import utils
@@ -85,6 +84,7 @@ class CASHReinforce(object):
         # the buffer history keeps track of baseline rewards across all the
         # episodes, used for record-keeping and testing purposes.
         self._baseline_buffer_history = defaultdict(list)
+
         for i_episode in range(self._n_episodes):
             self.t_env.sample_data_env()
             self._validation_scores = []
@@ -164,23 +164,55 @@ class CASHReinforce(object):
 
     def _fit_episode(self, n_iter, verbose):
         self._n_valid_mlf = 0
+        prev_reward, prev_action = 0, self.controller.init_action()
         for i_iter in range(n_iter):
-            self._fit_iter(self.t_env.sample())
+            prev_reward, prev_action = self._fit_iter(
+                self.t_env.sample(), prev_reward, prev_action)
             if verbose:
                 print(
                     "iter %d - n valid mlf: %d/%d" % (
                         i_iter, self._n_valid_mlf, i_iter + 1),
                     sep=" ", end="\r", flush=True)
 
-    def _fit_iter(self, t_state):
-        actions = self.select_actions(
-            metafeature_tensor(t_state), self.controller.init_hidden())
+    def _fit_iter(self, t_state, prev_reward, prev_action):
+        # initialize reward
+        actions, last_action_activation = self.controller.decode(
+            init_input_tensor=prev_action,
+            aux=aux_tensor(prev_reward),
+            metafeatures=metafeature_tensor(t_state),
+            init_hidden=self.controller.init_hidden())
         reward = self.evaluate_actions(actions)
         self._update_log_prob_buffer(actions)
         self._update_reward_buffer(reward)
         self._update_baseline_reward_buffer(reward)
         for k, v in self._baseline_fn["buffer"].items():
             self._baseline_buffer_history[k].extend(v)
+        return reward, last_action_activation
+
+    def select_actions(self, init_input_tensor, aux, init_hidden):
+        """Select action sequence given initial input and hidden tensors."""
+        return self.controller.decode(init_input_tensor, aux, init_hidden)
+
+    def evaluate_actions(self, actions):
+        """Evaluate actions on the validation set of the data environment."""
+        algorithms, hyperparameters = self._get_mlf_components(actions)
+        mlf = self.controller.a_space.create_ml_framework(
+            algorithms, hyperparameters=hyperparameters,
+            env_dep_hyperparameters=self.t_env.env_dep_hyperparameters())
+        reward = self.t_env.evaluate(mlf)
+        if reward is None:
+            return self.t_env.error_reward
+        else:
+            self._n_valid_mlf += 1
+            self._validation_scores.append(reward)
+            self._successful_mlfs.append(mlf)
+            self._algorithm_sets.append(algorithms)
+            self._hyperparameter_sets.append(hyperparameters)
+            if self._best_validation_score is None or \
+                    reward > self._best_validation_score:
+                self._best_validation_score = reward
+                self._best_mlf = mlf
+            return reward
 
     def backward(self, show_grad=False):
         """End an episode with one backpropagation step.
@@ -242,32 +274,6 @@ class CASHReinforce(object):
 
         return loss.data[0]
 
-    def select_actions(self, init_input_tensor, init_hidden):
-        """Select action sequence given initial input and hidden tensors."""
-        actions = self.controller.decode(init_input_tensor, init_hidden)
-        return actions
-
-    def evaluate_actions(self, actions):
-        """Evaluate actions on the validation set of the data environment."""
-        algorithms, hyperparameters = self._get_mlf_components(actions)
-        mlf = self.controller.a_space.create_ml_framework(
-            algorithms, hyperparameters=hyperparameters,
-            env_dep_hyperparameters=self.t_env.env_dep_hyperparameters())
-        reward = self.t_env.evaluate(mlf)
-        if reward is None:
-            return self.t_env.error_reward
-        else:
-            self._n_valid_mlf += 1
-            self._validation_scores.append(reward)
-            self._successful_mlfs.append(mlf)
-            self._algorithm_sets.append(algorithms)
-            self._hyperparameter_sets.append(hyperparameters)
-            if self._best_validation_score is None or \
-                    reward > self._best_validation_score:
-                self._best_validation_score = reward
-                self._best_mlf = mlf
-            return reward
-
     def _update_log_prob_buffer(self, actions):
         self.controller.log_prob_buffer.append(
             [a["action_log_prob"] for a in actions])
@@ -328,6 +334,17 @@ def metafeature_tensor(t_state):
         metafeature_dim is a continuous feature.
     """
     return Variable(utils._create_metafeature_tensor(t_state, [None]))
+
+
+def aux_tensor(prev_reward):
+    """Create an auxiliary input tensor for previous reward and action.
+
+    This is just the reward from the most recent iteration. At the beginning
+    of each episode, the previous reward is reset to 0.
+    """
+    r_tensor = torch.zeros(1, 1, 1)
+    r_tensor += prev_reward
+    return Variable(r_tensor)
 
 
 def print_actions(actions):
