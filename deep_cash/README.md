@@ -141,7 +141,7 @@ REINFORCE algorithm.
   `HyperparameterRNN` that seperately predict the estimators/transformers and
   hyperparameters of the ML Framework.
 - [X] basic implementation of the structured `CashController` architecture
-- [ ] refine `CashController` with baseline function prior such that each data
+- [X] refine `CashController` with baseline function prior such that each data
   environment maps to its own value function (in this case, the exponential
   mean of rewards per episode).
 - [ ] add support for normalizing the reward signal before computing gradients,
