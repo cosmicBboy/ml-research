@@ -98,11 +98,21 @@ class CASHReinforce(object):
             if procnum is not None:
                 msg = "proc num: %d, %s" % (procnum, msg)
             print("\n" + msg)
+            # since the action sequences within episode are no longer
+            # independent, need to get a single baseline value (the
+            # exponential mean of the return for that episode)
+            buffer = self._baseline_buffer()
+            if len(buffer) == 0:
+                baseline = self._baseline_current()
+            else:
+                baseline = buffer[-1]
+                del self._baseline_buffer()[:]
+
             self._fit_episode(n_iter, verbose)
 
             # episode stats
             mean_reward = np.mean(self.controller.reward_buffer)
-            loss = self.backward()
+            loss = self.backward(baseline)
             if len(self._validation_scores) > 0:
                 mean_validation_score = np.mean(self._validation_scores)
                 std_validation_score = np.std(self._validation_scores)
@@ -214,7 +224,7 @@ class CASHReinforce(object):
                 self._best_mlf = mlf
             return reward
 
-    def backward(self, show_grad=False):
+    def backward(self, baseline, show_grad=False):
         """End an episode with one backpropagation step.
 
         Since REINFORCE algorithm is a gradient ascent method, negate the log
@@ -240,18 +250,15 @@ class CASHReinforce(object):
           and the gradients will make the selected action prob even less likely
         """
         loss = []
-        baseline_reward_buffer = self._baseline_buffer()
         _check_buffers(
             self.controller.log_prob_buffer,
-            self.controller.reward_buffer,
-            baseline_reward_buffer)
+            self.controller.reward_buffer)
         # compute loss
-        for log_probs, r, b in zip(
+        for log_probs, r in zip(
                 self.controller.log_prob_buffer,
-                self.controller.reward_buffer,
-                baseline_reward_buffer):
+                self.controller.reward_buffer):
             for a in log_probs:
-                r = r - b if self._with_baseline else r
+                r = r - baseline if self._with_baseline else r
                 loss.append(-a * r)
 
         # one step of gradient descent
@@ -270,7 +277,6 @@ class CASHReinforce(object):
         # reset rewards and log probs
         del self.controller.reward_buffer[:]
         del self.controller.log_prob_buffer[:]
-        del baseline_reward_buffer[:]
 
         return loss.data[0]
 
@@ -312,17 +318,14 @@ class CASHReinforce(object):
         return algorithms, hyperparameters
 
 
-def _check_buffers(log_prob_buffer, reward_buffer, baseline_reward_buffer):
+def _check_buffers(log_prob_buffer, reward_buffer):
     n_abuf = len(log_prob_buffer)
     n_rbuf = len(reward_buffer)
-    n_bbuf = len(baseline_reward_buffer)
-    if n_abuf != n_rbuf != n_bbuf:
+    if n_abuf != n_rbuf:
         raise ValueError(
             "all buffers need the same length, found:\n"
             "log_prob_buffer = %d\n"
-            "reward_buffer = %d\n"
-            "baseline_reward_buffer = %d" % (
-                n_abuf, n_rbuf, n_bbuf))
+            "reward_buffer = %d\n" % (n_abuf, n_rbuf))
 
 
 def metafeature_tensor(t_state):
