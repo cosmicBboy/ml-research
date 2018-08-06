@@ -10,6 +10,7 @@ from torch.autograd import Variable
 from . import utils
 
 SINGLE_BASELINE = "all_data_envs"
+EPSILON = np.finfo(np.float32).eps.item()
 
 
 class CASHReinforce(object):
@@ -17,7 +18,7 @@ class CASHReinforce(object):
 
     def __init__(self, controller, t_env, beta=0.99,
                  with_baseline=True, single_baseline=True,
-                 metrics_logger=None):
+                 normalize_reward=True, metrics_logger=None):
         """Initialize CASH Reinforce Algorithm.
 
         :param pytorch.nn.Module controller: A CASH controller to select
@@ -31,6 +32,8 @@ class CASHReinforce(object):
         :param bool single_baseline: if True, maintains a single baseline
             reward buffer, otherwise maintain a separate baseline buffer for
             each data environment available to the task environment.
+        :param bool normalize_reward: whether or not to mean-center and
+            standard-deviation-scale the reward signal for backprop.
         :param callable metrics_logger: loggin function to use. The function
             takes as input a CASHReinforce object and prints out a message,
             with access to all properties in CASHReinforce.
@@ -44,6 +47,7 @@ class CASHReinforce(object):
         self._beta = beta
         self._with_baseline = with_baseline
         self._single_baseline = single_baseline
+        self._normalize_reward = normalize_reward
         self._metrics_logger = metrics_logger
 
     def fit(self, optim, optim_kwargs, n_episodes=100, n_iter=100,
@@ -257,13 +261,17 @@ class CASHReinforce(object):
         _check_buffers(
             self.controller.log_prob_buffer,
             self.controller.reward_buffer)
+
+        R = torch.FloatTensor(self.controller.reward_buffer)
+        if self._with_baseline:
+            R = R - baseline
+        if self._normalize_reward:
+            R = normalize_reward(R)
+
         # compute loss
-        for log_probs, r in zip(
-                self.controller.log_prob_buffer,
-                self.controller.reward_buffer):
-            for a in log_probs:
-                r = r - baseline if self._with_baseline else r
-                loss.append(-a * r)
+        loss = [-a * r
+                for log_probs, r in zip(self.controller.log_prob_buffer, R)
+                for a in log_probs]
 
         # one step of gradient descent
         self.optim.zero_grad()
@@ -329,6 +337,16 @@ def _check_buffers(log_prob_buffer, reward_buffer):
             "all buffers need the same length, found:\n"
             "log_prob_buffer = %d\n"
             "reward_buffer = %d\n" % (n_abuf, n_rbuf))
+
+
+def normalize_reward(reward_buffer):
+    """Mean-center and std-rescale the reward buffer.
+
+    :param torch.FloatTensor reward_buffer: list of rewards from an episode
+    :returns: normalized tensor
+    """
+    return (reward_buffer - reward_buffer.mean()).div(
+        reward_buffer.std() + EPSILON)
 
 
 def metafeature_tensor(t_state):
