@@ -28,6 +28,7 @@ ENV_NAMES = env_names()
 @click.argument("datasets", nargs=-1)
 @click.option("--output_fp", default=DEFAULT_OUTPUT)
 @click.option("--n_trials", default=1)
+@click.option("--input_size", default=30)
 @click.option("--hidden_size", default=30)
 @click.option("--output_size", default=30)
 @click.option("--n_layers", default=3)
@@ -45,9 +46,9 @@ ENV_NAMES = env_names()
 @click.option("--logger", default=None)
 @click.option("--fit_verbose", default=1)
 def run_experiment(
-        datasets, output_fp, n_trials, hidden_size, output_size, n_layers,
-        dropout_rate, beta, with_baseline, single_baseline, normalize_reward,
-        n_episodes, n_iter, learning_rate, error_reward,
+        datasets, output_fp, n_trials, input_size, hidden_size, output_size,
+        n_layers, dropout_rate, beta, with_baseline, single_baseline,
+        normalize_reward, n_episodes, n_iter, learning_rate, error_reward,
         per_framework_time_limit, per_framework_memory_limit, logger,
         fit_verbose):
     """Run deep cash experiment with single configuration."""
@@ -102,7 +103,7 @@ def run_experiment(
 
         controller = CASHController(
             metafeature_size=metafeatures_dim,
-            input_size=a_space.n_components,
+            input_size=input_size,
             hidden_size=hidden_size,
             output_size=output_size,
             a_space=a_space,

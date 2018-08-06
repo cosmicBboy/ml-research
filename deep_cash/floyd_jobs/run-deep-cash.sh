@@ -1,11 +1,15 @@
-# experiment: error reward is negative instead of zero
+# experiment: error reward is negative, small neural network
 floyd run --env pytorch-0.3 --cpu2 \
-    --message 'baseline_negative_error_reward=-0.1' \
+    --message 'shallow-thin-nn0_negative_error_reward=-0.1' \
     ". ./.env && \
     python experiments/run_deep_cash.py \
     --output_fp=/output \
     --n_trials=3 \
-    --n_layers=30 \
+    --input_size=30 \
+    --hidden_size=30 \
+    --output_size=30 \
+    --n_layers=3 \
+    --dropout_rate=0.2 \
     --beta=0.9 \
     --with_baseline \
     --multi_baseline \
