@@ -1,14 +1,14 @@
-# experiment: error reward is negative, medium neural network
+# experiment: error reward is negative, large neural network
 floyd run --env pytorch-0.3 --cpu2 \
-    --message 'medium_nn0_negative_error_reward=-0.1' \
+    --message 'large_nn0_negative_error_reward=-0.1' \
     ". ./.env && \
     python experiments/run_deep_cash.py \
     --output_fp=/output \
     --n_trials=3 \
-    --input_size=60 \
-    --hidden_size=60 \
-    --output_size=60 \
-    --n_layers=6 \
+    --input_size=120 \
+    --hidden_size=120 \
+    --output_size=120 \
+    --n_layers=12 \
     --dropout_rate=0.2 \
     --beta=0.9 \
     --with_baseline \
