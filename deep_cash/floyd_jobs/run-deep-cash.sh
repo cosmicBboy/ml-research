@@ -1,6 +1,6 @@
-# experiment: train controller with normalized rewards
+# experiment: error reward is negative instead of zero
 floyd run --env pytorch-0.3 --cpu2 \
-    --message 'baseline_normalized_reward' \
+    --message 'baseline_negative_error_reward=-0.1' \
     ". ./.env && \
     python experiments/run_deep_cash.py \
     --output_fp=/output \
@@ -10,6 +10,7 @@ floyd run --env pytorch-0.3 --cpu2 \
     --with_baseline \
     --multi_baseline \
     --normalize_reward \
+    --error_reward=-0.1 \
     --n_episodes=500 \
     --n_iter=10 \
     --per_framework_time_limit=600 \
