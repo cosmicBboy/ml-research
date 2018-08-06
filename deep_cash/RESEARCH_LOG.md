@@ -1,5 +1,18 @@
 # Research Log
 
+## 08/06/2018
+
+Need to run the following experiments:
+- Train controller with the mean-centered, std-rescaled `reward - baseline`.
+- Train controller using negative rewards for ML framework proposals that fail
+  to fit (try various values, `[-0.1, -0.25, -0.5, -1]`)
+
+There are a couple of tuning experiments to try as well:
+- `learning_rate`
+- `number rnn layers`
+- `number hidden units`
+
+
 ## 07/30/2018
 
 Adding notes on research ideas:

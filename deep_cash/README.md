@@ -144,10 +144,12 @@ REINFORCE algorithm.
 - [X] refine `CashController` with baseline function prior such that each data
   environment maps to its own value function (in this case, the exponential
   mean of rewards per episode).
-- [ ] implement basic meta-RL algorithm as described here in this
+- [X] implement basic meta-RL algorithm as described here in this
   [paper][meta-rl] in particular, feed `CashController` auxiliary inputs:
   - previous reward
   - previous actions
+- [ ] normalize `reward - baseline` (equivalent of advantage in this system)
+  by mean-centering and standard-deviation-rescaling.
 - [ ] extend meta-RL algorithm by implementing memory as a lookup table that
   maps data environments to the most recent hidden state from the same data
   environment.
