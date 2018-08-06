@@ -48,7 +48,6 @@ def _cash_reinforce(controller, task_env, **kwargs):
         task_env,
         beta=0.9,
         metrics_logger=None,
-        with_baseline=True,
         **kwargs)
 
 
@@ -67,7 +66,7 @@ def test_cash_reinforce_fit():
     t_env = _task_environment()
     a_space = _algorithm_space()
     controller = _cash_controller(a_space)
-    reinforce = _cash_reinforce(controller, t_env)
+    reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
     reinforce.fit(
         n_episodes=n_episodes,
         **_fit_kwargs())
@@ -88,9 +87,34 @@ def test_cash_reinforce_fit_multi_baseline():
     t_env = _task_environment()
     a_space = _algorithm_space()
     controller = _cash_controller(a_space)
-    reinforce = _cash_reinforce(controller, t_env, single_baseline=False)
+    reinforce = _cash_reinforce(
+        controller, t_env, with_baseline=True, single_baseline=False)
     reinforce.fit(
         n_episodes=n_episodes,
         **_fit_kwargs())
     assert reinforce._baseline_buffer_history["iris"] != \
         reinforce._baseline_buffer_history["wine"]
+
+
+def test_cash_zero_gradient():
+    """Test that gradient is zero if the reward is zero."""
+    torch.manual_seed(100)  # ensure weight initialized is deterministic
+    n_episodes = 20
+    t_env = _task_environment()
+    a_space = _algorithm_space()
+    controller = _cash_controller(a_space)
+    # don't train with baseline since this will modify the reward signal when
+    # computing the `advantage = reward - baseline`.
+    reinforce = _cash_reinforce(controller, t_env, with_baseline=False)
+    fit_kwargs = _fit_kwargs()
+    fit_kwargs.update({"n_iter": 1})
+    reinforce.fit(
+        n_episodes=n_episodes,
+        **_fit_kwargs())
+    # make sure there's at least one zero-valued aggregate gradient
+    assert any([g == 0 for g in reinforce.aggregate_gradients])
+    for r, g in zip(reinforce.mean_rewards, reinforce.aggregate_gradients):
+        if r == 0:
+            assert g == 0
+        else:
+            assert g != 0

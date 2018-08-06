@@ -67,6 +67,7 @@ class CASHReinforce(object):
         self.data_env_names = []
         self.losses = []
         self.mean_rewards = []
+        self.aggregate_gradients = []
         self.mean_validation_scores = []
         self.std_validation_scores = []
         self.n_successful_mlfs = []
@@ -100,7 +101,7 @@ class CASHReinforce(object):
             print("\n" + msg)
             # since the action sequences within episode are no longer
             # independent, need to get a single baseline value (the
-            # exponential mean of the return for that episode)
+            # exponential mean of the return for the previous episode)
             buffer = self._baseline_buffer()
             if len(buffer) == 0:
                 baseline = self._baseline_current()
@@ -112,7 +113,7 @@ class CASHReinforce(object):
 
             # episode stats
             mean_reward = np.mean(self.controller.reward_buffer)
-            loss = self.backward(baseline)
+            loss, grad_agg = self.backward(baseline)
             if len(self._validation_scores) > 0:
                 mean_validation_score = np.mean(self._validation_scores)
                 std_validation_score = np.std(self._validation_scores)
@@ -130,6 +131,7 @@ class CASHReinforce(object):
             self.data_env_names.append(self.t_env.data_env_name)
             self.losses.append(loss)
             self.mean_rewards.append(mean_reward)
+            self.aggregate_gradients.append(grad_agg)
             self.mean_validation_scores.append(mean_validation_score)
             self.std_validation_scores.append(std_validation_score)
             self.n_successful_mlfs.append(n_successful_mlfs)
@@ -147,10 +149,12 @@ class CASHReinforce(object):
                     "\nloss: %0.02f - "
                     "mean performance: %0.02f - "
                     "mean reward: %0.02f - "
+                    "grad agg: %0.02f - "
                     "mlf diversity: %d/%d" % (
                         loss,
                         mean_validation_score,
                         mean_reward,
+                        grad_agg,
                         n_unique_mlfs,
                         n_successful_mlfs)
                 )
@@ -224,7 +228,7 @@ class CASHReinforce(object):
                 self._best_mlf = mlf
             return reward
 
-    def backward(self, baseline, show_grad=False):
+    def backward(self, baseline):
         """End an episode with one backpropagation step.
 
         Since REINFORCE algorithm is a gradient ascent method, negate the log
@@ -269,16 +273,15 @@ class CASHReinforce(object):
         nn.utils.clip_grad_norm(self.controller.parameters(), 20)
         self.optim.step()
 
-        if show_grad:
-            print("\n\nGradients")
-            for param in self.controller.parameters():
-                print(param.grad.data.sum())
+        grad_agg = sum([
+            p.grad.data.sum() for p in self.controller.parameters()
+            if p.grad is not None])
 
         # reset rewards and log probs
         del self.controller.reward_buffer[:]
         del self.controller.log_prob_buffer[:]
 
-        return loss.data[0]
+        return loss.data[0], grad_agg
 
     def _update_log_prob_buffer(self, actions):
         self.controller.log_prob_buffer.append(
