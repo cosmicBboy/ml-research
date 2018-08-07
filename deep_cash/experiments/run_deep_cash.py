@@ -45,17 +45,18 @@ ENV_NAMES = env_names()
 @click.option("--per_framework_memory_limit", default=3077)
 @click.option("--logger", default=None)
 @click.option("--fit_verbose", default=1)
-@click.option("--random_seed", default=1000)
+@click.option("--controller_seed", default=1000)
+@click.option("--task_environment_seed", default=100)
 def run_experiment(
         datasets, output_fp, n_trials, input_size, hidden_size, output_size,
         n_layers, dropout_rate, beta, with_baseline, single_baseline,
         normalize_reward, n_episodes, n_iter, learning_rate, error_reward,
         per_framework_time_limit, per_framework_memory_limit, logger,
-        fit_verbose, random_seed):
+        fit_verbose, controller_seed, task_environment_seed):
     """Run deep cash experiment with single configuration."""
     print("Running cash controller experiment with %d %s" % (
         n_trials, "trials" if n_trials > 1 else "trial"))
-    torch.manual_seed(random_seed)
+    torch.manual_seed(controller_seed)
     datasets = list(datasets)
     for ds in datasets:
         if ds not in ENV_NAMES:
@@ -90,7 +91,7 @@ def run_experiment(
         t_env = TaskEnvironment(
             f1_score,
             scorer_kwargs={"average": "weighted"},
-            random_state=100,
+            random_state=task_environment_seed,
             per_framework_time_limit=per_framework_time_limit,
             per_framework_memory_limit=per_framework_memory_limit,
             dataset_names=datasets,
