@@ -15,9 +15,9 @@ floyd run --env pytorch-0.3 --cpu2 \
     --with_baseline \
     --multi_baseline \
     --normalize_reward \
-    --n_episodes=10000 \
-    --n_iter=10 \
-    --learning_rate=0.0006 \
+    --n_episodes=2000 \
+    --n_iter=50 \
+    --learning_rate=0.003 \
     --error_reward=0 \
     --per_framework_time_limit=180 \
     --per_framework_memory_limit=5000 \
