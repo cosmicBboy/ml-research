@@ -154,8 +154,6 @@ def load_model(path, model_class, *args, **kwargs):
 def _create_metafeature_tensor(metafeatures, seq):
     """Convert a metafeature vector into a tensor.
 
-    For now this will be a single category indicating `is_executable`.
-
     :returns Tensor: dim <string_length x 1 x metafeature_dim>, where
         metafeature_dim is a continuous feature.
     """

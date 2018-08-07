@@ -1,25 +1,25 @@
-# experiment: error reward is negative, medium neural network
-# tuning the learning rate 0.0001
+# experiment: error reward is zero, medium neural network
+# with stricter memory and time limits
 floyd run --env pytorch-0.3 --cpu2 \
-    --message 'medium_nn0_learning_rate_0.0001' \
+    --message 'medium_nn1_stricter_limits' \
     ". ./.env && \
     python experiments/run_deep_cash.py \
     --output_fp=/output \
-    --n_trials=2 \
-    --input_size=60 \
+    --n_trials=1 \
+    --input_size=30 \
     --hidden_size=60 \
-    --output_size=60 \
-    --n_layers=6 \
-    --dropout_rate=0.2 \
+    --output_size=30 \
+    --n_layers=3 \
+    --dropout_rate=0.3 \
     --beta=0.9 \
     --with_baseline \
     --multi_baseline \
     --normalize_reward \
-    --n_episodes=500 \
+    --n_episodes=10000 \
     --n_iter=10 \
-    --learning_rate=0.0001 \
-    --error_reward=-0.1 \
-    --per_framework_time_limit=600 \
-    --per_framework_memory_limit=10000 \
-    --logger=floyd_multiprocess \
+    --learning_rate=0.0006 \
+    --error_reward=0 \
+    --per_framework_time_limit=180 \
+    --per_framework_memory_limit=5000 \
+    --logger=floyd \
     --fit_verbose=0"

@@ -193,7 +193,6 @@ class CASHReinforce(object):
                     sep=" ", end="\r", flush=True)
 
     def _fit_iter(self, t_state, prev_reward, prev_action):
-        # initialize reward
         actions, last_action_activation = self.controller.decode(
             init_input_tensor=prev_action,
             aux=aux_tensor(prev_reward),
