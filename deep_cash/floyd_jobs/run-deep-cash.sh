@@ -1,7 +1,7 @@
 # experiment: error reward is negative, medium neural network
-# tuning the learning rate 0.003
+# tuning the learning rate 0.001
 floyd run --env pytorch-0.3 --cpu2 \
-    --message 'medium_nn0_learning_rate_0.003' \
+    --message 'medium_nn0_learning_rate_0.001' \
     ". ./.env && \
     python experiments/run_deep_cash.py \
     --output_fp=/output \
@@ -17,7 +17,7 @@ floyd run --env pytorch-0.3 --cpu2 \
     --normalize_reward \
     --n_episodes=500 \
     --n_iter=10 \
-    --learning_rate=0.003 \
+    --learning_rate=0.001 \
     --error_reward=-0.1 \
     --per_framework_time_limit=600 \
     --per_framework_memory_limit=10000 \
