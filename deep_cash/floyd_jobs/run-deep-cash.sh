@@ -1,8 +1,8 @@
 # experiment: error reward is negative, medium neural network
 # with stricter memory and time limits, lower beta (so exponential mean of
-# past rewards influence baseline more), and 100 iterations per episode.
+# past rewards influence baseline more), and 64 iterations per episode.
 floyd run --env pytorch-0.3 --cpu2 \
-    --message 'medium_nn1_stricter_limits_error_reward_-0.05_batch_100' \
+    --message 'medium_nn1_stricter_limits_error_reward_-0.05_batch_64' \
     ". ./.env && \
     python experiments/run_deep_cash.py \
     --output_fp=/output \
@@ -16,8 +16,8 @@ floyd run --env pytorch-0.3 --cpu2 \
     --with_baseline \
     --multi_baseline \
     --normalize_reward \
-    --n_episodes=500 \
-    --n_iter=100 \
+    --n_episodes=1000 \
+    --n_iter=64 \
     --learning_rate=0.003 \
     --error_reward=-0.05 \
     --per_framework_time_limit=180 \
