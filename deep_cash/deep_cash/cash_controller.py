@@ -143,6 +143,8 @@ class CASHController(nn.Module):
 
         Where the actions are a sequence of algorithm components and
         hyperparameter settings.
+
+        TODO: add unit tests for this method and related methods.
         """
         input_tensor, hidden = init_input_tensor, init_hidden
         actions = []
@@ -173,7 +175,7 @@ class CASHController(nn.Module):
         action_classifier = self.action_classifiers[action_index]
         action_dist = Categorical(action_probs)
         choice_index = action_dist.sample()
-        _choice_index = int(action_dist.sample().data)
+        _choice_index = int(choice_index.data)
         return {
             "action_type": action_classifier["action_type"],
             "action_name": action_classifier["name"],
