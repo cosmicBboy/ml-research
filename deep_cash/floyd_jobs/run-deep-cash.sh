@@ -1,4 +1,4 @@
-# experiment: error reward is zero, medium neural network
+# experiment: error reward is negative, medium neural network
 # with stricter memory and time limits, lower beta (so exponential mean of
 # past rewards influence baseline more), and 16 iterations per episode.
 floyd run --env pytorch-0.3 --cpu2 \
@@ -19,7 +19,7 @@ floyd run --env pytorch-0.3 --cpu2 \
     --n_episodes=100 \
     --n_iter=16 \
     --learning_rate=0.003 \
-    --error_reward=0 \
+    --error_reward=-0.05 \
     --per_framework_time_limit=180 \
     --per_framework_memory_limit=5000 \
     --logger=floyd_multiprocess \
