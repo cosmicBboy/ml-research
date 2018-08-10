@@ -1,5 +1,54 @@
 # Research Log
 
+## 09/05/2018
+
+### Correct Baseline Controller Implementation
+
+Completed analysis of experiments from floydhub jobs 150-151 looking at the
+training metrics of the correct implementation of the controller. There was
+a nasty bug in which the controller was sampling the softmax action
+distribution twice, leading to two discrepent values: the discrete action
+choice did not necessarily correspond to its correct action probability.
+
+The analysis can be found in:
+`analysis/20180809_experiments_jobs_150_151.ipynb`
+
+### Entropy Coefficient Hyperparemeter Tuning Coefficients
+
+Also added an analysis of experiments tuning the `entropy_coef` hyperparameter,
+which modulates the extent to which the loss function penalizes action
+probability distributions that have lower entropy (higher confidence in some
+particular set of actions), thereby encouraging exploration.
+
+The plots/notes can be found in:
+`analysis/20180902_experiments_entropy_jobs_166-175.ipynb`
+
+## 09/03/2018
+
+Adding some notes on the REINFORCE algorithm (actually generalizeable to other
+RL algos):
+
+Since the REINFORCE algorithm is a gradient ascent method, negate the log
+probability in order to do gradient descent on the negative expected rewards.
+
+- If reward is positive and selected action prob is close to 1
+  (-log prob ~= 0), policy loss will be positive and close to 0,
+  controller's weights will be adjusted by gradients such that the
+  selected action is more likely (i.e. by pushing action prob closer to 1)
+- If reward is positive and selection action prob is close to 0
+  (-log prob > 0), policy loss will be a large positive number,
+  controller's weights will be adjusted such that selected
+  action is less likely (i.e. by pushing action prob closer to 1).
+- If reward is negative and selected action prob is close to 1
+  (-log prob ~= 0), policy loss will be negative but close to 0,
+  meaning that gradients will adjust the weights to minimize policy
+  loss (make it more negative) by making the selected action
+  probability even more negative (i.e. by pushing the action prob closer to 0).
+- If reward is negative and selected action prob is close to 0,
+  (-log prob > 0), then the policy loss will be a large negative number
+  and the gradients will make the selected action prob even less likely
+  (i.e. by pushing the action prob closer to 0).
+
 ## 08/06/2018
 
 Need to run the following experiments:
