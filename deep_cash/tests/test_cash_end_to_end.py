@@ -1,5 +1,7 @@
 """End to end tests for fitting a cash controllers."""
 
+import mock
+import numpy as np
 import pandas as pd
 import torch
 
@@ -118,3 +120,32 @@ def test_cash_zero_gradient():
             assert g == 0
         else:
             assert g != 0
+
+
+def test_cash_entropy_regularizer():
+    """Test that losses w/ entropy regularization are lower than baseline."""
+    losses = {}
+    for model, kwargs in [
+            ("baseline", {
+                "with_baseline": True,
+                "entropy_coef": 0.0}),
+            ("entropy_regularized", {
+                "with_baseline": True,
+                "entropy_coef": 0.5})]:
+        torch.manual_seed(100)  # ensure weight initialized is deterministic
+        # only run for a few episodes because model losses
+        # become incomparable as models diverge
+        n_episodes = 3
+        t_env = _task_environment()
+        a_space = _algorithm_space()
+        controller = _cash_controller(a_space)
+        reinforce = _cash_reinforce(controller, t_env, **kwargs)
+        fit_kwargs = _fit_kwargs()
+        fit_kwargs.update({"n_iter": 4})
+        reinforce.fit(
+            n_episodes=n_episodes,
+            **_fit_kwargs())
+        losses[model] = reinforce.losses
+    assert (
+        np.array(losses["entropy_regularized"]) <
+        np.array(losses["baseline"])).all()

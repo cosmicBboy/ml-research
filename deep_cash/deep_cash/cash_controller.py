@@ -67,6 +67,7 @@ class CASHController(nn.Module):
         self.algorithm_map = defaultdict(list)
         self.log_prob_buffer = []
         self.reward_buffer = []
+        self.entropy_buffer = []
 
         # architecture specification
         self.rnn = nn.GRU(
@@ -137,8 +138,7 @@ class CASHController(nn.Module):
         action_probs = softmax(dense(rnn_output))
         return action_probs, hidden
 
-    def decode(
-            self, init_input_tensor, aux, metafeatures, init_hidden):
+    def decode(self, init_input_tensor, aux, metafeatures, init_hidden):
         """Decode a metafeature tensor to sequence of actions.
 
         Where the actions are a sequence of algorithm components and
@@ -159,7 +159,7 @@ class CASHController(nn.Module):
                     input_tensor, aux, metafeatures, hidden,
                     hyperparameter_index)
                 actions.append(action)
-        return actions, Variable(input_tensor.data)
+        return actions, input_tensor
 
     def _decode_action(
             self, input_tensor, aux, metafeatures, hidden, action_index):
@@ -173,8 +173,8 @@ class CASHController(nn.Module):
     def select_action(self, action_probs, action_index):
         """Select action based on action probability distribution."""
         action_classifier = self.action_classifiers[action_index]
-        action_dist = Categorical(action_probs)
-        choice_index = action_dist.sample()
+        log_action_probs = action_probs.log()
+        choice_index = Categorical(action_probs).sample()
         _choice_index = int(choice_index.data)
         return {
             "action_type": action_classifier["action_type"],
@@ -182,7 +182,8 @@ class CASHController(nn.Module):
             "choices": action_classifier["choices"],
             "choice_index": _choice_index,
             "action": action_classifier["choices"][_choice_index],
-            "action_log_prob": action_dist.log_prob(choice_index),
+            "log_prob": log_action_probs.index_select(1, choice_index),
+            "entropy": -(log_action_probs * action_probs).sum(1, keepdim=True)
         }
 
     def encode_embedding(self, action_index, choice_index):

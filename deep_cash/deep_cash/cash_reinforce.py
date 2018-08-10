@@ -16,9 +16,16 @@ EPSILON = np.finfo(np.float32).eps.item()
 class CASHReinforce(object):
     """Reinforce component of deep-cash algorithm."""
 
-    def __init__(self, controller, t_env, beta=0.99,
-                 with_baseline=True, single_baseline=True,
-                 normalize_reward=True, metrics_logger=None):
+    def __init__(
+            self,
+            controller,
+            t_env,
+            beta=0.99,
+            entropy_coef=0.0,
+            with_baseline=True,
+            single_baseline=True,
+            normalize_reward=True,
+            metrics_logger=None):
         """Initialize CASH Reinforce Algorithm.
 
         :param pytorch.nn.Module controller: A CASH controller to select
@@ -27,6 +34,7 @@ class CASHReinforce(object):
             environments and evaluate proposed ml frameworks.
         :param float beta: hyperparameter for exponential moving average to
             compute baseline reward (used to regularize REINFORCE).
+        :param float entropy_coef: coefficient for entropy regularization.
         :param bool with_baseline: whether or not to regularize the controller
             with the exponential moving average of past rewards.
         :param bool single_baseline: if True, maintains a single baseline
@@ -45,6 +53,7 @@ class CASHReinforce(object):
         self.t_env = t_env
         self._logger = utils.init_logging(__file__)
         self._beta = beta
+        self._entropy_coef = entropy_coef
         self._with_baseline = with_baseline
         self._single_baseline = single_baseline
         self._normalize_reward = normalize_reward
@@ -76,8 +85,9 @@ class CASHReinforce(object):
         self.std_validation_scores = []
         self.n_successful_mlfs = []
         self.n_unique_mlfs = []
-        self.n_unique_hyperparameters = []
-        self.mlf_framework_diversity = []
+        self.n_unique_hyperparams = []
+        self.mlf_diversity = []
+        self.hyperparam_diversity = []
         self.best_validation_scores = []
         self.best_mlfs = []
 
@@ -92,6 +102,7 @@ class CASHReinforce(object):
 
         for i_episode in range(self._n_episodes):
             self.t_env.sample_data_env()
+            self._action_buffer = []
             self._validation_scores = []
             self._successful_mlfs = []
             self._algorithm_sets = []
@@ -113,39 +124,40 @@ class CASHReinforce(object):
                 baseline = buffer[-1]
                 del self._baseline_buffer()[:]
 
-            self._fit_episode(n_iter, verbose)
+            self.start_episode(n_iter, verbose)
 
-            # episode stats
-            mean_reward = np.mean(self.controller.reward_buffer)
-            loss, grad_agg = self.backward(baseline)
-            if len(self._validation_scores) > 0:
-                mean_validation_score = np.mean(self._validation_scores)
-                std_validation_score = np.std(self._validation_scores)
-            else:
-                mean_validation_score = np.nan
-                std_validation_score = np.nan
+            # accumulate stats
             n_successful_mlfs = len(self._successful_mlfs)
             n_unique_mlfs = len(set((tuple(s) for s in self._algorithm_sets)))
-            n_unique_hyperparameters = len(set(
+            n_unique_hyperparams = len(set(
                 [str(d.items()) for d in self._hyperparameter_sets]))
-            # accumulate stats
-            # TODO: track unique hyperparameter settings in order to compute
-            # number of unique hyperparameter settings, and number of unique
-            # hyperparameter settings per mlf pipeline.
+            mlf_diversity = utils._diversity_metric(
+                n_unique_mlfs, n_iter)
+            hyperparam_diversity = utils._diversity_metric(
+                n_unique_hyperparams, n_iter)
             self.data_env_names.append(self.t_env.data_env_name)
-            self.losses.append(loss)
-            self.mean_rewards.append(mean_reward)
-            self.aggregate_gradients.append(grad_agg)
-            self.mean_validation_scores.append(mean_validation_score)
-            self.std_validation_scores.append(std_validation_score)
+            self.mean_rewards.append(np.mean(self.controller.reward_buffer))
+            if len(self._validation_scores) > 0:
+                self.mean_validation_scores.append(
+                    np.mean(self._validation_scores))
+                self.std_validation_scores.append(
+                    np.std(self._validation_scores))
+            else:
+                self.mean_validation_scores.append(np.nan)
+                self.std_validation_scores.append(np.nan)
             self.n_successful_mlfs.append(n_successful_mlfs)
             self.n_unique_mlfs.append(n_unique_mlfs)
-            self.n_unique_hyperparameters.append(n_unique_hyperparameters)
-            self.mlf_framework_diversity.append(
-                utils._ml_framework_diversity(
-                    n_unique_mlfs, n_successful_mlfs))
+            self.n_unique_hyperparams.append(n_unique_hyperparams)
+            self.mlf_diversity.append(mlf_diversity)
+            self.hyperparam_diversity.append(hyperparam_diversity)
             self.best_validation_scores.append(self._best_validation_score)
             self.best_mlfs.append(self._best_mlf)
+
+            # backward pass through controller
+            loss, grad_agg = self.end_episode(
+                baseline, mlf_diversity, hyperparam_diversity)
+            self.losses.append(loss)
+            self.aggregate_gradients.append(grad_agg)
             if self._metrics_logger:
                 self._metrics_logger(self)
             else:
@@ -155,12 +167,12 @@ class CASHReinforce(object):
                     "mean reward: %0.02f - "
                     "grad agg: %0.02f - "
                     "mlf diversity: %d/%d" % (
-                        loss,
-                        mean_validation_score,
-                        mean_reward,
-                        grad_agg,
-                        n_unique_mlfs,
-                        n_successful_mlfs)
+                        self.losses[-1],
+                        self.mean_validation_scores[-1],
+                        self.mean_rewards[-1],
+                        self.aggregate_gradients[-1],
+                        self.n_unique_mlfs[-1],
+                        self.n_successful_mlfs[-1])
                 )
         return self
 
@@ -170,17 +182,21 @@ class CASHReinforce(object):
             "episode": range(1, self._n_episodes + 1),
             "data_env_names": self.data_env_names,
             "losses": self.losses,
+            "aggregate_gradients": self.aggregate_gradients,
             "mean_rewards": self.mean_rewards,
             "mean_validation_scores": self.mean_validation_scores,
             "std_validation_scores": self.std_validation_scores,
             "n_successful_mlfs": self.n_successful_mlfs,
             "n_unique_mlfs": self.n_unique_mlfs,
-            "n_unique_hyperparameters": self.n_unique_hyperparameters,
+            "n_unique_hyperparams": self.n_unique_hyperparams,
+            "mlf_diversity": self.mlf_diversity,
+            "hyperparam_diversity": self.hyperparam_diversity,
             "best_validation_scores": self.best_validation_scores,
             "best_mlfs": self.best_mlfs,
         }
 
-    def _fit_episode(self, n_iter, verbose):
+    def start_episode(self, n_iter, verbose):
+        """Begin training the controller."""
         self._n_valid_mlf = 0
         prev_reward, prev_action = 0, self.controller.init_action()
         for i_iter in range(n_iter):
@@ -193,73 +209,73 @@ class CASHReinforce(object):
                     sep=" ", end="\r", flush=True)
 
     def _fit_iter(self, t_state, prev_reward, prev_action):
-        actions, last_action_activation = self.controller.decode(
+        actions, action_activation = self.controller.decode(
             init_input_tensor=prev_action,
             aux=aux_tensor(prev_reward),
             metafeatures=metafeature_tensor(t_state),
             init_hidden=self.controller.init_hidden())
-        reward = self.evaluate_actions(actions)
+        reward = self.evaluate_actions(actions, action_activation)
         self._update_log_prob_buffer(actions)
         self._update_reward_buffer(reward)
+        self._update_entropy_buffer(actions)
         self._update_baseline_reward_buffer(reward)
         for k, v in self._baseline_fn["buffer"].items():
             self._baseline_buffer_history[k].extend(v)
-        return reward, last_action_activation
+        return reward, Variable(action_activation.data)
 
     def select_actions(self, init_input_tensor, aux, init_hidden):
         """Select action sequence given initial input and hidden tensors."""
         return self.controller.decode(init_input_tensor, aux, init_hidden)
 
-    def evaluate_actions(self, actions):
+    def evaluate_actions(self, actions, action_activation):
         """Evaluate actions on the validation set of the data environment."""
         algorithms, hyperparameters = self._get_mlf_components(actions)
         mlf = self.controller.a_space.create_ml_framework(
             algorithms, hyperparameters=hyperparameters,
             env_dep_hyperparameters=self.t_env.env_dep_hyperparameters())
         reward = self.t_env.evaluate(mlf)
+        self._action_buffer.append(action_activation)
+        self._algorithm_sets.append(algorithms)
+        self._hyperparameter_sets.append(hyperparameters)
         if reward is None:
             return self.t_env.error_reward
         else:
-            self._n_valid_mlf += 1
             self._validation_scores.append(reward)
+            self._n_valid_mlf += 1
             self._successful_mlfs.append(mlf)
-            self._algorithm_sets.append(algorithms)
-            self._hyperparameter_sets.append(hyperparameters)
             if self._best_validation_score is None or \
                     reward > self._best_validation_score:
                 self._best_validation_score = reward
                 self._best_mlf = mlf
             return reward
 
-    def backward(self, baseline):
+    def end_episode(
+            self,
+            baseline,
+            mlf_diversity,
+            h_diversity):
         """End an episode with one backpropagation step.
 
         Since REINFORCE algorithm is a gradient ascent method, negate the log
         probability in order to do gradient descent on the negative expected
         rewards.
-        - If reward is positive and selected action prob is close to 1
-          (-log prob ~= 0), policy loss will be positive and close to 0,
-          controller's weights will be adjusted by gradients such that the
-          selected action is more likely and the non-selected actions are less
-          likely.
-        - If reward is positive and selection action prob is close to 0
-          (-log prob > 0), policy loss will be a large positive number,
-          controller's weights will be adjusted such that selected
-          action is less likely and non-selected actions are more likely.
-        - If reward is negative and selected action prob is close to 1
-          (-log prob ~= 0), policy loss will be negative but close to 0,
-          meaning that gradients will adjust the weights to minimize policy
-          loss (make it more negative) by making the selected action
-          probability even more negative (push the selected action prob closer
-          to 0, which discourages the selection of this action).
-        - If reward is negative and selected action prob is close to 0,
-          (-log prob > 0), then the policy loss will be a large negative number
-          and the gradients will make the selected action prob even less likely
+
+        :param float baseline: baseline reward value, the exponential mean of
+            rewards over previous episodes.
+        :param float mlf_diversity: 1.0 means all successfully fitted mlfs
+            are unique, 0.0 if there is only a single unique mlf in the batch.
+        :param float h_diversity: 1.0 means all successfully
+            fitted mlfs are have unique hyperparameters, 0.0 if there is only a
+            single unique hyperparameter setting in the batch.
+        :returns: tuple of loss and aggregated gradient.
+        :rtype: tuple[float, float]
         """
-        loss = []
         _check_buffers(
             self.controller.log_prob_buffer,
-            self.controller.reward_buffer)
+            self.controller.reward_buffer,
+            self.controller.entropy_buffer)
+        self.optim.zero_grad()
+        n = len(self.controller.reward_buffer)
 
         R = torch.FloatTensor(self.controller.reward_buffer)
         if self._with_baseline:
@@ -268,13 +284,15 @@ class CASHReinforce(object):
             R = normalize_reward(R)
 
         # compute loss
-        loss = [-a * r
-                for log_probs, r in zip(self.controller.log_prob_buffer, R)
-                for a in log_probs]
+        loss = [-l * r - self._entropy_coef * e
+                for log_probs, r, entropies in zip(
+                    self.controller.log_prob_buffer, R,
+                    self.controller.entropy_buffer)
+                for l, e in zip(log_probs, entropies)]
+
+        loss = torch.cat(loss).sum().div(n)
 
         # one step of gradient descent
-        self.optim.zero_grad()
-        loss = torch.cat(loss).sum().div(len(self.controller.reward_buffer))
         loss.backward()
         # gradient clipping to prevent exploding gradient
         nn.utils.clip_grad_norm(self.controller.parameters(), 20)
@@ -285,17 +303,21 @@ class CASHReinforce(object):
             if p.grad is not None])
 
         # reset rewards and log probs
-        del self.controller.reward_buffer[:]
         del self.controller.log_prob_buffer[:]
+        del self.controller.reward_buffer[:]
+        del self.controller.entropy_buffer[:]
 
         return loss.data[0], grad_agg
 
     def _update_log_prob_buffer(self, actions):
         self.controller.log_prob_buffer.append(
-            [a["action_log_prob"] for a in actions])
+            [a["log_prob"] for a in actions])
 
     def _update_reward_buffer(self, reward):
         self.controller.reward_buffer.append(reward)
+
+    def _update_entropy_buffer(self, actions):
+        self.controller.entropy_buffer.append([a["entropy"] for a in actions])
 
     def _update_baseline_reward_buffer(self, reward):
         buffer = self._baseline_buffer()
@@ -328,24 +350,25 @@ class CASHReinforce(object):
         return algorithms, hyperparameters
 
 
-def _check_buffers(log_prob_buffer, reward_buffer):
+def _check_buffers(log_prob_buffer, reward_buffer, entropy_buffer):
     n_abuf = len(log_prob_buffer)
     n_rbuf = len(reward_buffer)
-    if n_abuf != n_rbuf:
+    n_ebuf = len(entropy_buffer)
+    if n_abuf != n_rbuf != n_ebuf:
         raise ValueError(
             "all buffers need the same length, found:\n"
             "log_prob_buffer = %d\n"
-            "reward_buffer = %d\n" % (n_abuf, n_rbuf))
+            "reward_buffer = %d\n"
+            "entropy_buffer = %d\n" % (n_abuf, n_rbuf, n_ebuf))
 
 
-def normalize_reward(reward_buffer):
+def normalize_reward(rbuffer):
     """Mean-center and std-rescale the reward buffer.
 
-    :param torch.FloatTensor reward_buffer: list of rewards from an episode
+    :param torch.FloatTensor rbuffer: list of rewards from an episode
     :returns: normalized tensor
     """
-    return (reward_buffer - reward_buffer.mean()).div(
-        reward_buffer.std() + EPSILON)
+    return (rbuffer - rbuffer.mean()).div(rbuffer.std() + EPSILON)
 
 
 def metafeature_tensor(t_state):

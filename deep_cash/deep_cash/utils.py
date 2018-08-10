@@ -206,8 +206,14 @@ def _ml_framework_string(ml_framework):
     return " > ".join(s[0] for s in ml_framework.steps)
 
 
-def _ml_framework_diversity(n_unique, n_successful):
-    return np.nan if n_successful == 0 else n_unique / float(n_successful)
+def _diversity_metric(n_unique, n_total):
+    return np.nan if n_total == 0 else \
+        0 if n_total == 1 else \
+        (n_unique - 1) / (n_total - 1)
+
+
+def uniformity_penalty(diversity_score):
+    return 1 - diversity_score
 
 
 def _hyperparameter_string(hyperparameters):

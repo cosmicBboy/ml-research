@@ -18,9 +18,9 @@ from deep_cash.utils import get_metafeatures_dim
 data_path = os.path.dirname(__file__) + "/artifacts"
 
 # hyperparameters
-n_episodes = 5
-n_iter = 5
-learning_rate = 0.005
+n_episodes = 1000
+n_iter = 10
+learning_rate = 0.003
 error_reward = 0
 logger = None
 fit_verbose = True

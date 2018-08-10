@@ -6,12 +6,15 @@ import numpy as np
 def _metrics():
     return [
         "losses",
+        "aggregate_gradients",
         "mean_rewards",
         "mean_validation_scores",
         "std_validation_scores",
         "n_successful_mlfs",
         "n_unique_mlfs",
-        "mlf_framework_diversity",
+        "mlf_diversity",
+        "n_unique_hyperparams",
+        "hyperparam_diversity",
         "best_validation_scores",
     ]
 

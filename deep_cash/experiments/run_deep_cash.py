@@ -33,7 +33,8 @@ ENV_NAMES = env_names()
 @click.option("--output_size", default=30)
 @click.option("--n_layers", default=3)
 @click.option("--dropout_rate", default=0.2)
-@click.option("--beta", default=0.9)
+@click.option("--beta", default=0.9, type=float)
+@click.option("--entropy_coef", default=0.0, type=float)
 @click.option("--with_baseline/--without_baseline", default=True)
 @click.option("--single_baseline/--multi_baseline", default=True)
 @click.option("--normalize_reward", default=False, is_flag=True)
@@ -49,10 +50,10 @@ ENV_NAMES = env_names()
 @click.option("--task_environment_seed", default=100)
 def run_experiment(
         datasets, output_fp, n_trials, input_size, hidden_size, output_size,
-        n_layers, dropout_rate, beta, with_baseline, single_baseline,
-        normalize_reward, n_episodes, n_iter, learning_rate, error_reward,
-        per_framework_time_limit, per_framework_memory_limit, logger,
-        fit_verbose, controller_seed, task_environment_seed):
+        n_layers, dropout_rate, beta, entropy_coef, with_baseline,
+        single_baseline, normalize_reward, n_episodes, n_iter, learning_rate,
+        error_reward, per_framework_time_limit, per_framework_memory_limit,
+        logger, fit_verbose, controller_seed, task_environment_seed):
     """Run deep cash experiment with single configuration."""
     print("Running cash controller experiment with %d %s" % (
         n_trials, "trials" if n_trials > 1 else "trial"))
@@ -116,6 +117,7 @@ def run_experiment(
         reinforce = CASHReinforce(
             controller, t_env,
             beta=beta,
+            entropy_coef=entropy_coef,
             with_baseline=with_baseline,
             single_baseline=single_baseline,
             normalize_reward=normalize_reward,
@@ -146,12 +148,15 @@ def run_experiment(
         "episode",
         "data_env_names",
         "losses",
+        "aggregate_gradients",
         "mean_rewards",
         "mean_validation_scores",
         "std_validation_scores",
         "n_successful_mlfs",
         "n_unique_mlfs",
-        "n_unique_hyperparameters",
+        "n_unique_hyperparams",
+        "mlf_diversity",
+        "hyperparam_diversity",
         "best_validation_scores",
         "trial_number",
     ]].to_csv(
