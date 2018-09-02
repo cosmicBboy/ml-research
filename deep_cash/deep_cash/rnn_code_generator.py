@@ -1,10 +1,5 @@
 """An RNN to generate sklearn code.
 
-TODO:
-- write module to evaluate the samples
-- write an experiment harness
-- implement beam search for the sampling step.
-
 IDEAS:
 - instead of sampling the max probability prediction, sample based on the
   probability distribution of the softmax.

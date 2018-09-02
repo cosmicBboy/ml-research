@@ -4,12 +4,11 @@ TODO:
 - measure proportion of samples are: executable, evalutes to estimator object.
 """
 
-import torch
-
 from rnn_code_generator import load_model, generate_samples
 
 
 def main(path="rnn_code_generator_model.pt"):
+    """Generate samples from the rnn_code_generator.py module."""
     rnn = load_model(path)
     print("samples: executable, creates_estimator")
     for _ in range(5):
