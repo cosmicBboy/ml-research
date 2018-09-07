@@ -1,6 +1,5 @@
 """End to end tests for fitting a cash controllers."""
 
-import mock
 import numpy as np
 import pandas as pd
 import torch
