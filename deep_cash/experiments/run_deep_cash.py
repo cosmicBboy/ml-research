@@ -17,7 +17,6 @@ from deep_cash.task_environment import TaskEnvironment
 from deep_cash.cash_controller import CASHController
 from deep_cash.cash_reinforce import CASHReinforce
 from deep_cash.loggers import get_loggers, empty_logger
-from deep_cash.utils import get_metafeatures_dim
 from deep_cash.data_environments.classification_environments import env_names
 
 DEFAULT_OUTPUT = os.path.dirname(__file__) + "/../output"
@@ -68,7 +67,6 @@ def run_experiment(
         output_fp is None else output_fp
     data_path = Path(output_fp)
     logger = get_loggers().get(logger, empty_logger)
-    metafeatures_dim = get_metafeatures_dim()
 
     def worker(procnum, reinforce, return_dict):
         """Fit REINFORCE Helper function."""
@@ -106,7 +104,7 @@ def run_experiment(
             hyperparam_with_none_token=False)
 
         controller = CASHController(
-            metafeature_size=metafeatures_dim,
+            metafeature_size=t_env.metafeature_dim,
             input_size=input_size,
             hidden_size=hidden_size,
             output_size=output_size,

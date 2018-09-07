@@ -12,7 +12,6 @@ from deep_cash.algorithm_space import AlgorithmSpace
 from deep_cash.task_environment import TaskEnvironment
 from deep_cash.cash_controller import CASHController
 from deep_cash.cash_reinforce import CASHReinforce
-from deep_cash.utils import get_metafeatures_dim
 
 
 data_path = os.path.dirname(__file__) + "/artifacts"
@@ -25,7 +24,6 @@ error_reward = 0
 logger = None
 fit_verbose = True
 
-metafeatures_dim = get_metafeatures_dim()
 hidden_size = 30
 output_size = 30
 n_layers = 3
@@ -47,7 +45,7 @@ a_space = AlgorithmSpace(
     hyperparam_with_none_token=False)
 
 controller = CASHController(
-    metafeature_size=metafeatures_dim,
+    metafeature_size=t_env.metafeature_dim,
     input_size=a_space.n_components,
     hidden_size=hidden_size,
     output_size=output_size,

@@ -208,11 +208,11 @@ class CASHReinforce(object):
                         i_iter, self._n_valid_mlf, i_iter + 1),
                     sep=" ", end="\r", flush=True)
 
-    def _fit_iter(self, t_state, prev_reward, prev_action):
+    def _fit_iter(self, metafeature_tensor, prev_reward, prev_action):
         actions, action_activation = self.controller.decode(
             init_input_tensor=prev_action,
             aux=aux_tensor(prev_reward),
-            metafeatures=metafeature_tensor(t_state),
+            metafeatures=Variable(metafeature_tensor),
             init_hidden=self.controller.init_hidden())
         reward = self.evaluate_actions(actions, action_activation)
         self._update_log_prob_buffer(actions)
@@ -369,17 +369,6 @@ def normalize_reward(rbuffer):
     :returns: normalized tensor
     """
     return (rbuffer - rbuffer.mean()).div(rbuffer.std() + EPSILON)
-
-
-def metafeature_tensor(t_state):
-    """Convert a metafeature vector into a tensor.
-
-    For now this will be a single category indicating `is_executable`.
-
-    :returns Tensor: dim <string_length x 1 x metafeature_dim>, where
-        metafeature_dim is a continuous feature.
-    """
-    return Variable(utils._create_metafeature_tensor(t_state, [None]))
 
 
 def aux_tensor(prev_reward):

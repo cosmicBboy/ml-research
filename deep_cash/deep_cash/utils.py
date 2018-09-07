@@ -12,19 +12,21 @@ from torch.autograd import Variable
 from .data_environments.classification_environments import env_names
 
 
-# TODO: anything related to metafeatures should be in task_environment, since
-# the metadata feature space is governed by the task environment and data
-# environment.
-METAFEATURES = [
-    ("data_env_name", str, env_names()),
-    ("number_of_examples", int, None),
-    ("number_of_features", int, None),
-]
+def create_metafeature_spec(env_sources):
+    """Create a metafeature spec.
+
+    NOTE: may need to make this a class if it becomes more complex.
+    """
+    return [
+        ("data_env_name", str, env_names(sources=env_sources)),
+        ("number_of_examples", int, None),
+        ("number_of_features", int, None),
+    ]
 
 
-def get_metafeatures_dim():
+def get_metafeatures_dim(metafeatures_spec):
     """Get dimensionality of metafeatures."""
-    return sum([len(m[2]) if m[1] is str else 1 for m in METAFEATURES])
+    return sum([len(m[2]) if m[1] is str else 1 for m in metafeatures_spec])
 
 
 def init_logging(module, default_path="/tmp/deep_cash.log"):
@@ -57,7 +59,7 @@ def load_model(path, model_class, *args, **kwargs):
     return rnn
 
 
-def _create_metafeature_tensor(metafeatures, seq):
+def _create_metafeature_tensor(metafeatures, seq, metafeature_spec):
     """Convert a metafeature vector into a tensor.
 
     :returns Tensor: dim <string_length x 1 x metafeature_dim>, where
@@ -65,7 +67,7 @@ def _create_metafeature_tensor(metafeatures, seq):
     """
     m = []
     for i, feature in enumerate(metafeatures):
-        fname, ftype, flevels = METAFEATURES[i]
+        fname, ftype, flevels = metafeature_spec[i]
         if ftype is int:
             metafeature_dim = 1
             feature_val = ftype(feature)

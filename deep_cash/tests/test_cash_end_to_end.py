@@ -10,12 +10,12 @@ from deep_cash.algorithm_space import AlgorithmSpace
 from deep_cash.task_environment import TaskEnvironment
 from deep_cash.cash_controller import CASHController
 from deep_cash.cash_reinforce import CASHReinforce
-from deep_cash.utils import get_metafeatures_dim
 
 
 def _task_environment():
     return TaskEnvironment(
-        f1_score,
+        env_sources=["sklearn"],
+        scorer=f1_score,
         scorer_kwargs={"average": "weighted"},
         random_state=100,
         per_framework_time_limit=10,
@@ -32,9 +32,9 @@ def _algorithm_space():
         hyperparam_with_none_token=False)
 
 
-def _cash_controller(a_space):
+def _cash_controller(a_space, t_env):
     return CASHController(
-        metafeature_size=get_metafeatures_dim(),
+        metafeature_size=t_env.metafeature_dim,
         input_size=20,
         hidden_size=10,
         output_size=10,
@@ -66,7 +66,7 @@ def test_cash_reinforce_fit():
     n_episodes = 4
     t_env = _task_environment()
     a_space = _algorithm_space()
-    controller = _cash_controller(a_space)
+    controller = _cash_controller(a_space, t_env)
     reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
     reinforce.fit(
         n_episodes=n_episodes,
@@ -87,7 +87,7 @@ def test_cash_reinforce_fit_multi_baseline():
     n_episodes = 10
     t_env = _task_environment()
     a_space = _algorithm_space()
-    controller = _cash_controller(a_space)
+    controller = _cash_controller(a_space, t_env)
     reinforce = _cash_reinforce(
         controller, t_env, with_baseline=True, single_baseline=False)
     reinforce.fit(
@@ -103,7 +103,7 @@ def test_cash_zero_gradient():
     n_episodes = 20
     t_env = _task_environment()
     a_space = _algorithm_space()
-    controller = _cash_controller(a_space)
+    controller = _cash_controller(a_space, t_env)
     # don't train with baseline since this will modify the reward signal when
     # computing the `advantage = reward - baseline`.
     reinforce = _cash_reinforce(controller, t_env, with_baseline=False)
@@ -137,7 +137,7 @@ def test_cash_entropy_regularizer():
         n_episodes = 3
         t_env = _task_environment()
         a_space = _algorithm_space()
-        controller = _cash_controller(a_space)
+        controller = _cash_controller(a_space, t_env)
         reinforce = _cash_reinforce(controller, t_env, **kwargs)
         fit_kwargs = _fit_kwargs()
         fit_kwargs.update({"n_iter": 4})

@@ -50,12 +50,22 @@ def sklearn_classification_envs():
     return out
 
 
-def envs(names=None):
-    _envs = sklearn_classification_envs() + openml_api.classification_envs()
+ENV_SOURCES = {
+    "sklearn": sklearn_classification_envs,
+    "openml": openml_api.classification_envs,
+}
+
+
+def envs(sources, names=None):
+    """Get classification environments."""
+    _envs = []
+    for env_source in sources:
+        _envs = _envs + ENV_SOURCES[env_source]()
     if names:
         _envs = [e for e in _envs if e["dataset_name"] in names]
     return _envs
 
 
-def env_names():
-    return [n["dataset_name"] for n in envs()]
+def env_names(sources=ENV_SOURCES.keys()):
+    """Get names of datasets"""
+    return [n["dataset_name"] for n in envs(sources=sources)]

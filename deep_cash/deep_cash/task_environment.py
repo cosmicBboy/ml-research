@@ -25,9 +25,16 @@ class TaskEnvironment(object):
     """Generates datasets associated with supervised learning tasks."""
 
     def __init__(
-            self, scorer=f1_score, scorer_kwargs=None, random_state=None,
-            per_framework_time_limit=10, per_framework_memory_limit=3072,
-            dataset_names=None, error_reward=-0.1, reward_scale=10,
+            self,
+            env_sources=classification_environments.ENV_SOURCES,
+            scorer=f1_score,
+            scorer_kwargs=None,
+            random_state=None,
+            per_framework_time_limit=10,
+            per_framework_memory_limit=3072,
+            dataset_names=None,
+            error_reward=-0.1,
+            reward_scale=10,
             reward_transformer=None):
         """Initialize task environment."""
         # TODO: need to add an attribute that normalizes the output of the
@@ -39,12 +46,21 @@ class TaskEnvironment(object):
         self.per_framework_time_limit = per_framework_time_limit
         self.per_framework_memory_limit = per_framework_memory_limit
         self._dataset_names = dataset_names
+        self._env_sources = env_sources
+        self.metafeature_spec = utils.create_metafeature_spec(
+            self._env_sources)
+        self.metafeature_dim = utils.get_metafeatures_dim(
+            self.metafeature_spec)
         self.data_distribution = classification_environments.envs(
-            names=self._dataset_names)
+            sources=self._env_sources, names=self._dataset_names)
         self.n_data_envs = len(self.data_distribution)
         self._error_reward = error_reward
         self._reward_scale = reward_scale
         self._reward_transformer = reward_transformer
+
+        self.create_metafeature_tensor = partial(
+            utils._create_metafeature_tensor,
+            metafeature_spec=self.metafeature_spec)
 
         # enforce resource contraints on framework fitter
         # TODO: support heuristic schedule for changing these contraints
@@ -126,10 +142,9 @@ class TaskEnvironment(object):
         self.y_train = self.y[train_index]
         self.X_test = self.X[test_index]
         self.y_test = self.y[test_index]
-        return _metafeatures(
-            self.data_env_name,
-            self.X_train,
-            self.y_train)
+        return self.create_metafeature_tensor(
+            _metafeatures(self.data_env_name, self.X_train, self.y_train),
+            [None])
 
     def evaluate(self, ml_framework):
         """Evaluate an ML framework by fitting and scoring on data."""
