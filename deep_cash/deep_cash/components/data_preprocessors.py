@@ -3,8 +3,7 @@
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import (
     QuantileTransformer, OneHotEncoder, Imputer, MinMaxScaler, StandardScaler,
-    RobustScaler, Normalizer
-)
+    RobustScaler, Normalizer)
 
 from .algorithm import AlgorithmComponent
 from . import constants
@@ -24,7 +23,10 @@ def imputer():
     component after the imputers.
     """
     return AlgorithmComponent(
-        "Imputer", Imputer, constants.IMPUTER, [
+        name="Imputer",
+        component_class=Imputer,
+        component_type=constants.IMPUTER,
+        hyperparameters=[
             CategoricalHyperparameter(
                 "strategy", ["mean", "median", "most_frequent"],
                 default="mean"),
@@ -52,7 +54,10 @@ def one_hot_encoder():
     http://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.OneHotEncoder.html
     """
     return AlgorithmComponent(
-        "OneHotEncoder", OneHotEncoder, constants.ONE_HOT_ENCODER, [
+        name="OneHotEncoder",
+        component_class=OneHotEncoder,
+        component_type=constants.ONE_HOT_ENCODER,
+        hyperparameters=[
             CategoricalHyperparameter("sparse", [True, False], default=True)],
         env_dep_hyperparameters={
             "categorical_features": [],
@@ -65,8 +70,10 @@ def variance_threshold_filter():
     Removes features that are below a threshold variance.
     """
     return AlgorithmComponent(
-        "VarianceThresholdFilter", VarianceThreshold,
-        constants.FEATURE_PREPROCESSOR, [
+        name="VarianceThresholdFilter",
+        component_class=VarianceThreshold,
+        component_type=constants.FEATURE_PREPROCESSOR,
+        hyperparameters=[
             UniformFloatHyperparameter("threshold", 0.0, 10.0, default=0.0)
         ])
 
@@ -74,13 +81,18 @@ def variance_threshold_filter():
 def minmax_scaler():
     """Create a minmax scaler component."""
     return AlgorithmComponent(
-        "MinMaxScaler", MinMaxScaler, constants.RESCALER)
+        name="MinMaxScaler",
+        component_class=MinMaxScaler,
+        component_type=constants.RESCALER)
 
 
 def standard_scaler():
     """Create a standard scaler component."""
     return AlgorithmComponent(
-        "StandardScaler", StandardScaler, constants.RESCALER, [
+        name="StandardScaler",
+        component_class=StandardScaler,
+        component_type=constants.RESCALER,
+        hyperparameters=[
             CategoricalHyperparameter(
                 "with_mean", [True, False], default=True),
             CategoricalHyperparameter(
@@ -91,7 +103,10 @@ def standard_scaler():
 def robust_scaler():
     """Create a robust scaler component."""
     return AlgorithmComponent(
-        "RobustScaler", RobustScaler, constants.RESCALER, [
+        name="RobustScaler",
+        component_class=RobustScaler,
+        component_type=constants.RESCALER,
+        hyperparameters=[
             CategoricalHyperparameter(
                 "with_centering", [True, False], default=True),
             CategoricalHyperparameter(
@@ -109,7 +124,10 @@ def robust_scaler():
 def normalizer():
     """Create a normalizer component."""
     return AlgorithmComponent(
-        "Normalizer", Normalizer, constants.RESCALER, [
+        name="Normalizer",
+        component_class=Normalizer,
+        component_type=constants.RESCALER,
+        hyperparameters=[
             CategoricalHyperparameter(
                 "norm", ["l1", "l2", "max"], default="l2")
         ])

@@ -6,6 +6,7 @@ from scipy.optimize.optimize import LineSearchWarning
 from sklearn.exceptions import ConvergenceWarning, UndefinedMetricWarning
 
 
+# TODO: need to add unit tests for this module
 # TODO: generalize this to be regex expressions.
 # TODO: characterize the root of each of these error messages.
 # sklearn error messages that yield negative reward

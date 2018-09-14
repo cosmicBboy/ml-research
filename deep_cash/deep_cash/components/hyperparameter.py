@@ -26,8 +26,11 @@ class HyperparameterBase(object):
     def __repr__(self):
         return "<%s: \"%s\">" % (type(self).__name__, self.hname)
 
+    def _default_in_state_space(self):
+        return self.default in self._state_space
+
     def get_state_space(self, with_none_token=False):
-        if self.default in self._state_space:
+        if self._default_in_state_space():
             state_space = self._state_space
         else:
             state_space = self._state_space + [self.default]
@@ -114,6 +117,45 @@ class TupleRepeatingHyperparameter(HyperparameterBase):
             itertools.chain(
                 *[self._state_space_n(n)
                   for n in range(1, self.max_nrepeats + 1)]))
+
+
+class BaseEstimatorHyperparameter(HyperparameterBase):
+    """Single Base Estimator Hyperparameter class for ensemble methods.
+
+    For example, for AdaBoost or Bagging estimators.
+    """
+
+    def __init__(self, hname, base_estimator, hyperparameters, default):
+        self.base_estimator = base_estimator
+        self.hyperparameters = hyperparameters
+        super().__init__(hname, self._init_state_space(), default)
+
+    def _default_in_state_space(self):
+        for base_est in self._state_space:
+            if self.default.get_params() == base_est.get_params():
+                return True
+        return False
+
+    def _init_state_space(self):
+        # TODO: similar implementation of this in
+        # AlgorithmComponent.hyperparameter_iterator. Consider abstracting that
+        # functionality into a utils module.
+        expanded_state_space = []
+        for h in self.hyperparameters:
+            expanded_state_space.append([
+                (h.hname, v)for v in h.get_state_space()])
+        return [
+            self.base_estimator(**dict(hsetting)) for hsetting in
+            list(itertools.product(*expanded_state_space))]
+
+
+class MultiBaseEstimatorHyperparameter(HyperparameterBase):
+    """Multiple Base Estimator Hyperparameter class for ensemple methods.
+
+    TODO: this should take a list of BaseEstimatorHyperparameters and the
+    state space is the concatenation of all possible estimators.
+    """
+    pass
 
 
 class MultiTypeHyperparameters(HyperparameterBase):

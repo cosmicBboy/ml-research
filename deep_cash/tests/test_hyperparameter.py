@@ -1,6 +1,7 @@
 """Unit tests for hyperparameter module."""
 
 import numpy as np
+import sklearn
 
 from deep_cash.components import hyperparameter
 
@@ -42,7 +43,7 @@ def test_tuple_pair_hyperparameter():
                 "hyperparam2", 2, 6, default=2, n=5),
         ], default=(1, 2))
     expected = np.array([
-        (i, j) for i in range(1, 6) for j in range(2,7)])
+        (i, j) for i in range(1, 6) for j in range(2, 7)])
     assert (tup_hp.get_state_space() == expected).all()
 
 
@@ -65,3 +66,20 @@ def test_tuple_repeating_hyperparameter():
     mult_expected = np.array([
         [(1, ), (2, ), (1, 1), (1, 2), (2, 1), (2, 2)]])
     assert (mult_tup_hp.get_state_space() == mult_expected).all()
+
+
+def test_base_estimator_hyperparameter():
+    base_est_hp = hyperparameter.BaseEstimatorHyperparameter(
+        "base_estimator_hyperparam",
+        sklearn.tree.DecisionTreeClassifier,
+        hyperparameters=[
+            hyperparameter.UniformIntHyperparameter(
+                "max_depth", 1, 10, default=1, n=10, log=False)],
+        default=sklearn.tree.DecisionTreeClassifier(max_depth=1))
+
+    expected = [
+        sklearn.tree.DecisionTreeClassifier(max_depth=i + 1)
+        for i in range(10)]
+
+    for i, base_est in enumerate(base_est_hp.get_state_space()):
+        assert base_est.get_params() == expected[i].get_params()

@@ -67,6 +67,7 @@ class AlgorithmSpace(object):
             if feature_preprocessors is None else feature_preprocessors
         self.classifiers = get_classifiers() if classifiers is None \
             else classifiers
+        # TODO: assess whether these tokens are necessary
         self.with_start_token = with_start_token
         self.with_end_token = with_end_token
         self.with_none_token = with_none_token
@@ -98,24 +99,26 @@ class AlgorithmSpace(object):
         """Sample algorithm components from ML signature."""
         signature = ML_FRAMEWORK_SIGNATURE if signature is None \
             else signature
-        return [self.sample_component(atype) for atype in signature]
+        return [self.sample_component(component_type)
+                for component_type in signature]
 
     def component_dict_from_signature(self, signature=None):
         """Return dictionary of algorithm types and list of compoenents."""
         signature = ML_FRAMEWORK_SIGNATURE if signature is None \
             else signature
         return OrderedDict([
-            (atype, self.get_components(atype)) for atype in signature])
+            (component_type, self.get_components(component_type))
+            for component_type in signature])
 
-    def get_components(self, atype):
+    def get_components(self, component_type):
         """Get all components of a particular type.
 
-        :param str atype: type of algorithm
-        :returns: list of components of `atype`
+        :param str component_type: type of algorithm
+        :returns: list of components of `component_type`
         :rtype: list[AlgorithmComponent]
         """
         return [c for c in self.components if c not in SPECIAL_TOKENS and
-                c.atype == atype]
+                c.component_type == component_type]
 
     def h_state_space(self, components, with_none_token=False):
         """Get hyperparameter state space by components.
@@ -131,16 +134,16 @@ class AlgorithmSpace(object):
                     c.hyperparameter_state_space(with_none_token))
         return hyperparam_states
 
-    def sample_component(self, atype):
+    def sample_component(self, component_type):
         """Sample a component of a particular type.
 
-        :param str atype: type of algorithm, one of {"one_hot_encoder",
-            "imputer", "rescaler", "feature_preprocessor", "classifier",
-            "regressor"}
-        :returns: a sampled algorithm component of type `atype`.
+        :param str component_type: type of algorithm, one of
+            {"one_hot_encoder", "imputer", "rescaler", "feature_preprocessor",
+             "classifier", "regressor"}
+        :returns: a sampled algorithm component of type `component_type`.
         :rtype: AlgorithmComponent
         """
-        component_subset = self.get_components(atype)
+        component_subset = self.get_components(component_type)
         return component_subset[np.random.randint(len(component_subset))]
 
     def sample_ml_framework(self, random_state=None):
@@ -191,7 +194,7 @@ class AlgorithmSpace(object):
         if env_dep_hyperparameters:
             hyperparameters.update(env_dep_hyperparameters)
         for a in components:
-            steps.append((a.aname, a()))
+            steps.append((a.name, a()))
             hyperparameters.update(
                 a.env_dep_hyperparameter_name_space())
         ml_framework = Pipeline(memory=memory, steps=steps)

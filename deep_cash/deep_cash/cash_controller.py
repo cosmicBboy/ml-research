@@ -57,14 +57,25 @@ class CASHController(nn.Module):
         self.num_rnn_layers = num_rnn_layers
         self.metafeature_size = metafeature_size
         self.input_size = input_size
-        # action dim for previous action + 1 for previous reward
+
+        # action dim for previous reward. Note that to implement meta-learning,
+        # the previous action is encoded directly in the input.
         self.aux_reward_size = aux_reward_size
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.metafeature_encoding_size = metafeature_encoding_size
+
+        # an array storing classifiers for algorithm components and
+        # hyperparameter settings
         self.action_classifiers = []
+        # maps algorithm types to index pointer referring to action classifier
+        # for algorithm components of that type.
         self.atype_map = {}
-        self.algorithm_map = defaultdict(list)
+        # maps algorithm component to list of index pointers referring to
+        # action classifier for hyperparameters for that component
+        self.acomponent_to_hyperparam = defaultdict(list)
+
+        # buffers needed for backprop
         self.log_prob_buffer = []
         self.reward_buffer = []
         self.entropy_buffer = []
@@ -97,7 +108,7 @@ class CASHController(nn.Module):
                 for hname, hvalues in h_state_space.items():
                     self._add_action_classifier(
                         idx, self.HYPERPARAMETER, hname, hvalues)
-                    self.algorithm_map[component].append(idx)
+                    self.acomponent_to_hyperparam[component].append(idx)
                     idx += 1
         self.n_actions = len(self.action_classifiers)
 
@@ -154,7 +165,7 @@ class CASHController(nn.Module):
                 input_tensor, aux, metafeatures, hidden, self.atype_map[atype])
             actions.append(action)
             # each algorithm is associated with a set of hyperparameters
-            for hyperparameter_index in self.algorithm_map[action["action"]]:
+            for hyperparameter_index in self.acomponent_to_hyperparam[action["action"]]:
                 action, input_tensor, hidden = self._decode_action(
                     input_tensor, aux, metafeatures, hidden,
                     hyperparameter_index)

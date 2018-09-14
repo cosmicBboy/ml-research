@@ -223,10 +223,6 @@ class CASHReinforce(object):
             self._baseline_buffer_history[k].extend(v)
         return reward, Variable(action_activation.data)
 
-    def select_actions(self, init_input_tensor, aux, init_hidden):
-        """Select action sequence given initial input and hidden tensors."""
-        return self.controller.decode(init_input_tensor, aux, init_hidden)
-
     def evaluate_actions(self, actions, action_activation):
         """Evaluate actions on the validation set of the data environment."""
         algorithms, hyperparameters = self._get_mlf_components(actions)
