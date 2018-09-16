@@ -51,7 +51,6 @@ class CASHReinforce(object):
         """
         self.controller = controller
         self.t_env = t_env
-        self._logger = utils.init_logging(__file__)
         self._beta = beta
         self._entropy_coef = entropy_coef
         self._with_baseline = with_baseline

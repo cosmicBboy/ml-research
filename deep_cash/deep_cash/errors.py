@@ -118,6 +118,10 @@ SCORE_WARNINGS = [
 ]
 
 
+class FittingError(Exception):
+    pass
+
+
 class NoPredictMethodError(Exception):
     pass
 
@@ -128,7 +132,6 @@ class ExceededResourceLimitError(Exception):
 
 class TargetNotCompatible(Exception):
     pass
-
 
 
 def _is_valid_error(error, error_message_tuples):

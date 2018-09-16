@@ -18,6 +18,7 @@ from deep_cash.cash_controller import CASHController
 from deep_cash.cash_reinforce import CASHReinforce
 from deep_cash.loggers import get_loggers, empty_logger
 from deep_cash.data_environments.classification_environments import env_names
+from deep_cash import utils
 
 DEFAULT_OUTPUT = os.path.dirname(__file__) + "/../output"
 ENV_NAMES = env_names()
@@ -48,11 +49,29 @@ ENV_NAMES = env_names()
 @click.option("--controller_seed", default=1000)
 @click.option("--task_environment_seed", default=100)
 def run_experiment(
-        datasets, output_fp, n_trials, input_size, hidden_size, output_size,
-        n_layers, dropout_rate, beta, entropy_coef, with_baseline,
-        single_baseline, normalize_reward, n_episodes, n_iter, learning_rate,
-        error_reward, per_framework_time_limit, per_framework_memory_limit,
-        logger, fit_verbose, controller_seed, task_environment_seed):
+        datasets,
+        output_fp,
+        n_trials,
+        input_size,
+        hidden_size,
+        output_size,
+        n_layers,
+        dropout_rate,
+        beta,
+        entropy_coef,
+        with_baseline,
+        single_baseline,
+        normalize_reward,
+        n_episodes,
+        n_iter,
+        learning_rate,
+        error_reward,
+        per_framework_time_limit,
+        per_framework_memory_limit,
+        logger,
+        fit_verbose,
+        controller_seed,
+        task_environment_seed):
     """Run deep cash experiment with single configuration."""
     print("Running cash controller experiment with %d %s" % (
         n_trials, "trials" if n_trials > 1 else "trial"))
@@ -66,6 +85,12 @@ def run_experiment(
     output_fp = os.path.dirname(__file__) + "/../output" if \
         output_fp is None else output_fp
     data_path = Path(output_fp)
+
+    # initialize error logging (this is to log fit/predict/score errors made
+    # when evaluating a proposed MLF)
+    utils.init_logging(str(output_fp / "fit_predict_error_logs.log"))
+
+    # this logger is for logging metrics to floydhub/stdout
     logger = get_loggers().get(logger, empty_logger)
 
     def worker(procnum, reinforce, return_dict):
@@ -88,7 +113,7 @@ def run_experiment(
 
     for i in range(n_trials):
         t_env = TaskEnvironment(
-            f1_score,
+            scorer=f1_score,
             scorer_kwargs={"average": "weighted"},
             random_state=task_environment_seed,
             per_framework_time_limit=per_framework_time_limit,

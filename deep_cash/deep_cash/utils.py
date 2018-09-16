@@ -1,7 +1,6 @@
 """Utility functions."""
 
 import logging
-import os
 import time
 
 import numpy as np
@@ -29,16 +28,22 @@ def get_metafeatures_dim(metafeatures_spec):
     return sum([len(m[2]) if m[1] is str else 1 for m in metafeatures_spec])
 
 
-def init_logging(module, default_path="/tmp/deep_cash.log"):
-    """Initialize logging at the module level."""
-    log_path = os.environ.get("DEEP_CASH_LOG_PATH", default_path)
-    # clear contents of log file
-    open(log_path, "w").close()
+def init_logging(log_path="/tmp/deep_cash.log"):
+    """Initialize logging at the module level.
+
+    :param str|None log_path: path to write logs. If None, write to stdout
+    """
+    # remove other logging handlers to re-configure logging.
+    for h in logging.root.handlers:
+        logging.root.removeHandler(h)
+    with open(log_path, "w") as f:
+        f.close()
     logging.basicConfig(
-        filename=log_path, level=logging.ERROR,
-        format="%(asctime)s %(levelname)s %(name)s %(message)s")
-    print("logs written to %s" % log_path)
-    return logging.getLogger(module)
+        filename=log_path,
+        level=logging.INFO,
+        format="%(asctime)s: %(levelname)s: %(name)s: %(message)s")
+    if log_path is not None:
+        logging.info("writing logs to %s" % log_path)
 
 
 class Timer(object):

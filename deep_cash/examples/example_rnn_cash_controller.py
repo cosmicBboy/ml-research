@@ -1,5 +1,7 @@
 """Example usage of the CASH Controller."""
 
+import logging
+
 import os
 import pandas as pd
 import torch
@@ -8,17 +10,21 @@ from shutil import rmtree
 from sklearn.externals import joblib
 from sklearn.metrics import f1_score
 
-from deep_cash.algorithm_space import AlgorithmSpace
 from deep_cash.task_environment import TaskEnvironment
+from deep_cash.algorithm_space import AlgorithmSpace
 from deep_cash.cash_controller import CASHController
 from deep_cash.cash_reinforce import CASHReinforce
+from deep_cash.components import classifiers
+from deep_cash import utils
 
+utils.init_logging()
 
+logger = logging.getLogger(__name__)
 data_path = os.path.dirname(__file__) + "/artifacts"
 
 # hyperparameters
-n_episodes = 1000
-n_iter = 10
+n_episodes = 100
+n_iter = 100
 learning_rate = 0.003
 error_reward = 0
 logger = None
@@ -30,16 +36,19 @@ n_layers = 3
 
 
 t_env = TaskEnvironment(
-    f1_score,
+    scorer=f1_score,
     scorer_kwargs={"average": "weighted"},
     random_state=100,
-    per_framework_time_limit=60,
-    per_framework_memory_limit=3077,
+    enforce_limits=False,
+    per_framework_time_limit=10,
+    per_framework_memory_limit=1000,
+    dataset_names=["iris"],
     error_reward=error_reward,
     reward_transformer=lambda x: x)
 
 # create algorithm space
 a_space = AlgorithmSpace(
+    classifiers=[classifiers.logistic_regression()],
     with_end_token=False,
     hyperparam_with_start_token=False,
     hyperparam_with_none_token=False)

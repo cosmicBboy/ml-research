@@ -28,7 +28,6 @@ from sklearn.pipeline import Pipeline
 from . import components
 from .components import constants
 from .components.constants import START_TOKEN, END_TOKEN, NONE_TOKEN
-from . import utils
 
 
 SPECIAL_TOKENS = [START_TOKEN, END_TOKEN, NONE_TOKEN]
@@ -74,7 +73,6 @@ class AlgorithmSpace(object):
         self.hyperparam_with_start_token = hyperparam_with_start_token
         self.hyperparam_with_end_token = hyperparam_with_end_token
         self.hyperparam_with_none_token = hyperparam_with_none_token
-        self._logger = utils.init_logging(__file__)
 
     @property
     def components(self):

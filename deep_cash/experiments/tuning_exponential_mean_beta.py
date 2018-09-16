@@ -37,7 +37,7 @@ n_layers = 3
 
 
 t_env = TaskEnvironment(
-    f1_score,
+    scorer=f1_score,
     scorer_kwargs={"average": "weighted"},
     random_state=100,
     per_framework_time_limit=60,
