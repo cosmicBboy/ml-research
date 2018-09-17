@@ -1,4 +1,8 @@
-"""Custom errors."""
+"""Module for handling errors occurring in the TaskEnvironment runtime.
+
+This module handles the validity of exceptions raised by the TaskEnvironment
+when fitting, predicting, and scoring a propoosed ML framework.
+"""
 
 import re
 
@@ -6,10 +10,9 @@ from scipy.optimize.optimize import LineSearchWarning
 from sklearn.exceptions import ConvergenceWarning, UndefinedMetricWarning
 
 
-# TODO: need to add unit tests for this module
-# TODO: generalize this to be regex expressions.
-# TODO: characterize the root of each of these error messages.
 # sklearn error messages that yield negative reward
+# TODO: need to add unit tests for this module
+# TODO: characterize the root of each of these error messages.
 FIT_ERROR_MESSAGES = [
     (AttributeError,
         "module 'scipy.cluster._hierarchy' has no attribute 'nn_chain'"),
@@ -33,7 +36,6 @@ FIT_ERROR_MESSAGES = [
     (ValueError, "Solver sag supports only l2 penalties, got l1 penalty"),
     (ValueError, "Solver saga supports only dual=False, got dual=True"),
     (ValueError, "Solver liblinear does not support a multinomial backend"),
-    # FeatureAgglomeration
     (ValueError,
         "The condensed distance matrix must contain only finite values"),
     (ValueError, "n_components must be < n_features"),
@@ -118,15 +120,7 @@ SCORE_WARNINGS = [
 ]
 
 
-class FittingError(Exception):
-    pass
-
-
 class NoPredictMethodError(Exception):
-    pass
-
-
-class ExceededResourceLimitError(Exception):
     pass
 
 
@@ -143,8 +137,24 @@ def _is_valid_error(error, error_message_tuples):
 
 
 def is_valid_fit_error(error):
-    return _is_valid_error(error, FIT_ERROR_MESSAGES)
+    """Return True if error in MLF fit is valid for controller training.
+
+    The criterion for acceptability is somewhat tautological at this point,
+    essentially defined as errors that result from things like poorly specified
+    hyperparameters and other errors raised by the sklearn API.
+
+    Things that are not explicitly listed in the FIT_ERROR_MESSAGES global
+    variable are considered invalid fit errors. This helps to minimize
+    unexpected behavior when training the CASH controller.
+
+    :params BaseException error: any subclass of BaseException.
+    :returns: True if valid fit error, False otherwise.
+    """
+    return isinstance(error, FIT_ERROR_TYPES) and \
+        _is_valid_error(error, FIT_ERROR_MESSAGES)
 
 
 def is_valid_predict_error(error):
-    return _is_valid_error(error, PREDICT_ERROR_MESSAGES)
+    """Return True if error in MLF predict is valid for controller training."""
+    return isinstance(error, PREDICT_ERROR_TYPES) and \
+        _is_valid_error(error, PREDICT_ERROR_MESSAGES)

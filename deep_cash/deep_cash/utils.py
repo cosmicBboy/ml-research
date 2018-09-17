@@ -36,14 +36,14 @@ def init_logging(log_path="/tmp/deep_cash.log"):
     # remove other logging handlers to re-configure logging.
     for h in logging.root.handlers:
         logging.root.removeHandler(h)
-    with open(log_path, "w") as f:
-        f.close()
+    if log_path is not None:
+        logging.info("writing logs to %s" % log_path)
+        with open(log_path, "w") as f:
+            f.close()
     logging.basicConfig(
         filename=log_path,
         level=logging.INFO,
         format="%(asctime)s: %(levelname)s: %(name)s: %(message)s")
-    if log_path is not None:
-        logging.info("writing logs to %s" % log_path)
 
 
 class Timer(object):

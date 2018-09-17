@@ -17,7 +17,7 @@ from deep_cash.cash_reinforce import CASHReinforce
 from deep_cash.components import classifiers
 from deep_cash import utils
 
-utils.init_logging()
+utils.init_logging(None)
 
 logger = logging.getLogger(__name__)
 data_path = os.path.dirname(__file__) + "/artifacts"
@@ -39,7 +39,7 @@ t_env = TaskEnvironment(
     scorer=f1_score,
     scorer_kwargs={"average": "weighted"},
     random_state=100,
-    enforce_limits=False,
+    enforce_limits=True,
     per_framework_time_limit=10,
     per_framework_memory_limit=1000,
     dataset_names=["iris"],

@@ -126,6 +126,7 @@ class BaseEstimatorHyperparameter(HyperparameterBase):
     """
 
     def __init__(self, hname, base_estimator, hyperparameters, default):
+        """Initialize base estimator hyperparameter."""
         self.base_estimator = base_estimator
         self.hyperparameters = hyperparameters
         super().__init__(hname, self._init_state_space(), default)
