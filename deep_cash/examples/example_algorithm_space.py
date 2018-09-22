@@ -6,7 +6,7 @@ from sklearn.datasets import make_classification
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 
-from deep_cash.algorithm_space import AlgorithmSpace
+from deep_cash import algorithm_space
 
 # create dataset to evaluate
 X, y = make_classification(
@@ -16,8 +16,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
 # create an algorithm environment consisting of one data preprocessor,
 # feature preprocessor, and classifier.
-algorithm_space = AlgorithmSpace()
-ml_frameworks = algorithm_space.framework_iterator()
+a_space = algorithm_space.AlgorithmSpace()
 
 
 # sample machine learning frameworks from the algorithm environment
@@ -28,11 +27,12 @@ best_candidates = []
 best_scores = []
 
 
-#  may warnings occur due to mal-formed pipelines
+# warnings may occur due to mal-formed pipelines
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     while True:
-        mlf = algorithm_space.sample_ml_framework()
+        mlf = a_space.sample_ml_framework(
+            algorithm_space.CLASSIFIER_ML_FRAMEWORK_SIGNATURE)
         try:
             mlf.fit(X_train, y_train)
             train_score = roc_auc_score(y_train, mlf.predict(X_train))

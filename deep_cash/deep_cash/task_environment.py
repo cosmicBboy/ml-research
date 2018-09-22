@@ -8,9 +8,9 @@ import warnings
 from functools import partial
 
 from sklearn.base import clone
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, mean_squared_error
 
-from .data_environments import classification_environments
+from .data_environments import environments
 from .data_types import FeatureType, TargetType
 from .errors import NoPredictMethodError, is_valid_fit_error, \
     is_valid_predict_error, FIT_WARNINGS, SCORE_WARNINGS
@@ -19,46 +19,48 @@ from . import utils
 logger = logging.getLogger(__name__)
 FIT_GRACE_PERIOD = 30
 
+f1_score_weighted_average = partial(f1_score, average="weighted")
+
 
 class TaskEnvironment(object):
     """Generates datasets associated with supervised learning tasks."""
 
     def __init__(
             self,
-            env_sources=classification_environments.ENV_SOURCES,
-            scorer=f1_score,
-            scorer_kwargs=None,
+            env_sources=environments.ENV_SOURCES,
+            target_types=["BINARY", "MULTICLASS"],
+            scorers=None,
+            score_transformers=None,
             random_state=None,
             enforce_limits=True,
             per_framework_time_limit=10,
             per_framework_memory_limit=3072,
             dataset_names=None,
-            error_reward=-0.1,
-            reward_scale=10,
-            reward_transformer=None):
+            error_reward=-0.1):
         """Initialize task environment."""
         # TODO: need to add an attribute that normalizes the output of the
         # scorer function to support different tasks. Currently, the default
         # is ROC AUC scorer on just classification tasks. Will need to
         # extend this for regression task error metrics.
-        self.scorer = partial(scorer, **scorer_kwargs)
+        self.scorers = _get_scorers() if scorers is None else scorers
+        self._score_transformers = _get_score_transformers() if \
+            score_transformers is None else score_transformers
         self.random_state = random_state
         self.enforce_limits = enforce_limits
         self.per_framework_time_limit = per_framework_time_limit
         self.per_framework_memory_limit = per_framework_memory_limit
         self._dataset_names = dataset_names
         self._env_sources = env_sources
+        self._target_types = [TargetType[t] for t in target_types]
+        self.data_distribution = environments.envs(
+            sources=self._env_sources, names=self._dataset_names,
+            target_types=self._target_types)
         self.metafeature_spec = utils.create_metafeature_spec(
-            self._env_sources)
+            self.data_distribution)
         self.metafeature_dim = utils.get_metafeatures_dim(
             self.metafeature_spec)
-        self.data_distribution = classification_environments.envs(
-            sources=self._env_sources, names=self._dataset_names)
         self.n_data_envs = len(self.data_distribution)
         self._error_reward = error_reward
-        self._reward_scale = reward_scale
-        self._reward_transformer = reward_transformer
-
         self.create_metafeature_tensor = partial(
             utils._create_metafeature_tensor,
             metafeature_spec=self.metafeature_spec)
@@ -88,7 +90,7 @@ class TaskEnvironment(object):
     @property
     def error_reward(self):
         """Return reward in the situation of a fit/predict error."""
-        return self._reward_transformer(self._error_reward)
+        return self._error_reward
 
     def sample_data_env(self):
         """Sample the data distribution."""
@@ -96,7 +98,7 @@ class TaskEnvironment(object):
         data_env = self.data_distribution[env_index]
         self.X = data_env["data"]
         self.y = data_env["target"]
-        self.task_type = data_env["task_type"]
+        self.target_type = data_env["target_type"]
         self.data_env_name = data_env["dataset_name"]
         self.feature_types = data_env["feature_types"]
         self.feature_indices = data_env["feature_indices"]
@@ -150,33 +152,33 @@ class TaskEnvironment(object):
             _metafeatures(self.data_env_name, self.X_train, self.y_train),
             [None])
 
-    def evaluate(self, ml_framework):
-        """Evaluate an ML framework by fitting and scoring on data."""
-        return self._fit_score(ml_framework)
+    def evaluate(self, mlf):
+        """Evaluate an ML framework by fitting and scoring on data.
 
-    def get_reward(self, r):
-        """Retrieve reward using the reward transformer if specified.
-
-        Identity function if not.
+        :params sklearn.pipeline.Pipeline mlf: an sklearn pipeline
+        :returns: tuple where the first element is the reward the second
+            element is the raw score.
+        :rtype: 2-tuple[float|None]
         """
-        if self._reward_transformer:
-            return self._reward_transformer(r)
-        return r
+        mlf = self._fit(mlf)
+        if mlf is None:
+            return None, None
+        return self._score(mlf)
 
-    def _fit(self, ml_framework):
+    def _fit(self, mlf):
         """Fit proposed ML framework on currently sampled data environment.
 
-        :params sklearn.pipeline.Pipeline ml_framework: an ML framework
+        :params sklearn.pipeline.Pipeline mlf: an ML framework
             proposed by the CASH controller.
         :returns: sklearn.pipeline.Pipeline if MLF successfully fit, None
-            if error was raised by calling `ml_framework.fit`.
+            if error was raised by calling `mlf.fit`.
         """
-        ml_framework, fit_error = self.ml_framework_fitter(
-            clone(ml_framework), self.X_train, self.y_train)
-        mlf_str = utils._ml_framework_string(ml_framework)
+        mlf, fit_error = self.ml_framework_fitter(
+            clone(mlf), self.X_train, self.y_train)
+        mlf_str = utils._ml_framework_string(mlf)
 
         if fit_error is None:
-            return ml_framework
+            return mlf
         elif self.enforce_limits and self.ml_framework_fitter.exit_status != 0:
             # if mlf fit routine incurred memory and runtime limit, task
             # environment should evaluate this as a negative reward.
@@ -201,14 +203,19 @@ class TaskEnvironment(object):
                 (fit_error, mlf_str))
             raise fit_error
 
-    def _score(self, ml_framework):
+    def _score(self, mlf):
         # TODO: the scorer should dictate the form that the prediction takes.
         # for example, the f1_score can only take categorical predictions, not
         # predicted probabilities. For now, all predictions are treated as
         # categorical
-        pred = _ml_framework_predict(ml_framework, self.X_test, self.task_type)
-        if pred is None:
-            return None
+        y_hat = _ml_framework_predict(mlf, self.X_test, self.target_type)
+        scorer = self.scorers[self.target_type]
+        score_transformer = self._score_transformers.get(scorer, None)
+        if y_hat is None:
+            return None, None
+        # TODO: create reward transformers for regression metric
+        # mean_squared_error. It should make max reward 1 (MSE = 0) and
+        # large MSE should approach 0
         with warnings.catch_warnings() as warning:
             # raise exception for warnings not explicitly in SCORE_WARNINGS
             warnings.filterwarnings("error")
@@ -220,14 +227,40 @@ class TaskEnvironment(object):
                     "ignore", message=msg, category=warning_type)
             if warning:
                 print("SCORE WARNING: %s" % warning)
-            score = self.scorer(self.y_test, pred)
-            return self.get_reward(score)
+            score = scorer(self.y_test, y_hat)
+            if score_transformer is None:
+                reward = score
+            else:
+                reward = score_transformer(score)
+        return reward, score
 
-    def _fit_score(self, ml_framework):
-        mlf = self._fit(ml_framework)
-        if mlf is None:
-            return None
-        return self._score(mlf)
+
+def _get_scorers():
+    return {
+        TargetType.BINARY: f1_score_weighted_average,
+        TargetType.MULTICLASS: f1_score_weighted_average,
+        TargetType.REGRESSION: mean_squared_error,
+    }
+
+
+def _get_score_transformers():
+    return {
+        mean_squared_error: exponentiated_log,
+    }
+
+
+def exponentiated_log(x, gamma=0.01):
+    """Bounds functions with a range of >= 0 to range of [0, 1].
+
+    :param float x: value to transform
+    :param float gamma: decay coefficient. Larger gamma means function decays
+        more quickly as x gets larger.
+    :returns: transformed value.
+    :rtype: float
+    """
+    if x < 0:
+        raise ValueError("value %s not a valid input. Must be >= 0")
+    return 1 / (1 + np.power(np.e, np.log(gamma * x)))
 
 
 def _metafeatures(data_env_name, X_train, y_train):
@@ -277,7 +310,7 @@ def _multiclass_predict_proba(pred_proba):
     return pred_proba.argmax(axis=1)
 
 
-def _ml_framework_predict(ml_framework, X, task_type):
+def _ml_framework_predict(ml_framework, X, target_type):
     """Generate predictions from a fit ml_framework.
 
     Handles errors at the predict layer, any over which need to be handled
@@ -290,15 +323,15 @@ def _ml_framework_predict(ml_framework, X, task_type):
             try:
                 if hasattr(ml_framework, "predict_proba"):
                     pred = ml_framework.predict_proba(X)
-                    if task_type == TargetType.MULTICLASS:
+                    if target_type == TargetType.MULTICLASS:
                         pred = _multiclass_predict_proba(pred)
-                    elif task_type == TargetType.BINARY:
+                    elif target_type == TargetType.BINARY:
                         pred = _binary_predict_proba(pred)
                     else:
                         pass
                 elif hasattr(ml_framework, "predict"):
                     pred = ml_framework.predict(X)
-                    if task_type == TargetType.BINARY:
+                    if target_type == TargetType.BINARY:
                         pred = pred
                 else:
                     raise NoPredictMethodError(

@@ -26,7 +26,7 @@ CLASS_RANGE = (2, 100)
 CUSTOM_DATA_CONFIG = {
     2: {
         "dataset_name": "anneal",
-        "task_type": TargetType.MULTICLASS,
+        "target_type": TargetType.MULTICLASS,
         "target_index": 38,
         "target_name": "class",
         "target_preprocessor": None,
@@ -99,11 +99,11 @@ def get_datasets(ids=None):
 
 
 def _open_ml_dataset(
-        name, task_type, data, target, feature_types, feature_indices,
+        name, target_type, data, target, feature_types, feature_indices,
         target_preprocessor):
     return {
         "dataset_name": name,
-        "task_type": task_type,
+        "target_type": target_type,
         "data": data,
         "target": target,
         "feature_types": feature_types,
@@ -133,7 +133,7 @@ def parse_clf_dataset(dataset, dataset_metadata=None):
                     data[:, i] = _reassign_categorical_data(data[:, i])
         return _open_ml_dataset(
             name=custom_config["dataset_name"],
-            task_type=custom_config["task_type"],
+            target_type=custom_config["target_type"],
             data=data[:, feature_indices],
             target=data[:, custom_config["target_index"]],
             feature_types=feature_types,
@@ -149,9 +149,9 @@ def parse_clf_dataset(dataset, dataset_metadata=None):
 
         n_classes = metadata["NumberOfClasses"]
         if n_classes == 2:
-            task_type = TargetType.BINARY
+            target_type = TargetType.BINARY
         elif n_classes > 2:
-            task_type = TargetType.MULTICLASS
+            target_type = TargetType.MULTICLASS
         else:
             raise ValueError(
                 "number of classes must be >= 2, found %d" % n_classes)
@@ -177,7 +177,7 @@ def parse_clf_dataset(dataset, dataset_metadata=None):
             raise ValueError("target_index must be defined.")
         return _open_ml_dataset(
             name=dataset.name,
-            task_type=task_type,
+            target_type=target_type,
             data=data[:, feature_indices],
             target=data[:, target_index],
             feature_types=feature_types,

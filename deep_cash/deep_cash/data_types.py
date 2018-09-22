@@ -16,3 +16,4 @@ class FeatureType(Enum):
 class TargetType(Enum):
     BINARY = 1
     MULTICLASS = 2
+    REGRESSION = 3

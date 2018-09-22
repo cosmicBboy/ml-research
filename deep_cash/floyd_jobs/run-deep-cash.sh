@@ -1,7 +1,7 @@
 # experiment: error reward is negative, small neural network
 # set entropy coef to 0.8
 floyd run --env pytorch-0.3 --cpu2 \
-    --message 'small_nn0_entropy_coef_0.8' \
+    --message 'regression_run_0' \
     ". ./.env && \
     python experiments/run_deep_cash.py \
     --output_fp=/output \

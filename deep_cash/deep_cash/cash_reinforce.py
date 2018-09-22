@@ -200,16 +200,19 @@ class CASHReinforce(object):
         prev_reward, prev_action = 0, self.controller.init_action()
         for i_iter in range(n_iter):
             prev_reward, prev_action = self._fit_iter(
-                self.t_env.sample(), prev_reward, prev_action)
+                self.t_env.sample(), self.t_env.target_type, prev_reward,
+                prev_action)
             if verbose:
                 print(
                     "iter %d - n valid mlf: %d/%d" % (
                         i_iter, self._n_valid_mlf, i_iter + 1),
                     sep=" ", end="\r", flush=True)
 
-    def _fit_iter(self, metafeature_tensor, prev_reward, prev_action):
+    def _fit_iter(
+            self, metafeature_tensor, target_type, prev_reward, prev_action):
         actions, action_activation = self.controller.decode(
             init_input_tensor=prev_action,
+            target_type=target_type,
             aux=aux_tensor(prev_reward),
             metafeatures=Variable(metafeature_tensor),
             init_hidden=self.controller.init_hidden())
@@ -228,19 +231,19 @@ class CASHReinforce(object):
         mlf = self.controller.a_space.create_ml_framework(
             algorithms, hyperparameters=hyperparameters,
             env_dep_hyperparameters=self.t_env.env_dep_hyperparameters())
-        reward = self.t_env.evaluate(mlf)
+        reward, score = self.t_env.evaluate(mlf)
         self._action_buffer.append(action_activation)
         self._algorithm_sets.append(algorithms)
         self._hyperparameter_sets.append(hyperparameters)
         if reward is None:
             return self.t_env.error_reward
         else:
-            self._validation_scores.append(reward)
+            self._validation_scores.append(score)
             self._n_valid_mlf += 1
             self._successful_mlfs.append(mlf)
             if self._best_validation_score is None or \
-                    reward > self._best_validation_score:
-                self._best_validation_score = reward
+                    score > self._best_validation_score:
+                self._best_validation_score = score
                 self._best_mlf = mlf
             return reward
 

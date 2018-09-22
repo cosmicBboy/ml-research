@@ -4,25 +4,24 @@ import numpy as np
 import pandas as pd
 import torch
 
-from sklearn.metrics import f1_score
-
 from deep_cash.algorithm_space import AlgorithmSpace
 from deep_cash.task_environment import TaskEnvironment
 from deep_cash.cash_controller import CASHController
 from deep_cash.cash_reinforce import CASHReinforce
 
 
-def _task_environment():
+def _task_environment(
+        target_types=["BINARY", "MULTICLASS"],
+        dataset_names=["iris", "wine"]):
     return TaskEnvironment(
         env_sources=["sklearn"],
-        scorer=f1_score,
-        scorer_kwargs={"average": "weighted"},
+        target_types=target_types,
         random_state=100,
+        enforce_limits=False,
         per_framework_time_limit=10,
         per_framework_memory_limit=1000,
-        dataset_names=["iris", "wine"],
-        error_reward=0,
-        reward_transformer=lambda x: x)
+        dataset_names=dataset_names,
+        error_reward=0)
 
 
 def _algorithm_space():
@@ -148,3 +147,19 @@ def test_cash_entropy_regularizer():
     assert (
         np.array(losses["entropy_regularized"]) <
         np.array(losses["baseline"])).all()
+
+
+def test_cash_reinforce_regressor():
+    """Test cash reinforce regression data environments."""
+    n_episodes = 4
+    t_env = _task_environment(
+        target_types=["REGRESSION"],
+        dataset_names=["boston"])
+    a_space = _algorithm_space()
+    controller = _cash_controller(a_space, t_env)
+    reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
+    reinforce.fit(
+        n_episodes=n_episodes,
+        **_fit_kwargs())
+    history = pd.DataFrame(reinforce.history())
+    assert history.shape[0] == n_episodes

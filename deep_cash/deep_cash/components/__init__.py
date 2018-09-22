@@ -1,13 +1,14 @@
 from . import (
-    algorithm, hyperparameter, classifiers, data_preprocessors,
-    feature_preprocessors, constants)
+    algorithm, classifiers, constants, data_preprocessors,
+    feature_preprocessors, hyperparameter, regressors)
 
 
 __all__ = [
     algorithm,
-    hyperparameter,
     classifiers,
+    constants,
     data_preprocessors,
     feature_preprocessors,
-    constants,
+    hyperparameter,
+    regressors,
 ]

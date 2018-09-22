@@ -10,18 +10,17 @@ from functools import partial
 from pathlib import Path
 from shutil import rmtree
 from sklearn.externals import joblib
-from sklearn.metrics import f1_score
 
 from deep_cash.algorithm_space import AlgorithmSpace
 from deep_cash.task_environment import TaskEnvironment
 from deep_cash.cash_controller import CASHController
 from deep_cash.cash_reinforce import CASHReinforce
 from deep_cash.loggers import get_loggers, empty_logger
-from deep_cash.data_environments.classification_environments import env_names
+from deep_cash.data_environments.environments import envs
 from deep_cash import utils
 
 DEFAULT_OUTPUT = os.path.dirname(__file__) + "/../output"
-ENV_NAMES = env_names()
+ENV_NAMES = [d["dataset_name"] for d in envs()]
 
 
 @click.command()
@@ -41,6 +40,9 @@ ENV_NAMES = env_names()
 @click.option("--n_episodes", default=1000)
 @click.option("--n_iter", default=10)
 @click.option("--learning_rate", default=0.005, type=float)
+@click.option("--target_type", "-t", default=None,
+              type=click.Choice(["BINARY", "MULTICLASS", "REGRESSION"]),
+              multiple=True)
 @click.option("--error_reward", default=0, type=float)
 @click.option("--per_framework_time_limit", default=60)
 @click.option("--per_framework_memory_limit", default=3077)
@@ -65,6 +67,7 @@ def run_experiment(
         n_episodes,
         n_iter,
         learning_rate,
+        target_type,
         error_reward,
         per_framework_time_limit,
         per_framework_memory_limit,
@@ -86,9 +89,15 @@ def run_experiment(
         output_fp is None else output_fp
     data_path = Path(output_fp)
 
+    # by default specify classification target types
+    if target_type is None:
+        target_types = ["BINARY", "MULTICLASS"]
+    else:
+        target_types = list(target_type)
+
     # initialize error logging (this is to log fit/predict/score errors made
     # when evaluating a proposed MLF)
-    utils.init_logging(str(output_fp / "fit_predict_error_logs.log"))
+    utils.init_logging(str(Path(output_fp) / "fit_predict_error_logs.log"))
 
     # this logger is for logging metrics to floydhub/stdout
     logger = get_loggers().get(logger, empty_logger)
@@ -113,14 +122,12 @@ def run_experiment(
 
     for i in range(n_trials):
         t_env = TaskEnvironment(
-            scorer=f1_score,
-            scorer_kwargs={"average": "weighted"},
+            target_types=target_types,
             random_state=task_environment_seed,
             per_framework_time_limit=per_framework_time_limit,
             per_framework_memory_limit=per_framework_memory_limit,
             dataset_names=datasets,
-            error_reward=error_reward,
-            reward_transformer=lambda x: x)
+            error_reward=error_reward)
 
         # create algorithm space
         a_space = AlgorithmSpace(

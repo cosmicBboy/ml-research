@@ -26,6 +26,7 @@ from collections import OrderedDict
 from sklearn.pipeline import Pipeline
 
 from . import components
+from . import data_types
 from .components import constants
 from .components.constants import START_TOKEN, END_TOKEN, NONE_TOKEN
 
@@ -33,22 +34,48 @@ from .components.constants import START_TOKEN, END_TOKEN, NONE_TOKEN
 SPECIAL_TOKENS = [START_TOKEN, END_TOKEN, NONE_TOKEN]
 # ml framework pipeline must have this signature. Can eventually support
 # multiple signatures.
-ML_FRAMEWORK_SIGNATURE = [
+CLASSIFIER_MLF_SIGNATURE = [
     constants.ONE_HOT_ENCODER,
     constants.IMPUTER,
     constants.RESCALER,
     constants.FEATURE_PREPROCESSOR,
     constants.CLASSIFIER
 ]
+REGRESSOR_MLF_SIGNATURE = [
+    constants.ONE_HOT_ENCODER,
+    constants.IMPUTER,
+    constants.RESCALER,
+    constants.FEATURE_PREPROCESSOR,
+    constants.REGRESSOR
+]
+TARGET_TYPE_TO_MLF_SIGNATURE = {
+    data_types.TargetType.BINARY: CLASSIFIER_MLF_SIGNATURE,
+    data_types.TargetType.MULTICLASS: CLASSIFIER_MLF_SIGNATURE,
+    data_types.TargetType.REGRESSION: REGRESSOR_MLF_SIGNATURE,
+}
 
 
 class AlgorithmSpace(object):
-    """A class that generates machine learning frameworks."""
+    """Class that generates machine learning frameworks."""
 
-    def __init__(self, data_preprocessors=None, feature_preprocessors=None,
-                 classifiers=None, with_start_token=True,
-                 with_end_token=False, with_none_token=False,
-                 hyperparam_with_start_token=True,
+    ALL_COMPONENTS = [
+        constants.ONE_HOT_ENCODER,
+        constants.IMPUTER,
+        constants.RESCALER,
+        constants.FEATURE_PREPROCESSOR,
+        constants.CLASSIFIER,
+        constants.REGRESSOR
+    ]
+
+    def __init__(self,
+                 data_preprocessors=None,
+                 feature_preprocessors=None,
+                 classifiers=None,
+                 regressors=None,
+                 with_start_token=False,
+                 with_end_token=False,
+                 with_none_token=False,
+                 hyperparam_with_start_token=False,
                  hyperparam_with_end_token=False,
                  hyperparam_with_none_token=True):
         """Initialize a structured algorithm environment.
@@ -66,6 +93,8 @@ class AlgorithmSpace(object):
             if feature_preprocessors is None else feature_preprocessors
         self.classifiers = get_classifiers() if classifiers is None \
             else classifiers
+        self.regressors = get_regressors() if regressors is None \
+            else regressors
         # TODO: assess whether these tokens are necessary
         self.with_start_token = with_start_token
         self.with_end_token = with_end_token
@@ -79,7 +108,8 @@ class AlgorithmSpace(object):
         """Concatenate all components into a single list."""
         components = self.data_preprocessors + \
             self.feature_preprocessors + \
-            self.classifiers
+            self.classifiers + \
+            self.regressors
         if self.with_start_token:
             components += [START_TOKEN]
         if self.with_end_token:
@@ -93,20 +123,33 @@ class AlgorithmSpace(object):
         """Return number of components in the algorithm space."""
         return len(self.components)
 
-    def sample_components_from_signature(self, signature=None):
-        """Sample algorithm components from ML signature."""
-        signature = ML_FRAMEWORK_SIGNATURE if signature is None \
-            else signature
+    def sample_components_from_signature(self, signature):
+        """Sample algorithm components from ML signature.
+
+        :param list[str] signature: ML framework signature indicating the
+            ordering of algorithm components to form a sklearn Pipeline.
+        """
         return [self.sample_component(component_type)
                 for component_type in signature]
 
-    def component_dict_from_signature(self, signature=None):
-        """Return dictionary of algorithm types and list of compoenents."""
-        signature = ML_FRAMEWORK_SIGNATURE if signature is None \
-            else signature
+    def component_dict_from_signature(self, signature):
+        """Return dictionary of algorithm types and list of components.
+
+        :param list[str] signature: ML framework signature indicating the
+            ordering of algorithm components to form a sklearn Pipeline.
+        """
         return OrderedDict([
             (component_type, self.get_components(component_type))
             for component_type in signature])
+
+    def component_dict_from_target_type(self, target_type):
+        """Get algorithm components based on target type.
+
+        :param data_types.TargetType target_type: get the MLF signature for
+            this target.
+        """
+        return self.component_dict_from_signature(
+            TARGET_TYPE_TO_MLF_SIGNATURE[target_type])
 
     def get_components(self, component_type):
         """Get all components of a particular type.
@@ -115,8 +158,11 @@ class AlgorithmSpace(object):
         :returns: list of components of `component_type`
         :rtype: list[AlgorithmComponent]
         """
-        return [c for c in self.components if c not in SPECIAL_TOKENS and
-                c.component_type == component_type]
+        try:
+            return [c for c in self.components if c not in SPECIAL_TOKENS and
+                    c.component_type == component_type]
+        except:
+            import ipdb; ipdb.set_trace()
 
     def h_state_space(self, components, with_none_token=False):
         """Get hyperparameter state space by components.
@@ -144,34 +190,39 @@ class AlgorithmSpace(object):
         component_subset = self.get_components(component_type)
         return component_subset[np.random.randint(len(component_subset))]
 
-    def sample_ml_framework(self, random_state=None):
+    def sample_ml_framework(self, signature, random_state=None):
         """Sample a random ML framework from the algorithm space.
 
+        :param list[str] signature: ML framework signature indicating the
+            ordering of algorithm components to form a sklearn Pipeline.
         :param int|None random_state: provide random state, which determines
             the ML framework sampled.
         """
-        components = self.sample_components_from_signature()
+        components = self.sample_components_from_signature(signature)
         framework_hyperparameters = {}
         for a in components:
             framework_hyperparameters.update(
-                a.sample_hyperparameter_state_space())
+                a.sample_hyperparameter_state_space(signature))
         return self.create_ml_framework(
             components, hyperparameters=framework_hyperparameters)
 
-    def framework_iterator(self):
+    def framework_iterator(self, signature):
         """Return a generator of all algorithm and hyperparameter combos.
 
         This is potentially a huge space, creating a generator that yields
         a machine learning framework (sklearn.Pipeline object) based on all
         possible estimator combinations and all possible hyperparameter
         combinations of those estimators.
+
+        :param list[str] signature: ML framework signature indicating the
+            ordering of algorithm components to form a sklearn Pipeline.
         """
         return (
             self.create_ml_framework(
                 component_list,
                 hyperparameters=self._combine_dicts(hyperparam_list_dicts))
             for component_list in itertools.product(
-                self.sample_components_from_signature())
+                self.sample_components_from_signature(signature))
             for hyperparam_list_dicts in itertools.product(
                 [c.hyperparameter_iterator() for c in component_list])
         )
@@ -207,7 +258,7 @@ class AlgorithmSpace(object):
 
 
 def get_data_preprocessors():
-    """Get all data preprocessors in structured algorithm environment."""
+    """Get all data preprocessors in structured algorithm space."""
     return [
         components.data_preprocessors.imputer(),
         components.data_preprocessors.one_hot_encoder(),
@@ -220,7 +271,7 @@ def get_data_preprocessors():
 
 
 def get_feature_preprocessors():
-    """Get all feature preprocessors in structured algorithm environment."""
+    """Get all feature preprocessors in structured algorithm space."""
     return [
         components.feature_preprocessors.fast_ica(),
         components.feature_preprocessors.feature_agglomeration(),
@@ -235,9 +286,17 @@ def get_feature_preprocessors():
 
 
 def get_classifiers():
-    """Get all classifiers in structured algorithm environment."""
+    """Get all classifiers in structured algorithm space."""
     return [
         components.classifiers.logistic_regression(),
         components.classifiers.gaussian_naive_bayes(),
         components.classifiers.decision_tree(),
+    ]
+
+
+def get_regressors():
+    """Get all classifiers in structured algorithm space."""
+    return [
+        components.regressors.ridge_regression(),
+        components.regressors.lasso_regression(),
     ]

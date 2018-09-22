@@ -77,6 +77,10 @@ FIT_WARNINGS = [
         "newton-cg failed to converge. Increase the number of iterations"),
     (ConvergenceWarning,
         "The max_iter was reached which means the coef_ did not converge"),
+    (ConvergenceWarning,
+        "Objective did not converge. You might want to increase the number of "
+        "iterations. Fitting data with very small alpha may cause precision "
+        "problems."),
     (ImportWarning,
         "can't resolve package from __spec__ or __package__, falling back on "
         "__name__ and __path__"),
@@ -88,8 +92,14 @@ FIT_WARNINGS = [
     (UserWarning,
         "FastICA did not converge. Consider increasing tolerance or "
         "the maximum number of iterations."),
+    (UserWarning,
+        "Singular matrix in solving dual problem. Using least-squares "
+        "solution instead."),
     (RuntimeWarning,
         "numpy.dtype size changed, may indicate binary incompatibility"),
+    (RuntimeWarning,
+        "scipy.linalg.solve\n Ill-conditioned matrix detected. Result is not "
+        "guaranteed to be accurate."),
 ]
 
 

@@ -96,9 +96,10 @@ class CASHController(nn.Module):
         # for each algorithm component and hyperparameter value, create a
         # softmax classifier over the number of unique components/hyperparam
         # values.
-        self.component_dict = self.a_space.component_dict_from_signature()
+        all_components = self.a_space.component_dict_from_signature(
+            self.a_space.ALL_COMPONENTS)
         idx = 0
-        for atype, components in self.component_dict.items():
+        for atype, components in all_components.items():
             # action classifier
             self._add_action_classifier(idx, self.ALGORITHM, atype, components)
             self.atype_map[atype] = idx
@@ -149,7 +150,8 @@ class CASHController(nn.Module):
         action_probs = softmax(dense(rnn_output))
         return action_probs, hidden
 
-    def decode(self, init_input_tensor, aux, metafeatures, init_hidden):
+    def decode(self, init_input_tensor, target_type, aux, metafeatures,
+               init_hidden):
         """Decode a metafeature tensor to sequence of actions.
 
         Where the actions are a sequence of algorithm components and
@@ -160,15 +162,15 @@ class CASHController(nn.Module):
         input_tensor, hidden = init_input_tensor, init_hidden
         actions = []
         # for each algorithm component type, select an algorithm
-        for atype in self.component_dict:
+        for atype in self.a_space.component_dict_from_target_type(
+                target_type):
             action, input_tensor, hidden = self._decode_action(
                 input_tensor, aux, metafeatures, hidden, self.atype_map[atype])
             actions.append(action)
             # each algorithm is associated with a set of hyperparameters
-            for hyperparameter_index in self.acomponent_to_hyperparam[action["action"]]:
+            for h_index in self.acomponent_to_hyperparam[action["action"]]:
                 action, input_tensor, hidden = self._decode_action(
-                    input_tensor, aux, metafeatures, hidden,
-                    hyperparameter_index)
+                    input_tensor, aux, metafeatures, hidden, h_index)
                 actions.append(action)
         return actions, input_tensor
 

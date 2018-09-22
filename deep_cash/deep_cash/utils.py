@@ -8,16 +8,14 @@ import torch
 
 from torch.autograd import Variable
 
-from .data_environments.classification_environments import env_names
 
-
-def create_metafeature_spec(env_sources):
+def create_metafeature_spec(data_distribution):
     """Create a metafeature spec.
 
     NOTE: may need to make this a class if it becomes more complex.
     """
     return [
-        ("data_env_name", str, env_names(sources=env_sources)),
+        ("data_env_name", str, [d["dataset_name"] for d in data_distribution]),
         ("number_of_examples", int, None),
         ("number_of_features", int, None),
     ]

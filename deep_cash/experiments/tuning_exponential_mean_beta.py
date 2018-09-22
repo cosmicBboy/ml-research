@@ -37,13 +37,10 @@ n_layers = 3
 
 
 t_env = TaskEnvironment(
-    scorer=f1_score,
-    scorer_kwargs={"average": "weighted"},
     random_state=100,
     per_framework_time_limit=60,
     per_framework_memory_limit=3077,
-    error_reward=error_reward,
-    reward_transformer=lambda x: x)
+    error_reward=error_reward)
 
 # create algorithm space
 a_space = AlgorithmSpace(
