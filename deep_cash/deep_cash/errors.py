@@ -7,6 +7,7 @@ when fitting, predicting, and scoring a propoosed ML framework.
 import re
 
 from scipy.optimize.optimize import LineSearchWarning
+from scipy.linalg import LinAlgWarning
 from sklearn.exceptions import ConvergenceWarning, UndefinedMetricWarning
 
 
@@ -85,6 +86,9 @@ FIT_WARNINGS = [
         "can't resolve package from __spec__ or __package__, falling back on "
         "__name__ and __path__"),
     (LineSearchWarning, "The line search algorithm did not converge"),
+    (LinAlgWarning,
+        "Ill-conditioned matrix detected. Result is not guaranteed to be "
+        "accurate.")
     (UserWarning, "Line Search failed"),
     (UserWarning, "n_components > n_samples. This is not possible."),
     (UserWarning, "n_components is too large: it will be set to"),
