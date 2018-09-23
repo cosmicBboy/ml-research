@@ -2,9 +2,11 @@
 
 import logging
 import numpy as np
+import operator
 import pynisher
 import warnings
 
+from collections import namedtuple
 from functools import partial
 
 from sklearn.base import clone
@@ -20,6 +22,13 @@ logger = logging.getLogger(__name__)
 FIT_GRACE_PERIOD = 30
 
 f1_score_weighted_average = partial(f1_score, average="weighted")
+
+Scorer = namedtuple(
+    "Scorer", [
+        "fn",  # sklearn-compliant scoring function e.g. mean_squared_error
+        "reward_transformer",  # function that bounds range of scoring function
+        "comparator",  # function to determine if score a is better than b.
+    ])
 
 
 class TaskEnvironment(object):
@@ -43,8 +52,6 @@ class TaskEnvironment(object):
         # is ROC AUC scorer on just classification tasks. Will need to
         # extend this for regression task error metrics.
         self.scorers = _get_scorers() if scorers is None else scorers
-        self._score_transformers = _get_score_transformers() if \
-            score_transformers is None else score_transformers
         self.random_state = random_state
         self.enforce_limits = enforce_limits
         self.per_framework_time_limit = per_framework_time_limit
@@ -161,8 +168,6 @@ class TaskEnvironment(object):
         :rtype: 2-tuple[float|None]
         """
         mlf = self._fit(mlf)
-        if mlf is None:
-            return None, None
         return self._score(mlf)
 
     def _fit(self, mlf):
@@ -204,18 +209,12 @@ class TaskEnvironment(object):
             raise fit_error
 
     def _score(self, mlf):
-        # TODO: the scorer should dictate the form that the prediction takes.
-        # for example, the f1_score can only take categorical predictions, not
-        # predicted probabilities. For now, all predictions are treated as
-        # categorical
+        if mlf is None:
+            return None, None, None
         y_hat = _ml_framework_predict(mlf, self.X_test, self.target_type)
         scorer = self.scorers[self.target_type]
-        score_transformer = self._score_transformers.get(scorer, None)
         if y_hat is None:
-            return None, None
-        # TODO: create reward transformers for regression metric
-        # mean_squared_error. It should make max reward 1 (MSE = 0) and
-        # large MSE should approach 0
+            return None, None, None
         with warnings.catch_warnings() as warning:
             # raise exception for warnings not explicitly in SCORE_WARNINGS
             warnings.filterwarnings("error")
@@ -226,26 +225,29 @@ class TaskEnvironment(object):
                 warnings.filterwarnings(
                     "ignore", message=msg, category=warning_type)
             if warning:
-                print("SCORE WARNING: %s" % warning)
-            score = scorer(self.y_test, y_hat)
-            if score_transformer is None:
+                logger.info("SCORE WARNING: %s" % warning)
+            score = scorer.fn(self.y_test, y_hat)
+            if scorer.reward_transformer is None:
                 reward = score
             else:
-                reward = score_transformer(score)
-        return reward, score
+                reward = scorer.reward_transformer(score)
+        return reward, score, scorer.comparator
 
 
 def _get_scorers():
     return {
-        TargetType.BINARY: f1_score_weighted_average,
-        TargetType.MULTICLASS: f1_score_weighted_average,
-        TargetType.REGRESSION: mean_squared_error,
-    }
-
-
-def _get_score_transformers():
-    return {
-        mean_squared_error: exponentiated_log,
+        TargetType.BINARY: Scorer(
+            fn=f1_score_weighted_average,
+            reward_transformer=None,
+            comparator=operator.gt),
+        TargetType.MULTICLASS: Scorer(
+            fn=f1_score_weighted_average,
+            reward_transformer=None,
+            comparator=operator.gt),
+        TargetType.REGRESSION: Scorer(
+            fn=mean_squared_error,
+            reward_transformer=exponentiated_log,
+            comparator=operator.lt),
     }
 
 

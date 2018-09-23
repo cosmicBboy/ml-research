@@ -231,7 +231,7 @@ class CASHReinforce(object):
         mlf = self.controller.a_space.create_ml_framework(
             algorithms, hyperparameters=hyperparameters,
             env_dep_hyperparameters=self.t_env.env_dep_hyperparameters())
-        reward, score = self.t_env.evaluate(mlf)
+        reward, score, score_comparator = self.t_env.evaluate(mlf)
         self._action_buffer.append(action_activation)
         self._algorithm_sets.append(algorithms)
         self._hyperparameter_sets.append(hyperparameters)
@@ -242,7 +242,7 @@ class CASHReinforce(object):
             self._n_valid_mlf += 1
             self._successful_mlfs.append(mlf)
             if self._best_validation_score is None or \
-                    score > self._best_validation_score:
+                    score_comparator(score, self._best_validation_score):
                 self._best_validation_score = score
                 self._best_mlf = mlf
             return reward
