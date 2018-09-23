@@ -16,11 +16,12 @@ floyd run --env pytorch-0.3 --cpu2 \
     --with_baseline \
     --multi_baseline \
     --normalize_reward \
-    --n_episodes=500 \
+    --n_episodes=100 \
     --n_iter=16 \
     --learning_rate=0.003 \
     --error_reward=-0.05 \
     --per_framework_time_limit=180 \
     --per_framework_memory_limit=5000 \
     --logger=floyd \
-    --fit_verbose=0"
+    --fit_verbose=0 \
+    --target_type=REGRESSION"
