@@ -18,6 +18,41 @@ nature of the dataset, such as structured, unstructured, or semi-structured
 data.
 
 
+# Quickstart
+
+add deep_cash project to PYTHONPATH and binary to PATH
+```
+$ . .env
+```
+
+then you can run an experiment with the `deep-cash` cli.
+```
+# run an experiment with default values
+$ deep-cash run experiment
+```
+
+## Running an experiment with a configuration file
+
+Alternatively, you can create an experiment configuration file to run
+your experiment.
+
+```
+# create experiment config file
+$ deep-cash create config my_experiment config/local --description "my experiment"
+
+# output:
+# wrote experiment config file to config/local/experiment_2018-37-25-21:37:11_my_experiment.yml
+```
+
+
+edit the config file `parameters` section to the set of parameters
+that you want to train on, then run the experiment with
+
+```
+$ deep-cash run from-config config/local/experiment_2018-37-25-21:37:11_my_experiment.yml
+```
+
+
 # Relevant Work
 
 The Combined Algorithm Selection and Hyperparameter optimization
@@ -122,19 +157,6 @@ of the system). The ordering is the following:
 - classifier/regressor hyperparameters
 
 
-# Extensions
-
-An extension to the `encoder` would be to generalize the metadata feature
-representation from hand-crafted features (e.g. mean of means of numerical
-features) and instead formulate `encoder` as a sequence model, where the input
-is a sequence of sequences. The first sequence contains data points or
-`instances` of the dataset, the second sequence contains minimally preprocessed
-`features` of that particular `instance` (note that the challenge here is how
-to represent categorical features across difference datasets). The weights in
-the `encoder` are trained jointly as part of the gradient computed using the
-REINFORCE algorithm.
-
-
 # Roadmap: Milestones
 
 - [X] implementation of the naive (unstructured) `AlgorithmRNN`/
@@ -148,12 +170,17 @@ REINFORCE algorithm.
   [paper][meta-rl] in particular, feed `CashController` auxiliary inputs:
   - previous reward
   - previous actions
-- [ ] normalize `reward - baseline` (equivalent of advantage in this system)
+- [X] normalize `reward - baseline` (equivalent of advantage in this system)
   by mean-centering and standard-deviation-rescaling.
-- [ ] extend meta-RL algorithm by implementing memory as a lookup table that
+- [X] extend meta-RL algorithm by implementing memory as a lookup table that
   maps data environments to the most recent hidden state from the same data
   environment.
-- [ ] extend deep cash to support regression problems.
+- [X] extend deep cash to support regression problems.
+- [ ] 100% coverage of sklearn classification estimators
+- [ ] 100% coverage of sklearn regression estimators
+- [ ] 100% coverage of sklearn data preprocessors
+- [ ] 100% coverage of sklearn feature preprocessors
+- [ ] support for [XGBoost][xgboost]
 
 
 # Analyses
@@ -173,6 +200,21 @@ in the project `analysis` subfolder:
   the output of multiple jobs, each with multiple trials.
 
 
+# Extensions
+
+## Metadata Encoder
+
+An extension to the `encoder` would be to generalize the metadata feature
+representation from hand-crafted features (e.g. mean of means of numerical
+features) and instead formulate `encoder` as a sequence model, where the input
+is a sequence of sequences. The first sequence contains data points or
+`instances` of the dataset, the second sequence contains minimally preprocessed
+`features` of that particular `instance` (note that the challenge here is how
+to represent categorical features across difference datasets). The weights in
+the `encoder` are trained jointly as part of the gradient computed using the
+REINFORCE algorithm.
+
+
 [neuralarchsearch]: https://arxiv.org/abs/1611.01578
 [autosklearn]: papers.nips.cc/paper/5872-efficient-and-robust-automated-machine-learning.pdf
 [autosklearn-package]: https://automl.github.io/auto-sklearn/stable/
@@ -187,3 +229,4 @@ in the project `analysis` subfolder:
 [pytorch-reinforce]: https://github.com/pytorch/examples/blob/master/reinforcement_learning/reinforce.py
 [sklearn]: http://scikit-learn.org/stable/
 [sklearn-pipeline]: http://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html
+[xgboost]: https://xgboost.readthedocs.io/en/latest/python/python_intro.html

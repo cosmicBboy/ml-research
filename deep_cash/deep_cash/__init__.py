@@ -1,7 +1,7 @@
 from . import (
     algorithm_env, algorithm_space, beam_search, cash_controller,
     cash_reinforce, components, data_environments, data_sourcers, data_types,
-    errors, rnn_code_generator, task_environment)
+    errors, experiment, rnn_code_generator, task_environment)
 
 
 __all__ = [
@@ -15,5 +15,6 @@ __all__ = [
     data_sourcers,
     data_types,
     errors,
+    experiment,
     rnn_code_generator,
     task_environment]

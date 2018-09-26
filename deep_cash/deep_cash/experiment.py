@@ -1,106 +1,132 @@
-"""Run deep cash experiment."""
+"""Module for creating, reading deep cash experiments."""
 
-import click
+import datetime
+import inspect
+import logging
 import os
 import pandas as pd
+import subprocess
 import torch
 import torch.multiprocessing as mp
+import yaml
+import yamlordereddictloader
 
+from collections import namedtuple, OrderedDict
 from functools import partial
 from pathlib import Path
 from shutil import rmtree
 from sklearn.externals import joblib
 
-from deep_cash.algorithm_space import AlgorithmSpace
-from deep_cash.task_environment import TaskEnvironment
-from deep_cash.cash_controller import CASHController
-from deep_cash.cash_reinforce import CASHReinforce
-from deep_cash.loggers import get_loggers, empty_logger
-from deep_cash.data_environments.environments import envs
-from deep_cash import utils
+from .algorithm_space import AlgorithmSpace
+from .task_environment import TaskEnvironment
+from .cash_controller import CASHController
+from .cash_reinforce import CASHReinforce
+from .loggers import get_loggers, empty_logger
+from .data_environments.environments import envs
+from . import utils
 
-DEFAULT_OUTPUT = os.path.dirname(__file__) + "/../output"
+
+logger = logging.getLogger(__name__)
+
+
 ENV_NAMES = [d["dataset_name"] for d in envs()]
+ExperimentConfig = namedtuple(
+    "ExperimentConfig", [
+        "name",
+        "description",
+        "created_at",
+        "git_hash",
+        "parameters"])
 
 
-@click.command()
-@click.argument("datasets", nargs=-1)
-@click.option("--output_fp", default=DEFAULT_OUTPUT)
-@click.option("--n_trials", default=1)
-@click.option("--input_size", default=30)
-@click.option("--hidden_size", default=30)
-@click.option("--output_size", default=30)
-@click.option("--n_layers", default=3)
-@click.option("--dropout_rate", default=0.2)
-@click.option("--beta", default=0.9, type=float)
-@click.option("--entropy_coef", default=0.0, type=float)
-@click.option("--with_baseline/--without_baseline", default=True)
-@click.option("--single_baseline/--multi_baseline", default=True)
-@click.option("--normalize_reward", default=False, is_flag=True)
-@click.option("--n_episodes", default=1000)
-@click.option("--n_iter", default=10)
-@click.option("--learning_rate", default=0.005, type=float)
-@click.option("--target_type", "-t", default=None,
-              type=click.Choice(["BINARY", "MULTICLASS", "REGRESSION"]),
-              multiple=True)
-@click.option("--error_reward", default=0, type=float)
-@click.option("--per_framework_time_limit", default=60)
-@click.option("--per_framework_memory_limit", default=3077)
-@click.option("--logger", default=None)
-@click.option("--fit_verbose", default=1)
-@click.option("--controller_seed", default=1000)
-@click.option("--task_environment_seed", default=100)
+def get_default_parameters():
+    return OrderedDict([
+        (k, v.default) for k, v in
+        inspect.signature(run_experiment).parameters.items()
+    ])
+
+
+def create_config(name, description, date_format="%Y-%M-%d-%H:%M:%S",
+                  **custom_parameters):
+    parameters = get_default_parameters()
+    if custom_parameters:
+        parameters.update(custom_parameters)
+    created_at = datetime.datetime.now()
+    git_hash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
+    return ExperimentConfig(
+        name=name,
+        description=description,
+        created_at=created_at.strftime(date_format),
+        git_hash=git_hash.strip().decode("utf-8"),
+        parameters=parameters)
+
+
+def write_config(config, dir_path):
+    dir_path = Path(dir_path)
+    dir_path.mkdir(exist_ok=True)
+    fp = _config_filepath(dir_path, config)
+    with open(str(fp), "w") as f:
+        yaml.dump(config._asdict(), f, Dumper=yamlordereddictloader.Dumper,
+                  default_flow_style=False)
+    print("wrote experiment config file to %s" % fp)
+
+
+def read_config(fp):
+    with open(fp, "r") as f:
+        return yaml.load(f, Loader=yamlordereddictloader.Loader)
+
+
+def _config_filepath(dir_path, config):
+    return dir_path / (
+        "experiment_%s_%s.yml" % (config.created_at, config.name))
+
+
 def run_experiment(
-        datasets,
-        output_fp,
-        n_trials,
-        input_size,
-        hidden_size,
-        output_size,
-        n_layers,
-        dropout_rate,
-        beta,
-        entropy_coef,
-        with_baseline,
-        single_baseline,
-        normalize_reward,
-        n_episodes,
-        n_iter,
-        learning_rate,
-        target_type,
-        error_reward,
-        per_framework_time_limit,
-        per_framework_memory_limit,
-        logger,
-        fit_verbose,
-        controller_seed,
-        task_environment_seed):
+        datasets=None,
+        output_fp=os.path.dirname(__file__) + "/../output",
+        n_trials=1,
+        input_size=30,
+        hidden_size=30,
+        output_size=30,
+        n_layers=3,
+        dropout_rate=0.2,
+        beta=0.9,
+        entropy_coef=0.0,
+        with_baseline=True,
+        single_baseline=True,
+        normalize_reward=False,
+        n_episodes=100,
+        n_iter=16,
+        learning_rate=0.005,
+        target_types=["BINARY", "MULTICLASS"],
+        error_reward=0,
+        per_framework_time_limit=180,
+        per_framework_memory_limit=5000,
+        metric_logger=None,
+        fit_verbose=1,
+        controller_seed=1000,
+        task_environment_seed=100):
     """Run deep cash experiment with single configuration."""
     print("Running cash controller experiment with %d %s" % (
         n_trials, "trials" if n_trials > 1 else "trial"))
     torch.manual_seed(controller_seed)
-    datasets = list(datasets)
-    for ds in datasets:
-        if ds not in ENV_NAMES:
-            raise click.UsageError(
-                "dataset %s is not a valid dataset name, options: %s" % (
-                    ds, ENV_NAMES))
+    if datasets:
+        datasets = list(datasets)
+        for ds in datasets:
+            if ds not in ENV_NAMES:
+                raise ValueError(
+                    "dataset %s is not a valid dataset name, options: %s" % (
+                        ds, ENV_NAMES))
     output_fp = os.path.dirname(__file__) + "/../output" if \
         output_fp is None else output_fp
     data_path = Path(output_fp)
-
-    # by default specify classification target types
-    if target_type is None:
-        target_types = ["BINARY", "MULTICLASS"]
-    else:
-        target_types = list(target_type)
 
     # initialize error logging (this is to log fit/predict/score errors made
     # when evaluating a proposed MLF)
     utils.init_logging(str(Path(output_fp) / "fit_predict_error_logs.log"))
 
     # this logger is for logging metrics to floydhub/stdout
-    logger = get_loggers().get(logger, empty_logger)
+    metric_logger = get_loggers().get(metric_logger, empty_logger)
 
     def worker(procnum, reinforce, return_dict):
         """Fit REINFORCE Helper function."""
@@ -151,7 +177,7 @@ def run_experiment(
             with_baseline=with_baseline,
             single_baseline=single_baseline,
             normalize_reward=normalize_reward,
-            metrics_logger=partial(logger, prefix="proc_num_%d_" % i))
+            metrics_logger=partial(metric_logger, prefix="proc_num_%d_" % i))
 
         p = mp.Process(target=worker, args=(i, reinforce, return_dict))
         p.start()
@@ -192,7 +218,3 @@ def run_experiment(
     ]].to_csv(
         str(data_path / "rnn_cash_controller_experiment.csv"),
         index=False)
-
-
-if __name__ == "__main__":
-    run_experiment()

@@ -1,0 +1,104 @@
+#!/usr/bin/env python
+
+"""Run deep cash experiment."""
+
+import click
+
+from deep_cash import experiment
+
+
+DEFAULT_PARAMETERS = experiment.get_default_parameters()
+
+
+@click.group()
+def cli():
+    pass
+
+
+@cli.group("run")
+def run():
+    pass
+
+
+@run.command("experiment")
+@click.argument("datasets", nargs=-1)
+@click.option("--output_fp", default=DEFAULT_PARAMETERS["output_fp"])
+@click.option("--n_trials", default=DEFAULT_PARAMETERS["n_trials"])
+@click.option("--input_size", default=DEFAULT_PARAMETERS["input_size"])
+@click.option("--hidden_size", default=DEFAULT_PARAMETERS["hidden_size"])
+@click.option("--output_size", default=DEFAULT_PARAMETERS["output_size"])
+@click.option("--n_layers", default=DEFAULT_PARAMETERS["n_layers"])
+@click.option("--dropout_rate", default=DEFAULT_PARAMETERS["dropout_rate"])
+@click.option("--beta", default=DEFAULT_PARAMETERS["beta"], type=float)
+@click.option("--entropy_coef", default=DEFAULT_PARAMETERS["entropy_coef"],
+              type=float)
+@click.option("--with_baseline/--without_baseline",
+              default=DEFAULT_PARAMETERS["with_baseline"])
+@click.option("--single_baseline/--multi_baseline",
+              default=DEFAULT_PARAMETERS["single_baseline"])
+@click.option("--normalize_reward",
+              default=DEFAULT_PARAMETERS["normalize_reward"], is_flag=True)
+@click.option("--n_episodes", default=DEFAULT_PARAMETERS["n_episodes"])
+@click.option("--n_iter", default=DEFAULT_PARAMETERS["n_iter"])
+@click.option("--learning_rate", default=DEFAULT_PARAMETERS["learning_rate"],
+              type=float)
+@click.option("--target_types", "-t",
+              default=DEFAULT_PARAMETERS["target_types"],
+              type=click.Choice(["BINARY", "MULTICLASS", "REGRESSION"]),
+              multiple=True)
+@click.option("--error_reward", default=DEFAULT_PARAMETERS["error_reward"],
+              type=float)
+@click.option("--per_framework_time_limit",
+              default=DEFAULT_PARAMETERS["per_framework_time_limit"])
+@click.option("--per_framework_memory_limit",
+              default=DEFAULT_PARAMETERS["per_framework_memory_limit"])
+@click.option("--metric_logger", default=DEFAULT_PARAMETERS["metric_logger"])
+@click.option("--fit_verbose", default=DEFAULT_PARAMETERS["fit_verbose"])
+@click.option("--controller_seed",
+              default=DEFAULT_PARAMETERS["controller_seed"])
+@click.option("--task_environment_seed",
+              default=DEFAULT_PARAMETERS["task_environment_seed"])
+def run_experiment(*args, **kwargs):
+    """Run deep cash experiment with single configuration."""
+    # TODO: use the following SO solution to implement list option
+    # https://stackoverflow.com/questions/47631914/how-to-pass-several-list-of-arguments-to-click-option
+    experiment.run_experiment(*args, **kwargs)
+
+
+@run.command("from-config")
+@click.argument("config_fp")
+def from_config(config_fp):
+    print("running experiment from config %s" % config_fp)
+    config = experiment.read_config(config_fp)
+    print("\nparameters:")
+    for k, v in config["parameters"].items():
+        print("\t%s: %s" % (k, v))
+    experiment.run_experiment(**config["parameters"])
+
+
+@cli.group("create")
+def create():
+    pass
+
+
+@create.command("config")
+@click.argument("name")
+@click.argument("dir_path")
+@click.option("--description", default="")
+@click.option("--floyd", is_flag=True)
+def create_config(name, dir_path, description, floyd):
+    """Creates experiment configuration file."""
+    custom_params = {}
+    if floyd:
+        custom_params.update({
+            "output_fp": "/output",
+            "metric_logger": "floyd",
+            "fit_verbose": 0,
+        })
+    experiment.write_config(
+        experiment.create_config(name, description, **custom_params),
+        dir_path)
+
+
+if __name__ == "__main__":
+    cli()

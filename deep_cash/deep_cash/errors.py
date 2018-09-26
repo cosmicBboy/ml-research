@@ -88,7 +88,7 @@ FIT_WARNINGS = [
     (LineSearchWarning, "The line search algorithm did not converge"),
     (LinAlgWarning,
         "Ill-conditioned matrix detected. Result is not guaranteed to be "
-        "accurate.")
+        "accurate."),
     (UserWarning, "Line Search failed"),
     (UserWarning, "n_components > n_samples. This is not possible."),
     (UserWarning, "n_components is too large: it will be set to"),

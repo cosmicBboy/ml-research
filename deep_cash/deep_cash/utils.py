@@ -35,7 +35,7 @@ def init_logging(log_path="/tmp/deep_cash.log"):
     for h in logging.root.handlers:
         logging.root.removeHandler(h)
     if log_path is not None:
-        logging.info("writing logs to %s" % log_path)
+        print("writing logs to %s" % log_path)
         with open(log_path, "w") as f:
             f.close()
     logging.basicConfig(

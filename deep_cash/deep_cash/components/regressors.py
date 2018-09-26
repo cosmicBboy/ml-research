@@ -2,7 +2,6 @@
 
 from sklearn.linear_model import Lasso, Ridge
 
-
 from .algorithm import AlgorithmComponent
 from .hyperparameter import (
     CategoricalHyperparameter, UniformIntHyperparameter,
