@@ -49,7 +49,7 @@ def get_default_parameters():
     ])
 
 
-def create_config(name, description, date_format="%Y-%M-%d-%H:%M:%S",
+def create_config(name, description, date_format="%Y-%m-%d-%H:%M:%S",
                   **custom_parameters):
     parameters = get_default_parameters()
     if custom_parameters:
