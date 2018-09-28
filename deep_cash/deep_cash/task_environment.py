@@ -13,7 +13,7 @@ from sklearn.base import clone
 from sklearn.metrics import f1_score, mean_squared_error
 
 from .data_environments import environments
-from .data_types import FeatureType, TargetType
+from .data_types import FeatureType, TargetType, DataSourceType
 from .errors import NoPredictMethodError, is_valid_fit_error, \
     is_valid_predict_error, FIT_WARNINGS, SCORE_WARNINGS
 from . import utils
@@ -36,7 +36,7 @@ class TaskEnvironment(object):
 
     def __init__(
             self,
-            env_sources=environments.ENV_SOURCES,
+            env_sources=["SKLEARN", "OPEN_ML"],
             target_types=["BINARY", "MULTICLASS"],
             scorers=None,
             score_transformers=None,
@@ -57,7 +57,7 @@ class TaskEnvironment(object):
         self.per_framework_time_limit = per_framework_time_limit
         self.per_framework_memory_limit = per_framework_memory_limit
         self._dataset_names = dataset_names
-        self._env_sources = env_sources
+        self._env_sources = [DataSourceType[e] for e in env_sources]
         self._target_types = [TargetType[t] for t in target_types]
         self.data_distribution = environments.envs(
             sources=self._env_sources, names=self._dataset_names,

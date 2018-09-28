@@ -29,7 +29,6 @@ from . import utils
 logger = logging.getLogger(__name__)
 
 
-ENV_NAMES = [d["dataset_name"] for d in envs()]
 ExperimentConfig = namedtuple(
     "ExperimentConfig", [
         "name",
@@ -37,6 +36,10 @@ ExperimentConfig = namedtuple(
         "created_at",
         "git_hash",
         "parameters"])
+
+
+def _env_names():
+    return [d["dataset_name"] for d in envs()]
 
 
 def get_default_parameters():
@@ -110,13 +113,14 @@ def run_experiment(
     print("Running cash controller experiment with %d %s" % (
         n_trials, "trials" if n_trials > 1 else "trial"))
     torch.manual_seed(controller_seed)
+    env_names = _env_names()
     if datasets:
         datasets = list(datasets)
         for ds in datasets:
-            if ds not in ENV_NAMES:
+            if ds not in env_names:
                 raise ValueError(
                     "dataset %s is not a valid dataset name, options: %s" % (
-                        ds, ENV_NAMES))
+                        ds, env_names))
     output_fp = os.path.dirname(__file__) + "/../output" if \
         output_fp is None else output_fp
     data_path = Path(output_fp)

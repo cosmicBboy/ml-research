@@ -3,6 +3,7 @@
 import itertools
 
 from . import classification_environments, regression_environments
+from ..data_types import DataSourceType
 from ..data_sourcers import openml_api
 
 
@@ -23,8 +24,8 @@ def sklearn_data_envs():
 
 
 ENV_SOURCES = {
-    "sklearn": sklearn_data_envs,
-    "openml": openml_api.classification_envs,
+    DataSourceType.SKLEARN: sklearn_data_envs,
+    DataSourceType.OPEN_ML: openml_api.envs,
 }
 
 

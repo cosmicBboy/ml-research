@@ -14,7 +14,7 @@ def _task_environment(
         target_types=["BINARY", "MULTICLASS"],
         dataset_names=["iris", "wine"]):
     return TaskEnvironment(
-        env_sources=["sklearn"],
+        env_sources=["SKLEARN"],
         target_types=target_types,
         random_state=100,
         enforce_limits=False,
@@ -151,15 +151,16 @@ def test_cash_entropy_regularizer():
 
 def test_cash_reinforce_regressor():
     """Test cash reinforce regression data environments."""
-    n_episodes = 4
-    t_env = _task_environment(
-        target_types=["REGRESSION"],
-        dataset_names=["boston"])
-    a_space = _algorithm_space()
-    controller = _cash_controller(a_space, t_env)
-    reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
-    reinforce.fit(
-        n_episodes=n_episodes,
-        **_fit_kwargs())
-    history = pd.DataFrame(reinforce.history())
-    assert history.shape[0] == n_episodes
+    n_episodes = 6
+    for dataset in ["boston", "diabetes", "linnerud"]:
+        t_env = _task_environment(
+            target_types=["REGRESSION"],
+            dataset_names=[dataset])
+        a_space = _algorithm_space()
+        controller = _cash_controller(a_space, t_env)
+        reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
+        reinforce.fit(
+            n_episodes=n_episodes,
+            **_fit_kwargs())
+        history = pd.DataFrame(reinforce.history())
+        assert history.shape[0] == n_episodes
