@@ -156,12 +156,10 @@ def test_cash_entropy_regularizer():
 def test_cash_reinforce_regressor():
     """Test cash reinforce regression data environments."""
     n_episodes = 4
-    for env in environments.envs(target_types=[TargetType.REGRESSION]):
+    for dataset in ["boston", "diabetes", "linnerud"]:
         t_env = _task_environment(
             target_types=["REGRESSION"],
-            dataset_names=[env["dataset_name"]],
-            env_sources=["SKLEARN", "OPEN_ML"],
-            enforce_limits=True)
+            dataset_names=[dataset])
         a_space = _algorithm_space()
         controller = _cash_controller(a_space, t_env)
         reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
