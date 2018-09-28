@@ -83,7 +83,7 @@ def k_nearest_neighbors():
     - metric_params: additional keyword arguments for the metric function.
     """
     return AlgorithmComponent(
-        name="KNearestNeighors",
+        name="KNearestNeighorsClassifier",
         component_class=KNeighborsClassifier,
         component_type=constants.CLASSIFIER,
         hyperparameters=[
@@ -181,6 +181,8 @@ def _libsvm_constant_hyperparameters():
 
 def support_vector_classifier_poly():
     """Create linear support vector classifier component."""
+    constant_hyperparameters = {"kernel": "poly"}
+    constant_hyperparameters.update(_libsvm_constant_hyperparameters())
     return AlgorithmComponent(
         name="PolyKernelSVC",
         component_class=SVC,
@@ -188,36 +190,38 @@ def support_vector_classifier_poly():
         hyperparameters=(
             _libsvm_hyperparameters() +
             _libsvm_poly_sigmoid_hyperparameters() +
-            [
-                UniformIntHyperparameter("degree", 2, 5, default=3)
-            ]
+            [UniformIntHyperparameter("degree", 2, 5, default=3)]
         ),
-        constant_hyperparameters=_libsvm_constant_hyperparameters(),
+        constant_hyperparameters=constant_hyperparameters,
     )
 
 
 def support_vector_classifier_rbf():
     """Create linear support vector classifier component."""
+    constant_hyperparameters = {"kernel": "rbf"}
+    constant_hyperparameters.update(_libsvm_constant_hyperparameters())
     return AlgorithmComponent(
         name="RBFKernelSVC",
         component_class=SVC,
         component_type=constants.CLASSIFIER,
         hyperparameters=_libsvm_hyperparameters(),
-        constant_hyperparameters=_libsvm_constant_hyperparameters()
+        constant_hyperparameters=constant_hyperparameters
     )
 
 
 def support_vector_classifier_sigmoid():
     """Create linear support vector classifier component."""
+    constant_hyperparameters = {"kernel": "sigmoid"}
+    constant_hyperparameters.update(_libsvm_constant_hyperparameters())
     return AlgorithmComponent(
-        name="SigmoigKernelSVC",
+        name="SigmoidKernelSVC",
         component_class=SVC,
         component_type=constants.CLASSIFIER,
         hyperparameters=(
             _libsvm_hyperparameters() +
             _libsvm_poly_sigmoid_hyperparameters()
         ),
-        constant_hyperparameters=_libsvm_constant_hyperparameters(),
+        constant_hyperparameters=constant_hyperparameters,
     )
 
 
