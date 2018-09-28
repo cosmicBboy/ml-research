@@ -178,9 +178,15 @@ class TaskEnvironment(object):
         :returns: sklearn.pipeline.Pipeline if MLF successfully fit, None
             if error was raised by calling `mlf.fit`.
         """
-        mlf, fit_error = self.ml_framework_fitter(
-            clone(mlf), self.X_train, self.y_train)
         mlf_str = utils._ml_framework_string(mlf)
+        result = self.ml_framework_fitter(
+            clone(mlf), self.X_train, self.y_train)
+        try:
+            mlf, fit_error = result
+        except TypeError as e:
+            logger.info("INVALID TYPE FIT ERROR: %s, MLF: %s, RESULT: %s" %
+                        (e, mlf_str, result))
+            return None
 
         if fit_error is None:
             return mlf

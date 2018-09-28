@@ -9,9 +9,38 @@ from .hyperparameter import (
 from . import constants
 
 
+# ===================
+# Bayesian Regressors
+# ===================
+
+
+# ===================
+# Ensemble Regressors
+# ===================
+
+def adaboost_regression():
+    pass
+
+
+def extra_trees_regression():
+    pass
+
+
+# ===================
+# Gaussian Regressors
+# ===================
+
+def rbf_gaussian_process():
+    pass
+
+
 # =================
 # Linear Regressors
 # =================
+
+def ard_regression():
+    pass
+
 
 def ridge_regression():
     """Create linear ridge regression algorithm component."""
@@ -47,15 +76,28 @@ def lasso_regression():
         })
 
 
-# =============
-# Decision Tree
-# =============
+def elastic_net_regression():
+    pass
+
+
+def sgd_regression():
+    pass
+
+
+# =========================
+# Non-parametric Regressors
+# =========================
+
+
+# =========================
+# Support-vector Regressors
+# =========================
+
+
+# =====================
+# Tree-based Regressors
+# =====================
 
 def decision_tree_regression():
     """Create decision tree regressor algorithm component."""
     pass
-
-
-# ==========================
-# Non-parametric Classifiers
-# ==========================

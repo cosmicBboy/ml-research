@@ -8,16 +8,20 @@ from deep_cash.algorithm_space import AlgorithmSpace
 from deep_cash.task_environment import TaskEnvironment
 from deep_cash.cash_controller import CASHController
 from deep_cash.cash_reinforce import CASHReinforce
+from deep_cash.data_types import TargetType
+from deep_cash.data_environments import environments
 
 
 def _task_environment(
         target_types=["BINARY", "MULTICLASS"],
-        dataset_names=["iris", "wine"]):
-    return TaskEnvironment(
+        dataset_names=["iris", "wine"],
         env_sources=["SKLEARN"],
+        enforce_limits=False):
+    return TaskEnvironment(
+        env_sources=env_sources,
         target_types=target_types,
         random_state=100,
-        enforce_limits=False,
+        enforce_limits=enforce_limits,
         per_framework_time_limit=10,
         per_framework_memory_limit=1000,
         dataset_names=dataset_names,
@@ -151,11 +155,13 @@ def test_cash_entropy_regularizer():
 
 def test_cash_reinforce_regressor():
     """Test cash reinforce regression data environments."""
-    n_episodes = 6
-    for dataset in ["boston", "diabetes", "linnerud"]:
+    n_episodes = 4
+    for env in environments.envs(target_types=[TargetType.REGRESSION]):
         t_env = _task_environment(
             target_types=["REGRESSION"],
-            dataset_names=[dataset])
+            dataset_names=[env["dataset_name"]],
+            env_sources=["SKLEARN", "OPEN_ML"],
+            enforce_limits=True)
         a_space = _algorithm_space()
         controller = _cash_controller(a_space, t_env)
         reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
