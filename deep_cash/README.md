@@ -176,6 +176,8 @@ of the system). The ordering is the following:
   maps data environments to the most recent hidden state from the same data
   environment.
 - [X] extend deep cash to support regression problems.
+- [ ] increase coverage of regression estimators (add ~5-6 more)
+- [ ] handle missing-valued data with imputer
 - [ ] 100% coverage of sklearn classification estimators
 - [ ] 100% coverage of sklearn regression estimators
 - [ ] 100% coverage of sklearn data preprocessors
