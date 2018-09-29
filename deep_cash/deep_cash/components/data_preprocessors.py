@@ -12,7 +12,7 @@ from .hyperparameter import (
     UniformFloatHyperparameter, TuplePairHyperparameter)
 
 
-def imputer():
+def impute_numeric():
     """Create an imputer component.
 
     TODO: when this project gets to processing datasets with missing values,
@@ -23,13 +23,12 @@ def imputer():
     component after the imputers.
     """
     return AlgorithmComponent(
-        name="Imputer",
+        name="NumericImputer",
         component_class=Imputer,
         component_type=constants.IMPUTER,
         hyperparameters=[
             CategoricalHyperparameter(
-                "strategy", ["mean", "median", "most_frequent"],
-                default="mean"),
+                "strategy", ["mean", "median"], default="mean"),
         ])
 
 

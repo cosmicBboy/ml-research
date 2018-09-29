@@ -12,8 +12,8 @@ from ..data_types import FeatureType, TargetType, OpenMLTaskType, \
 from ..errors import TargetNotCompatible
 
 
-N_CLASSIFICATION_ENVS = 10
-N_REGRESSION_ENVS = 10
+N_CLASSIFICATION_ENVS = 20
+N_REGRESSION_ENVS = 20
 
 # specifies range of classification tasks from 2-100 classes
 CLASS_RANGE = (2, 100)
@@ -126,6 +126,8 @@ def _parse_openml_dataset(
     for key, feature in openml_dataset.features.items():
         if (ignore_atts and feature.name in ignore_atts) or \
                 (row_id_att and feature.name == row_id_att):
+            print("ignoring attribute %s in dataset %s" %
+                  (ignore_atts, openml_dataset.name))
             continue
 
         if feature.name == target_column:
@@ -140,7 +142,13 @@ def _parse_openml_dataset(
             feature_indices.append(key)
             feature_types.append(_map_feature(feature))
     if target_index is None:
-        raise ValueError("target_index must be defined.")
+        print("target column %s not found for dataset %s, skipping." %
+              (target_column, openml_dataset.name))
+        return None
+    if len(feature_indices) == 0:
+        print("no features found for dataset %s, skipping." %
+              openml_dataset.name)
+        return None
     return _open_ml_dataset(
         name=openml_dataset.name,
         target_type=target_type,
@@ -231,32 +239,38 @@ def parse_clf_dataset(dataset, dataset_metadata=None):
 
 
 def classification_envs(n=N_CLASSIFICATION_ENVS):
-    clf_dataset_metadata = list_clf_datasets(n)
-    clf_dataset_ids = [did for did in clf_dataset_metadata]
-    datasets = get_datasets(ids=clf_dataset_ids + list(CUSTOM_DATASET_IDS))
+    clf_dataset_metadata = openml.tasks.list_tasks(
+        task_type_id=OpenMLTaskType.SUPERVISED_CLASSIFICATION.value, size=n)
+    dataset_ids = [v["source_data"] for v in clf_dataset_metadata.values()]
+    clf_datasets = openml.datasets.get_datasets(dataset_ids)
+    target_features, target_types = zip(*[
+        (v["target_feature"],
+         TargetType.MULTICLASS if v["NumberOfClasses"] > 2
+            else TargetType.BINARY)
+        for v in clf_dataset_metadata.values()])
     out = []
-    for ds in datasets:
-        try:
-            out.append(parse_clf_dataset(ds, clf_dataset_metadata))
-        except TargetNotCompatible as e:
-            # TODO: log this
-            print("DATA ENVIRONMENT ERROR: %s" % e)
-            continue
+    for ds, tc, tt in zip(clf_datasets, target_features, target_types):
+        parsed_ds = _parse_openml_dataset(
+            ds, tc, tt, include_features_with_na=True)
+        if parsed_ds:
+            out.append(parsed_ds)
     return out
 
 
 def regression_envs(n=N_REGRESSION_ENVS):
     reg_dataset_metadata = openml.tasks.list_tasks(
-        task_type_id=OpenMLTaskType.SUPERVISED_REGRESSION.value,
-        size=n)
+        task_type_id=OpenMLTaskType.SUPERVISED_REGRESSION.value, size=n)
     dataset_ids = [v["source_data"] for v in reg_dataset_metadata.values()]
     reg_datasets = openml.datasets.get_datasets(dataset_ids)
     target_features = [
         v["target_feature"] for v in reg_dataset_metadata.values()]
     out = []
     for openml_dataset, target_column in zip(reg_datasets, target_features):
-        out.append(_parse_openml_dataset(
-            openml_dataset, target_column, TargetType.REGRESSION))
+        parsed_ds = _parse_openml_dataset(
+            openml_dataset, target_column, TargetType.REGRESSION,
+            include_features_with_na=True)
+        if parsed_ds:
+            out.append(parsed_ds)
     return out
 
 

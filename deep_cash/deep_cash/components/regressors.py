@@ -309,7 +309,7 @@ def support_vector_regression_sigmoid():
     constant_hyperparameters = {"kernel": "sigmoid"}
     constant_hyperparameters.update(_libsvm_constant_hyperparameters())
     return AlgorithmComponent(
-        name="SigmoiKernelSVR",
+        name="SigmoidKernelSVR",
         component_class=SVR,
         component_type=constants.REGRESSOR,
         hyperparameters=(

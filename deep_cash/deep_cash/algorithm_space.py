@@ -35,15 +35,15 @@ SPECIAL_TOKENS = [START_TOKEN, END_TOKEN, NONE_TOKEN]
 # ml framework pipeline must have this signature. Can eventually support
 # multiple signatures.
 CLASSIFIER_MLF_SIGNATURE = [
-    constants.ONE_HOT_ENCODER,
     constants.IMPUTER,
+    constants.ONE_HOT_ENCODER,
     constants.RESCALER,
     constants.FEATURE_PREPROCESSOR,
     constants.CLASSIFIER
 ]
 REGRESSOR_MLF_SIGNATURE = [
-    constants.ONE_HOT_ENCODER,
     constants.IMPUTER,
+    constants.ONE_HOT_ENCODER,
     constants.RESCALER,
     constants.FEATURE_PREPROCESSOR,
     constants.REGRESSOR
@@ -59,8 +59,8 @@ class AlgorithmSpace(object):
     """Class that generates machine learning frameworks."""
 
     ALL_COMPONENTS = [
-        constants.ONE_HOT_ENCODER,
         constants.IMPUTER,
+        constants.ONE_HOT_ENCODER,
         constants.RESCALER,
         constants.FEATURE_PREPROCESSOR,
         constants.CLASSIFIER,
@@ -158,11 +158,8 @@ class AlgorithmSpace(object):
         :returns: list of components of `component_type`
         :rtype: list[AlgorithmComponent]
         """
-        try:
-            return [c for c in self.components if c not in SPECIAL_TOKENS and
-                    c.component_type == component_type]
-        except:
-            import ipdb; ipdb.set_trace()
+        return [c for c in self.components if c not in SPECIAL_TOKENS and
+                c.component_type == component_type]
 
     def h_state_space(self, components, with_none_token=False):
         """Get hyperparameter state space by components.
@@ -260,7 +257,7 @@ class AlgorithmSpace(object):
 def get_data_preprocessors():
     """Get all data preprocessors in structured algorithm space."""
     return [
-        components.data_preprocessors.imputer(),
+        components.data_preprocessors.impute_numeric(),
         components.data_preprocessors.one_hot_encoder(),
         components.data_preprocessors.variance_threshold_filter(),
         components.data_preprocessors.minmax_scaler(),

@@ -1,9 +1,10 @@
 """Data environments module."""
 
 import itertools
+import numpy as np
 
 from . import classification_environments, regression_environments
-from ..data_types import DataSourceType
+from ..data_types import DataSourceType, FeatureType
 from ..data_sourcers import openml_api
 
 
@@ -29,6 +30,36 @@ ENV_SOURCES = {
 }
 
 
+def handle_missing_categorical(x):
+    """Handle missing data in categorical variables.
+
+    The current implementation will treat categorical missing values as a
+    valid "None" category.
+    """
+    vmap = {}
+    for i, v in enumerate(np.unique(x)):
+        if None in vmap:
+            continue
+        elif np.isnan(v):
+            vmap[None] = i
+        else:
+            vmap[v] = i
+    # convert values to normalized categories
+    x_cat = np.zeros_like(x)
+    for i in range(x.shape[0]):
+        x_cat[i] = vmap.get(None if np.isnan(x[i]) else x[i])
+    return x_cat
+
+
+def preprocess_data_env(data_env):
+    """Prepare data environment for use by task environment."""
+    for i, ftype in enumerate(data_env["feature_types"]):
+        if ftype == FeatureType.CATEGORICAL:
+            data_env["data"][:, i] = handle_missing_categorical(
+                data_env["data"][:, i])
+    return data_env
+
+
 def envs(sources=None, names=None, target_types=None):
     """Get classification environments."""
     _envs = []
@@ -40,4 +71,14 @@ def envs(sources=None, names=None, target_types=None):
         _envs = [e for e in _envs if e["dataset_name"] in names]
     if target_types:
         _envs = [e for e in _envs if e["target_type"] in target_types]
-    return _envs
+    # TODO: preprocess all dataset environments here:
+    # - encode missing values in categorical features as their own category.
+    #   this is the simplest treatment, in the future we'll want the MLF to
+    #   handle imputation of categorical variables.
+    # - missing values in numeric features should be left alone, since the
+    #   the imputer will handle these cases.
+
+    # NOTE: eventually the MLF pipeline should be able to transform
+    # numerical and categorical features selectively, as shown in this example
+    # http://scikit-learn.org/stable/auto_examples/compose/plot_column_transformer_mixed_types.html
+    return [preprocess_data_env(e) for e in _envs]

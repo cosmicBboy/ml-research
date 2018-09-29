@@ -8,15 +8,13 @@ from deep_cash.algorithm_space import AlgorithmSpace
 from deep_cash.task_environment import TaskEnvironment
 from deep_cash.cash_controller import CASHController
 from deep_cash.cash_reinforce import CASHReinforce
-from deep_cash.data_types import TargetType
-from deep_cash.data_environments import environments
 
 
 def _task_environment(
         target_types=["BINARY", "MULTICLASS"],
         dataset_names=["iris", "wine"],
         env_sources=["SKLEARN"],
-        enforce_limits=False):
+        enforce_limits=True):
     return TaskEnvironment(
         env_sources=env_sources,
         target_types=target_types,
@@ -134,7 +132,7 @@ def test_cash_entropy_regularizer():
             ("entropy_regularized", {
                 "with_baseline": True,
                 "entropy_coef": 0.5})]:
-        torch.manual_seed(100)  # ensure weight initialized is deterministic
+        torch.manual_seed(200)  # ensure weight initialized is deterministic
         # only run for a few episodes because model losses
         # become incomparable as models diverge
         n_episodes = 3
@@ -157,6 +155,7 @@ def test_cash_reinforce_regressor():
     """Test cash reinforce regression data environments."""
     n_episodes = 4
     for dataset in ["boston", "diabetes", "linnerud"]:
+        a_space = _algorithm_space()
         t_env = _task_environment(
             target_types=["REGRESSION"],
             dataset_names=[dataset])

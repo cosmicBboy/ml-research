@@ -123,6 +123,10 @@ class TaskEnvironment(object):
 
         Currently the only hyperparameter that dictionary would apply to is
         the OneHotEncoder component.
+
+        This method is called in `cash_reinforce` to make sure that the
+        pipeline one-hot-encodes categorical features. Should make a test for
+        this.
         """
         return {
             "OneHotEncoder__categorical_features": [
@@ -271,6 +275,9 @@ def exponentiated_log(x, gamma=0.01):
     """
     if x < 0:
         raise ValueError("value %s not a valid input. Must be >= 0")
+    if x == 0:
+        # since the below function is undefined at x=0, return 1 if x=0.
+        return 1.0
     return 1 / (1 + np.power(np.e, np.log(gamma * x)))
 
 
