@@ -291,12 +291,24 @@ def get_classifiers():
         components.classifiers.logistic_regression(),
         components.classifiers.gaussian_naive_bayes(),
         components.classifiers.decision_tree(),
+        # TODO: add more classifiers
     ]
 
 
 def get_regressors():
     """Get all classifiers in structured algorithm space."""
     return [
-        components.regressors.ridge_regression(),
+        components.regressors.adaboost_regression(),
+        components.regressors.ard_regression(),
+        components.regressors.bayesian_ridge_regression(),
+        components.regressors.decision_tree_regression(),
+        components.regressors.k_nearest_neighbors_regression(),
         components.regressors.lasso_regression(),
+        components.regressors.random_forest_regression(),
+        components.regressors.rbf_gaussian_process_regression(),
+        components.regressors.ridge_regression(),
+        components.regressors.support_vector_regression_linear(),
+        components.regressors.support_vector_regression_poly(),
+        components.regressors.support_vector_regression_rbf(),
+        components.regressors.support_vector_regression_sigmoid(),
     ]

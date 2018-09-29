@@ -11,6 +11,8 @@ def test_classifier_components():
     boston = sklearn.datasets.load_boston()
     for algorithm_component in [
             regressors.adaboost_regression,
+            regressors.ard_regression,
+            regressors.bayesian_ridge_regression,
             regressors.decision_tree_regression,
             regressors.random_forest_regression,
             regressors.rbf_gaussian_process_regression,

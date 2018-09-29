@@ -2,7 +2,7 @@
 
 from sklearn.ensemble import AdaBoostRegressor, RandomForestRegressor
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.linear_model import Lasso, Ridge
+from sklearn.linear_model import ARDRegression, BayesianRidge, Lasso, Ridge
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.svm import LinearSVR, SVR
 from sklearn.tree import DecisionTreeRegressor
@@ -12,14 +12,6 @@ from .hyperparameter import (
     CategoricalHyperparameter, UniformIntHyperparameter,
     UniformFloatHyperparameter, BaseEstimatorHyperparameter)
 from . import constants
-
-
-# ===================
-# Bayesian Regressors
-# ===================
-
-def bayesian_ridge_regression():
-    pass
 
 
 # ===================
@@ -45,8 +37,7 @@ def adaboost_regression():
             UniformFloatHyperparameter(
                 "learning_rate", 0.1, 2., default=1., log=True, n=10),
             CategoricalHyperparameter(
-                "algorithm", ["linear", "square", "exponential"],
-                default="linear")
+                "loss", ["linear", "square", "exponential"], default="linear")
         ])
 
 
@@ -67,7 +58,7 @@ def random_forest_regression():
             UniformIntHyperparameter(
                 "n_estimators", 50, 200, default=50, n=10),
             CategoricalHyperparameter(
-                "criterion", ["mse", "friedman_msa", "mae"], default="mse"),
+                "criterion", ["mse", "friedman_mse", "mae"], default="mse"),
             UniformFloatHyperparameter(
                 "max_features", 0.1, 1.0, default=1.0),
             UniformIntHyperparameter(
@@ -122,7 +113,54 @@ def rbf_gaussian_process_regression():
 # =================
 
 def ard_regression():
-    pass
+    return AlgorithmComponent(
+        name="ARDRegression",
+        component_class=ARDRegression,
+        component_type=constants.REGRESSOR,
+        hyperparameters=[
+            UniformFloatHyperparameter(
+                "tol", 1e-5, 1e-1, default=1e-3, log=True),
+            UniformFloatHyperparameter(
+                "alpha_1", 1e-10, 1e-3, default=1e-6, log=True),
+            UniformFloatHyperparameter(
+                "alpha_2", 1e-10, 1e-3, default=1e-6, log=True),
+            UniformFloatHyperparameter(
+                "lambda_1", 1e-10, 1e-3, default=1e-6, log=True),
+            UniformFloatHyperparameter(
+                "lambda_2", 1e-10, 1e-3, default=1e-6, log=True),
+            UniformFloatHyperparameter(
+                "threshold_lambda", 10 ** 3, 10 ** 5, default=10 ** 4,
+                log=True),
+        ],
+        constant_hyperparameters={
+            "n_iter": 300,
+            "fit_intercept": True,
+            "compute_score": False
+        })
+
+
+def bayesian_ridge_regression():
+    return AlgorithmComponent(
+        name="BayesianRidge",
+        component_class=BayesianRidge,
+        component_type=constants.REGRESSOR,
+        hyperparameters=[
+            UniformFloatHyperparameter(
+                "tol", 1e-5, 1e-1, default=1e-3, log=True),
+            UniformFloatHyperparameter(
+                "alpha_1", 1e-10, 1e-3, default=1e-6, log=True),
+            UniformFloatHyperparameter(
+                "alpha_2", 1e-10, 1e-3, default=1e-6, log=True),
+            UniformFloatHyperparameter(
+                "lambda_1", 1e-10, 1e-3, default=1e-6, log=True),
+            UniformFloatHyperparameter(
+                "lambda_2", 1e-10, 1e-3, default=1e-6, log=True),
+        ],
+        constant_hyperparameters={
+            "n_iter": 300,
+            "fit_intercept": True,
+            "compute_score": False
+        })
 
 
 def ridge_regression():
