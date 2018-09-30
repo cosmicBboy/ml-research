@@ -15,7 +15,7 @@ from sklearn.metrics import f1_score, mean_squared_error
 from .data_environments import environments
 from .data_types import FeatureType, TargetType, DataSourceType
 from .errors import NoPredictMethodError, is_valid_fit_error, \
-    is_valid_predict_error, FIT_WARNINGS, SCORE_WARNINGS
+    is_valid_predict_error, FIT_WARNINGS, SCORE_WARNINGS, SCORE_ERRORS
 from . import utils
 
 logger = logging.getLogger(__name__)
@@ -232,7 +232,10 @@ class TaskEnvironment(object):
                     "ignore", message=msg, category=warning_type)
             if warning:
                 logger.info("SCORE WARNING: %s" % warning)
-            score = scorer.fn(self.y_test, y_hat)
+            try:
+                score = scorer.fn(self.y_test, y_hat)
+            except SCORE_ERRORS:
+                return None, None, None
             if scorer.reward_transformer is None:
                 reward = score
             else:

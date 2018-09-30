@@ -84,25 +84,12 @@ def list_clf_datasets(n_results=None, exclude_missing=True):
     """
     # TODO: figure out how to specify <n and >n filter operators based on
     # the docs: https://www.openml.org/api_docs#!/data/get_data_list_filters
-    kwargs = {
-        "number_classes": "%d..%d" % CLASS_RANGE,
-    }
+    kwargs = {"number_classes": "%d..%d" % CLASS_RANGE}
     if n_results:
         kwargs.update({"size": n_results})
     if exclude_missing:
         kwargs.update({"number_missing_values": 0})
     return openml.datasets.list_datasets(**kwargs)
-
-
-def list_reg_datasets(n_results=None, exclude_missing=True):
-    """Get regression datasets.
-
-    :param int n_results: number of dataset metadata to list
-    :param bool exclude_missing: whether or not to exlcude datasets with any
-        missing values (default=True).
-    :returns: OpenML datasets for regression tasks.
-    :rtype: list[openml.OpenMLDataset]
-    """
 
 
 def get_datasets(ids=None):

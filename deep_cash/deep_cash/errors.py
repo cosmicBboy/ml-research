@@ -124,6 +124,7 @@ PREDICT_ERROR_MESSAGES = [
 
 PREDICT_ERROR_TYPES = tuple(set([i for i, _ in PREDICT_ERROR_MESSAGES]))
 
+SCORE_ERRORS = (ValueError, )
 SCORE_WARNINGS = [
     (UndefinedMetricWarning,
         "F-score is ill-defined and being set to 0.0 in labels with no "
