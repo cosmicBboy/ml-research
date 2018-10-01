@@ -179,6 +179,20 @@ of the system). The ordering is the following:
 - [X] increase coverage of regression estimators (add ~5-6 more)
 - [X] handle missing-valued data with imputer
 - [ ] test controller on kaggle classification and regression datasets (3 each)
+  TODO: come up with a research plan for this.
+- [ ] test controller on auto-sklearn paper classification datasets.
+- [ ] add support for automated ensembling. TBD: should this be implemented as
+  part of the CASH controller, or should there be a separate module altogether
+  that ensembles cached pipelines?
+- [ ] add support for random grid search with the AlgorithmSpace API. One big
+  design question: how should fit/predict errors be handled? Add logic to
+  hyperparameter sampling that prevents error-raising hyperparameter
+  configurations in the first place, or just catch error during the fitting/
+  scoring process? (possibly cache as some kind of hash to speed things up).
+- [ ] add support for test and train dataset environment partitions, i.e.
+  at task env initialization, set aside `n`% of the data as test datasets,
+  use `1 - n`% as training datasets. Evaluate rewards and validation
+  performance over train and test datasets to assess degree of overfitting.
 - [ ] 100% coverage of sklearn classification estimators
 - [ ] 100% coverage of sklearn regression estimators
 - [ ] 100% coverage of sklearn data preprocessors
