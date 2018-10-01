@@ -177,7 +177,8 @@ of the system). The ordering is the following:
   environment.
 - [X] extend deep cash to support regression problems.
 - [X] increase coverage of regression estimators (add ~5-6 more)
-- [ ] handle missing-valued data with imputer
+- [X] handle missing-valued data with imputer
+- [ ] test controller on kaggle classification and regression datasets (3 each)
 - [ ] 100% coverage of sklearn classification estimators
 - [ ] 100% coverage of sklearn regression estimators
 - [ ] 100% coverage of sklearn data preprocessors
