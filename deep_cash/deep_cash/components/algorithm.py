@@ -86,10 +86,9 @@ class AlgorithmComponent(object):
             dict(hsetting) for hsetting in
             list(itertools.product(*expanded_state_space)))
 
-    def sample_hyperparameter_state_space(self, random_state=None):
+    def sample_hyperparameter_state_space(self):
         """Return a random sample from the hyperparameter state space."""
         settings = {}
-        np.random.seed(random_state)
         for key, values in self.hyperparameter_state_space().items():
             settings[key] = values[np.random.randint(len(values))]
         return settings

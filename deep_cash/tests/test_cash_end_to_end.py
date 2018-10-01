@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 import torch
 
-from deep_cash.algorithm_space import AlgorithmSpace
+from deep_cash.algorithm_space import AlgorithmSpace, \
+    CLASSIFIER_MLF_SIGNATURE, REGRESSOR_MLF_SIGNATURE
 from deep_cash.task_environment import TaskEnvironment
 from deep_cash.cash_controller import CASHController
 from deep_cash.cash_reinforce import CASHReinforce
@@ -167,3 +168,22 @@ def test_cash_reinforce_regressor():
             **_fit_kwargs())
         history = pd.DataFrame(reinforce.history())
         assert history.shape[0] == n_episodes
+
+
+def test_cash_missing_data():
+    """Test cash reinforce on datasets with missing data."""
+    a_space = _algorithm_space()
+    X = np.array([
+        [1, 5.1, 1],
+        [2, np.nan, 1],
+        [1, 6.1, 0],
+        [5, np.nan, 0],
+        [6, 1.1, 1],
+        [6, 1.1, 1],
+    ])
+    for mlf_sig in [CLASSIFIER_MLF_SIGNATURE, REGRESSOR_MLF_SIGNATURE]:
+        for i in range(200):
+            mlf = a_space.sample_ml_framework(mlf_sig)
+            imputer = mlf.named_steps["NumericImputer"]
+            X_impute = imputer.fit_transform(X)
+            assert (~np.isnan(X_impute)).all()

@@ -195,11 +195,12 @@ class AlgorithmSpace(object):
         :param int|None random_state: provide random state, which determines
             the ML framework sampled.
         """
+        np.random.seed(random_state)
         components = self.sample_components_from_signature(signature)
         framework_hyperparameters = {}
         for a in components:
             framework_hyperparameters.update(
-                a.sample_hyperparameter_state_space(signature))
+                a.sample_hyperparameter_state_space())
         return self.create_ml_framework(
             components, hyperparameters=framework_hyperparameters)
 
