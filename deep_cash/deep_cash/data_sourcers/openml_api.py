@@ -9,7 +9,6 @@ import openml
 
 from ..data_types import FeatureType, TargetType, OpenMLTaskType, \
     DataSourceType
-from ..errors import TargetNotCompatible
 
 
 N_CLASSIFICATION_ENVS = 20
