@@ -286,9 +286,19 @@ def get_feature_preprocessors():
 def get_classifiers():
     """Get all classifiers in structured algorithm space."""
     return [
-        components.classifiers.logistic_regression(),
-        components.classifiers.gaussian_naive_bayes(),
+        components.classifiers.adaboost(),
         components.classifiers.decision_tree(),
+        components.classifiers.gaussian_naive_bayes(),
+        components.classifiers.gradient_boosting(),
+        components.classifiers.k_nearest_neighbors(),
+        components.classifiers.logistic_regression(),
+        components.classifiers.multinomial_naive_bayes(),
+        components.classifiers.random_forest_classifier(),
+        components.classifiers.rbf_gaussian_process_classifier(),
+        components.classifiers.support_vector_classifier_linear(),
+        components.classifiers.support_vector_classifier_poly(),
+        components.classifiers.support_vector_classifier_rbf(),
+        components.classifiers.support_vector_classifier_sigmoid(),
     ]
 
 
