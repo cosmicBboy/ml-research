@@ -289,7 +289,6 @@ def get_classifiers():
         components.classifiers.logistic_regression(),
         components.classifiers.gaussian_naive_bayes(),
         components.classifiers.decision_tree(),
-        # TODO: add more classifiers
     ]
 
 

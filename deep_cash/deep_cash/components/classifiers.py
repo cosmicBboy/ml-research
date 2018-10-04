@@ -1,8 +1,10 @@
 """Classifier components."""
 
-from sklearn.ensemble import AdaBoostClassifier
+from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier, \
+    GradientBoostingClassifier
+from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.naive_bayes import GaussianNB
+from sklearn.naive_bayes import GaussianNB, MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import LinearSVC, SVC
 from sklearn.tree import DecisionTreeClassifier
@@ -14,9 +16,9 @@ from .hyperparameter import (
 from . import constants
 
 
-# ====================
-# Gaussian Classifiers
-# ====================
+# ===========
+# Naive Bayes
+# ===========
 
 def gaussian_naive_bayes():
     """Create a naive bayes algorithm component."""
@@ -26,8 +28,38 @@ def gaussian_naive_bayes():
         component_type=constants.CLASSIFIER)
 
 
-def rbf_gaussian_process():
-    pass
+def multinomial_naive_bayes():
+    """Create a naive bayes algorithm component."""
+    return AlgorithmComponent(
+        name="MultinomialNB",
+        component_class=MultinomialNB,
+        component_type=constants.CLASSIFIER,
+        hyperparameters=[
+            UniformFloatHyperparameter(
+                "alpha", 1e-2, 100, default=1, log=True),
+            CategoricalHyperparameter(
+                "fit_prior", [True, False], default=True)
+        ])
+
+
+# ====================
+# Gaussian Classifiers
+# ====================
+
+
+def rbf_gaussian_process_classifier():
+    return AlgorithmComponent(
+        name="GaussianProcessClassifier",
+        component_class=GaussianProcessClassifier,
+        component_type=constants.CLASSIFIER,
+        hyperparameters=[
+            UniformFloatHyperparameter(
+                "max_iter_predict", 100, 500, default=100)
+        ],
+        constant_hyperparameters={
+            "optimizer": "fmin_l_bfgs_b",
+            "n_restarts_optimizer": 10,
+        })
 
 
 # ========================
@@ -308,9 +340,53 @@ def extra_trees():
 
 def gradient_boosting():
     """Create gradient boosting classifier component."""
-    pass
+    return AlgorithmComponent(
+        name="GradientBoostingClassifier",
+        component_class=GradientBoostingClassifier,
+        component_type=constants.CLASSIFIER,
+        hyperparameters=[
+            UniformFloatHyperparameter(
+                "learning_rate", 0.01, 1, default=0.1, log=True),
+            UniformIntHyperparameter("n_estimators", 50, 500, default=100),
+            UniformIntHyperparameter("max_depth", 1, 10, default=3),
+            CategoricalHyperparameter(
+                "criterion", ["friedman_mse", "mse", "mae"], default="mse"),
+            UniformIntHyperparameter("min_samples_split", 2, 20, default=2),
+            UniformIntHyperparameter("min_samples_leaf", 1, 20, default=1),
+            UniformFloatHyperparameter("subsample", 0.01, 1.0, default=1.0),
+            UniformFloatHyperparameter("max_features", 0.1, 1.0, default=1),
+        ],
+        constant_hyperparameters={
+            "loss": "deviance",
+            "min_weight_fraction_leaf": 0,
+            "max_leaf_nodes": None,
+            "min_impurity_decrease": 0.0,
+        })
 
 
-def random_forest():
+def random_forest_classifier():
     """Create random forest classifier component."""
-    pass
+    return AlgorithmComponent(
+        name="RandomForestClassifier",
+        component_class=RandomForestClassifier,
+        component_type=constants.CLASSIFIER,
+        hyperparameters=[
+            UniformIntHyperparameter(
+                "n_estimators", 50, 200, default=50, n=10),
+            CategoricalHyperparameter(
+                "criterion", ["gini", "entropy"], default="gini"),
+            UniformFloatHyperparameter(
+                "max_features", 0.1, 1.0, default=1.0),
+            UniformIntHyperparameter(
+                "min_samples_split", 2, 20, default=2),
+            UniformIntHyperparameter(
+                "min_samples_leaf", 1, 20, default=1),
+            CategoricalHyperparameter(
+                "bootstrap", [True, False], default=True),
+        ],
+        constant_hyperparameters={
+            "max_depth": None,
+            "min_weight_fraction_leaf": 0.0,
+            "max_leaf_nodes": None,
+            "min_impurity_decrease": 0.0,
+        })
