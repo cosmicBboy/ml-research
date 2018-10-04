@@ -87,8 +87,9 @@ FIT_WARNINGS = [
         "__name__ and __path__"),
     (LineSearchWarning, "The line search algorithm did not converge"),
     (LinAlgWarning,
-        "Ill-conditioned matrix detected. Result is not guaranteed to be "
-        "accurate."),
+        "scipy.linalg.solve\nIll-conditioned matrix detected. Result "
+        "is not guaranteed to be accurate.\nReciprocal condition "
+        "number"),
     (UserWarning, "Line Search failed"),
     (UserWarning, "n_components > n_samples. This is not possible."),
     (UserWarning, "n_components is too large: it will be set to"),
@@ -101,9 +102,6 @@ FIT_WARNINGS = [
         "solution instead."),
     (RuntimeWarning,
         "numpy.dtype size changed, may indicate binary incompatibility"),
-    (RuntimeWarning,
-        "scipy.linalg.solve\n Ill-conditioned matrix detected. Result is not "
-        "guaranteed to be accurate."),
 ]
 
 
