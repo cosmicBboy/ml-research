@@ -3,12 +3,18 @@
 https://www.openml.org/search?type=data
 """
 
+import logging
 import numpy as np
 
 import openml
 
+from openml.exceptions import OpenMLServerException
+
 from ..data_types import FeatureType, TargetType, OpenMLTaskType, \
     DataSourceType
+
+
+logger = logging.getLogger(__name__)
 
 
 N_CLASSIFICATION_ENVS = 20
@@ -91,10 +97,16 @@ def list_clf_datasets(n_results=None, exclude_missing=True):
     return openml.datasets.list_datasets(**kwargs)
 
 
-def get_datasets(ids=None):
-    if ids is None:
-        ids = CUSTOM_DATASET_IDS
-    return openml.datasets.get_datasets(ids)
+def get_datasets(dataset_ids):
+    datasets = []
+    for did in dataset_ids:
+        try:
+            datasets.append(openml.datasets.get_dataset(did))
+        except OpenMLServerException as e:
+            logger.info(
+                "OpenML server exception on dataset_id %s, %s" %
+                (did, e))
+    return datasets
 
 
 def _open_ml_dataset(
@@ -183,7 +195,7 @@ def regression_envs(n=N_REGRESSION_ENVS):
     reg_dataset_metadata = openml.tasks.list_tasks(
         task_type_id=OpenMLTaskType.SUPERVISED_REGRESSION.value, size=n)
     dataset_ids = [v["source_data"] for v in reg_dataset_metadata.values()]
-    reg_datasets = openml.datasets.get_datasets(dataset_ids)
+    reg_datasets = get_datasets(dataset_ids)
     target_features = [
         v["target_feature"] for v in reg_dataset_metadata.values()]
     out = []
