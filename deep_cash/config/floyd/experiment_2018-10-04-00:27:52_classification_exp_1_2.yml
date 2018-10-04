@@ -1,0 +1,31 @@
+name: classification_exp_1_2
+description: add classifiers to the algorithm space, entropy_coef=0
+created_at: 2018-10-04-00:27:52
+git_hash: c18ab13
+parameters:
+  datasets: null
+  output_fp: /output
+  n_trials: 1
+  input_size: 30
+  hidden_size: 30
+  output_size: 30
+  n_layers: 3
+  dropout_rate: 0.2
+  beta: 0.9
+  entropy_coef: 0.0
+  with_baseline: true
+  single_baseline: true
+  normalize_reward: false
+  n_episodes: 300
+  n_iter: 16
+  learning_rate: 0.005
+  target_types:
+  - BINARY
+  - MULTICLASS
+  error_reward: 0
+  per_framework_time_limit: 180
+  per_framework_memory_limit: 5000
+  metric_logger: floyd
+  fit_verbose: 0
+  controller_seed: 1000
+  task_environment_seed: 100
