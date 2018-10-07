@@ -178,7 +178,7 @@ of the system). The ordering is the following:
 - [X] extend deep cash to support regression problems.
 - [X] increase coverage of regression estimators (add ~5-6 more)
 - [X] handle missing-valued data with imputer
-- [ ] test controller on kaggle classification and regression datasets (3 each)
+- [ ] test controller on kaggle classification and regression datasets (5 each)
   TODO: come up with a research plan for this.
 - [ ] test controller on auto-sklearn paper classification datasets.
 - [ ] add support for automated ensembling. TBD: should this be implemented as
@@ -204,7 +204,9 @@ of the system). The ordering is the following:
 
 - [ ] support tuning experiments in the `experients.py` API. Extend the
   experiment configuration so that user can specify more than one setting
-  for a particular hyperparameter
+  for a particular hyperparameter.
+- [ ] create experiment viewer, either as a static report rendered via
+  jupyter notebook or Dash app. Inputs should be floyd job numbers
 
 
 # Analyses
