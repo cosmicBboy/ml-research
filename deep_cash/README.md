@@ -200,6 +200,13 @@ of the system). The ordering is the following:
 - [ ] support for [XGBoost][xgboost]
 
 
+# Tooling Enhancements
+
+- [ ] support tuning experiments in the `experients.py` API. Extend the
+  experiment configuration so that user can specify more than one setting
+  for a particular hyperparameter
+
+
 # Analyses
 
 The `./analysis` subfolder contains jupyter notebooks that visualize the
