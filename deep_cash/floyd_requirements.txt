@@ -1,5 +1,6 @@
 click
 dill
+kaggle
 pandas
 matplotlib
 nose

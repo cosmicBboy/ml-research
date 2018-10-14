@@ -45,8 +45,44 @@ class TaskEnvironment(object):
             per_framework_time_limit=10,
             per_framework_memory_limit=3072,
             dataset_names=None,
-            error_reward=-0.1):
-        """Initialize task environment."""
+            error_reward=-0.1,
+            n_samples=None):
+        """Initialize task environment.
+
+        :param list[str] env_sources: list of data environment source names.
+            These should correspond with the DataSourceType enum names.
+        :param list[str] target_types: list of target types that the task
+            environment will sample from. These should correspond with the
+            TargetType enum names.
+        :param dict[TargetType: Scorer]|None scorers: where Scorer is a
+            namedtuple composed of the following elements:
+            - fn: an sklearn-compliant scoring function
+            - reward_transformer: function with the signature (float) -> float
+              that bounds range of the scoring function to have a range between
+              0 and 1, inclusive.
+            - comparator: a function with the signature (x, y) -> bool and
+              returns True if x is a better score than y.
+            If None, uses default scorers per target type.
+        :param int|None random_state: random seed determining the order of
+            sampled data environments and the composition of the
+            training/validation sets.
+        :param bool enforce_limits: whether or not to enforce the per
+            framework time limit and memory limit.
+        :param int per_framework_time_limit: time limit in seconds of fit
+            time limit (wallclock time). If exceeded during MLF fitting, the
+            task environment returns an error reward.
+        :param int per_framework_memory_limit: maximum amount of memory that
+            can be allocated to a single ML framework fit. If exceeded during
+            MLF fitting, the task environment returns an error reward.
+        :param list[str] dataset_names: names of datasets to include in the
+            task environment.
+        :param float error_reward: value to return when:
+            - runtime raises an error during fitting.
+            - fitting exceeds time and memory limit.
+        :param int|None n_samples: number of samples to include in the data
+            environment. If None, includes all samples. This should mainly be
+            used for testing purposes to speed up fitting time.
+        """
         # TODO: need to add an attribute that normalizes the output of the
         # scorer function to support different tasks. Currently, the default
         # is ROC AUC scorer on just classification tasks. Will need to
@@ -68,6 +104,7 @@ class TaskEnvironment(object):
             self.metafeature_spec)
         self.n_data_envs = len(self.data_distribution)
         self._error_reward = error_reward
+        self._n_samples = n_samples
         self.create_metafeature_tensor = partial(
             utils._create_metafeature_tensor,
             metafeature_spec=self.metafeature_spec)
@@ -103,8 +140,11 @@ class TaskEnvironment(object):
         """Sample the data distribution."""
         env_index = np.random.randint(self.n_data_envs)
         data_env = self.data_distribution[env_index]
-        self.X = data_env["data"]
-        self.y = data_env["target"]
+        X, y = data_env["data"], data_env["target"]
+        if self._n_samples and X.shape[0] > self._n_samples:
+            idx = np.random.choice(range(X.shape[0]), self._n_samples)
+            X, y = X[idx], y[idx]
+        self.X, self.y = X, y
         self.target_type = data_env["target_type"]
         self.data_env_name = data_env["dataset_name"]
         self.feature_types = data_env["feature_types"]

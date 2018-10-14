@@ -24,11 +24,14 @@ def _task_environment(
         per_framework_time_limit=10,
         per_framework_memory_limit=1000,
         dataset_names=dataset_names,
-        error_reward=0)
+        error_reward=0,
+        n_samples=100)
 
 
-def _algorithm_space():
+def _algorithm_space(classifiers=None, regressors=None):
     return AlgorithmSpace(
+        classifiers=None,
+        regressors=None,
         with_end_token=False,
         hyperparam_with_start_token=False,
         hyperparam_with_none_token=False)
@@ -86,7 +89,7 @@ def test_cash_reinforce_fit():
 
 def test_cash_reinforce_fit_multi_baseline():
     """Make sure that baseline function maintains buffers per data env."""
-    n_episodes = 10
+    n_episodes = 5
     t_env = _task_environment()
     a_space = _algorithm_space()
     controller = _cash_controller(a_space, t_env)
@@ -102,7 +105,7 @@ def test_cash_reinforce_fit_multi_baseline():
 def test_cash_zero_gradient():
     """Test that gradient is zero if the reward is zero."""
     torch.manual_seed(100)  # ensure weight initialized is deterministic
-    n_episodes = 20
+    n_episodes = 10
     t_env = _task_environment()
     a_space = _algorithm_space()
     controller = _cash_controller(a_space, t_env)
@@ -182,8 +185,30 @@ def test_cash_missing_data():
         [6, 1.1, 1],
     ])
     for mlf_sig in [CLASSIFIER_MLF_SIGNATURE, REGRESSOR_MLF_SIGNATURE]:
-        for i in range(200):
+        for i in range(50):
             mlf = a_space.sample_ml_framework(mlf_sig)
             imputer = mlf.named_steps["NumericImputer"]
             X_impute = imputer.fit_transform(X)
             assert (~np.isnan(X_impute)).all()
+
+
+def test_cash_kaggle_regression_data():
+    """Test regression datasets from kaggle."""
+    n_episodes = 4
+    for dataset in [
+            "restaurant_revenue_prediction",
+            "nyc_taxi_trip_duration",
+            ]:
+        a_space = _algorithm_space()
+        t_env = _task_environment(
+            env_sources=["KAGGLE"],
+            target_types=["REGRESSION"],
+            dataset_names=[dataset])
+        a_space = _algorithm_space()
+        controller = _cash_controller(a_space, t_env)
+        reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
+        reinforce.fit(
+            n_episodes=n_episodes,
+            **_fit_kwargs())
+        history = pd.DataFrame(reinforce.history())
+        assert history.shape[0] == n_episodes

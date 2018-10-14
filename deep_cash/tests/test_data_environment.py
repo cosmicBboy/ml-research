@@ -22,26 +22,28 @@ def test_preprocess_data_env():
         "dataset_name": "some_env",
         "target_type": data_types.TargetType.BINARY,
         "data": np.array([
-            [np.nan, 2.5, 0],
-            [1.5, np.nan, 1],
-            [1.8, 4.2, np.nan],
-            [1.1, 6.0, np.nan]
-        ]),
+            [np.nan, 2.5, 0, np.datetime64("1999-07-17")],
+            [1.5, np.nan, 1, np.datetime64("2008-05-09")],
+            [1.8, 4.2, np.nan, np.datetime64("2011-01-18")],
+            [1.1, 6.0, np.nan, np.datetime64("2015-02-01")]],
+            # preserve datatypes of each column in the array
+            dtype="O"),
         "target": np.array([0, 1, 0, 1]),
         "feature_types": [
             data_types.FeatureType.CONTINUOUS,
             data_types.FeatureType.CONTINUOUS,
             data_types.FeatureType.CATEGORICAL,
+            data_types.FeatureType.DATE,
         ],
         "feature_indices": [0, 1, 2, 3],
         "target_preprocessor": None,
         "source": "some_source"
     }
     expected = np.array([
-        [np.nan, 2.5, 0],
-        [1.5, np.nan, 1],
-        [1.8, 4.2, 2],
-        [1.1, 6.0, 2]
+        [np.nan, 2.5, 0, 1999, 7, 198, 17, 5],
+        [1.5, np.nan, 1, 2008, 5, 130, 9, 4],
+        [1.8, 4.2, 2, 2011, 1, 18, 18, 1],
+        [1.1, 6.0, 2, 2015, 2, 32, 1, 6],
     ])
     result = environments.preprocess_data_env(data_env)
     assert np.allclose(result["data"], expected, equal_nan=True)
