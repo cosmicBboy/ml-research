@@ -47,13 +47,14 @@ def handle_missing_categorical(x):
             raise e
         pass
 
-    for i, v in enumerate(np.unique(x)):
-        if None in vmap:
-            continue
-        elif isinstance(v, float) and np.isnan(v):
-            vmap[None] = i
-        else:
-            vmap[v] = i
+    x_vals = x[~pd.isnull(x)]
+    for i, v in enumerate(np.unique(x_vals)):
+        vmap[v] = i
+
+    # null values assume the last category
+    if pd.isnull(x).any():
+        vmap[None] = len(x_vals)
+
     # convert values to normalized categories
     x_cat = np.zeros_like(x)
     for i in range(x.shape[0]):
@@ -84,9 +85,6 @@ def create_simple_date_features(x):
 
 def preprocess_data_env(data_env):
     """Prepare data environment for use by task environment."""
-    # TODO: add support for preprocessing date-times.
-    # - this should be something simple like extracting numeric features:
-    # year, month-of-year, day-of-year, day-of-month
     clean_data = []
     for i, ftype in enumerate(data_env["feature_types"]):
         x_i = data_env["data"][:, i]
@@ -106,7 +104,7 @@ def preprocess_data_env(data_env):
     return data_env
 
 
-def envs(sources=None, names=None, target_types=None):
+def envs(sources=None, names=None, target_types=None, n_samples=None):
     """Get classification environments."""
     _envs = []
     if sources is None:

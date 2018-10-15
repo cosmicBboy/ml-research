@@ -71,11 +71,14 @@ class KaggleCompetition(object):
         self._target_name = list(self._target.keys())[0]
         self._target_type = self._target[self._target_name]
 
-    def download_cache(self):
-        """Downlaod cache to local drive."""
+    def _download_and_cache(self):
+        """Download cache to local drive."""
         if not self._dataset_filepath.exists():
             self._dataset_filepath.mkdir()
-        subprocess.call(self._download_api_cmd(), cwd=self._dataset_filepath)
+        if not (self._training_set_filepath.exists() and
+                self._test_set_filepath.exists()):
+            subprocess.call(
+                self._download_api_cmd(), cwd=self._dataset_filepath)
 
     @property
     def url(self):
@@ -85,6 +88,14 @@ class KaggleCompetition(object):
     @property
     def _dataset_filepath(self):
         return self._cache / self._competition_id
+
+    @property
+    def _training_set_filepath(self):
+        return self._dataset_filepath / self._training_data_fname
+
+    @property
+    def _test_set_filepath(self):
+        return self._dataset_filepath / self._test_data_fname
 
     @property
     def _datetime_features(self):
@@ -103,16 +114,19 @@ class KaggleCompetition(object):
             self._competition_id,
         ]
 
-    def get_training_data(self):
+    def get_training_data(self, n_samples=None):
         """Return a dataframe containing the training set.
 
-        :returns: pandas.DataFrame of training data. Includes features and
-            target.
+        :returns: tuple of arrays of training data. First element is an array
+            of features, second is an array of targets.
         """
-        self.download_cache()
         dataset = pd.read_csv(
-            self._dataset_filepath / self._training_data_fname,
-            parse_dates=self._datetime_features)
+            self._training_set_filepath, parse_dates=self._datetime_features,
+            nrows=n_samples)
+
+        if self._custom_preprocessor:
+            dataset = self._custom_preprocessor(dataset)
+
         feature_data = dataset[self._feature_names].values
         target_data = dataset[[i for i in self._target]].values
 
@@ -120,8 +134,8 @@ class KaggleCompetition(object):
             target_data = target_data.ravel()
         return feature_data, target_data
 
-    def get_test_data(self, custom_preprocessor=None):
-        """Return a datafrae containing test set.
+    def get_test_data(self, n_samples=None):
+        """Return a dataframe containing test set.
 
         Note that this dataset does not contain targets because it is used for
         evaluation on the kaggle platform. This method should only be used
@@ -130,11 +144,20 @@ class KaggleCompetition(object):
 
         :returns: pandas.DataFrame of test data. Only includes features.
         """
-        pass
+        dataset = pd.read_csv(
+            self._test_set_filepath, parse_dates=self._datetime_features,
+            nrows=n_samples)
 
-    def create_data_env(self):
+        if self._custom_preprocessor:
+            dataset = self._custom_preprocessor(dataset)
+
+        feature_data = dataset[self._feature_names].values
+        return feature_data
+
+    def data_env(self, n_samples=None):
         """Create dictionary with keys matching _open_ml_dataset output."""
-        feature_data, target_data = self.get_training_data()
+        self._download_and_cache()
+        feature_data, target_data = self.get_training_data(n_samples)
         return {
             "dataset_name": self._competition_id.replace("-", "_"),
             "target_type": self._target_type,

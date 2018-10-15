@@ -5,48 +5,26 @@ See https://github.com/Kaggle/kaggle-api for more details.
 
 import subprocess
 
-from pathlib import Path
-
-from . import kaggle_regression
-from ..data_types import FeatureType, TargetType, DataSourceType
-
-
-REGRESSION_COMPETITIONS = [
-    # https://www.kaggle.com/c/restaurant-revenue-prediction
-    "restaurant-revenue-prediction",
-    # https://www.kaggle.com/c/nyc-taxi-trip-duration
-    "nyc-taxi-trip-duration",
-    # https://www.kaggle.com/c/mercedes-benz-greener-manufacturing
-    "mercedes-benz-greener-manufacturing",
-    # https://www.kaggle.com/c/allstate-claims-severity
-    "allstate-claims-severity",
-    # https://www.kaggle.com/c/house-prices-advanced-regression-techniques
-    "house-prices-advanced-regression-techniques",
-]
-BINARY_CLASSIFICATION_COMPETITIONS = [
-    # https://www.kaggle.com/c/homesite-quote-conversion
-    "homesite-quote-conversion",
-    # https://www.kaggle.com/c/santander-customer-satisfaction
-    "santander-customer-satisfaction",
-    # https://www.kaggle.com/c/bnp-paribas-cardif-claims-management
-    "bnp-paribas-cardif-claims-management",
-]
-MULTI_CLASSIFICATION_COMPETITIONS = [
-    # https://www.kaggle.com/c/poker-rule-induction
-    "poker-rule-induction",
-    # https://www.kaggle.com/c/costa-rican-household-poverty-prediction
-    "costa-rican-household-poverty-prediction",
-]
+from . import kaggle_regression, kaggle_classification
 
 
 def classification_envs():
-    return []
+    return [
+        kaggle_classification.homesite_quote_conversion().data_env(),
+        kaggle_classification.santander_customer_satisfaction().data_env(),
+        kaggle_classification.bnp_paribas_cardif_claims_management().data_env(),  # noqa E501
+        kaggle_classification.poker_rule_induction().data_env(),
+        kaggle_classification.costa_rican_household_poverty_prediction().data_env(),  # noqa E501
+    ]
 
 
 def regression_envs():
     return [
-        kaggle_regression.restaurant_revenue_prediction().create_data_env(),
-        kaggle_regression.nyc_taxi_trip_duration().create_data_env(),
+        kaggle_regression.restaurant_revenue_prediction().data_env(),
+        kaggle_regression.nyc_taxi_trip_duration().data_env(),
+        kaggle_regression.mercedes_benz_greener_manufacturing().data_env(),
+        kaggle_regression.allstate_claims_severity().data_env(),
+        kaggle_regression.house_prices_advanced_regression_techniques().data_env()  # noqa E501
     ]
 
 

@@ -40,9 +40,9 @@ def _algorithm_space(classifiers=None, regressors=None):
 def _cash_controller(a_space, t_env):
     return CASHController(
         metafeature_size=t_env.metafeature_dim,
-        input_size=20,
-        hidden_size=10,
-        output_size=10,
+        input_size=5,
+        hidden_size=5,
+        output_size=5,
         a_space=a_space,
         dropout_rate=0.2,
         num_rnn_layers=3)
@@ -185,7 +185,7 @@ def test_cash_missing_data():
         [6, 1.1, 1],
     ])
     for mlf_sig in [CLASSIFIER_MLF_SIGNATURE, REGRESSOR_MLF_SIGNATURE]:
-        for i in range(50):
+        for i in range(20):
             mlf = a_space.sample_ml_framework(mlf_sig)
             imputer = mlf.named_steps["NumericImputer"]
             X_impute = imputer.fit_transform(X)
@@ -194,17 +194,40 @@ def test_cash_missing_data():
 
 def test_cash_kaggle_regression_data():
     """Test regression datasets from kaggle."""
-    n_episodes = 4
+    n_episodes = 2
+    a_space = _algorithm_space()
     for dataset in [
             "restaurant_revenue_prediction",
             "nyc_taxi_trip_duration",
+            "mercedes_benz_greener_manufacturing",
+            "allstate_claims_severity",
+            "house_prices_advanced_regression_techniques",
             ]:
-        a_space = _algorithm_space()
         t_env = _task_environment(
             env_sources=["KAGGLE"],
             target_types=["REGRESSION"],
             dataset_names=[dataset])
-        a_space = _algorithm_space()
+        controller = _cash_controller(a_space, t_env)
+        reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
+        reinforce.fit(
+            n_episodes=n_episodes,
+            **_fit_kwargs())
+        history = pd.DataFrame(reinforce.history())
+        assert history.shape[0] == n_episodes
+
+
+def test_cash_kaggle_classification_data():
+    """Test classification datasets from kaggle."""
+    n_episodes = 2
+    a_space = _algorithm_space()
+    for dataset in [
+            "homesite_quote_conversion",
+            "santander_customer_satisfaction",
+            ]:
+        t_env = _task_environment(
+            env_sources=["KAGGLE"],
+            target_types=["BINARY", "MULTICLASS"],
+            dataset_names=[dataset])
         controller = _cash_controller(a_space, t_env)
         reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
         reinforce.fit(
