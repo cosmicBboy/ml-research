@@ -36,7 +36,7 @@ class TaskEnvironment(object):
 
     def __init__(
             self,
-            env_sources=["SKLEARN", "OPEN_ML"],
+            env_sources=["SKLEARN", "OPEN_ML", "KAGGLE"],
             target_types=["BINARY", "MULTICLASS"],
             scorers=None,
             score_transformers=None,

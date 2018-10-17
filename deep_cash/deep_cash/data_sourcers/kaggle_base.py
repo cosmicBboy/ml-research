@@ -1,5 +1,6 @@
 """Kaggle Base Class."""
 
+import os
 import pandas as pd
 import subprocess
 
@@ -8,8 +9,8 @@ from pathlib import Path
 from ..data_types import DataSourceType, FeatureType
 
 
-CACHE_DIR = "~/.kaggle/cache"
-COMPETITION_URL = "https://www.kaggle.com/c"
+KAGGLE_CACHE_DIR = os.environ.get("KAGGLE_CACHE_DIR", "~/.kaggle/cache")
+KAGGLE_COMPETITION_URL = "https://www.kaggle.com/c"
 
 
 class KaggleCompetition(object):
@@ -23,7 +24,7 @@ class KaggleCompetition(object):
             training_data_fname,
             test_data_fname,
             file_format="csv",
-            cache=CACHE_DIR,
+            cache=KAGGLE_CACHE_DIR,
             custom_preprocessor=None):
         """Initialize Kaggle Competition object.
 
@@ -83,7 +84,7 @@ class KaggleCompetition(object):
     @property
     def url(self):
         """Return url to kaggle dataset."""
-        return "%s/%s" % (COMPETITION_URL, self._competition_id)
+        return "%s/%s" % (KAGGLE_COMPETITION_URL, self._competition_id)
 
     @property
     def _dataset_filepath(self):

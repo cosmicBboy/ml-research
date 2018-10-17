@@ -215,6 +215,8 @@ of the system). The ordering is the following:
   for a particular hyperparameter.
 - [ ] create experiment viewer, either as a static report rendered via
   jupyter notebook or Dash app. Inputs should be floyd job numbers
+- [ ] stream-line the dataset mounting process for floyd. This includes
+  the openml and kaggle datasets.
 
 
 # Analyses

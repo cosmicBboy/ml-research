@@ -115,13 +115,6 @@ def envs(sources=None, names=None, target_types=None, n_samples=None):
         _envs = [e for e in _envs if e["dataset_name"] in names]
     if target_types:
         _envs = [e for e in _envs if e["target_type"] in target_types]
-    # TODO: preprocess all dataset environments here:
-    # - encode missing values in categorical features as their own category.
-    #   this is the simplest treatment, in the future we'll want the MLF to
-    #   handle imputation of categorical variables.
-    # - missing values in numeric features should be left alone, since the
-    #   the imputer will handle these cases.
-
     # NOTE: eventually the MLF pipeline should be able to transform
     # numerical and categorical features selectively, as shown in this example
     # http://scikit-learn.org/stable/auto_examples/compose/plot_column_transformer_mixed_types.html
