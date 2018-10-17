@@ -179,7 +179,12 @@ of the system). The ordering is the following:
 - [X] increase coverage of regression estimators (add ~5-6 more)
 - [X] handle missing-valued data with imputer
 - [ ] test controller on kaggle classification and regression datasets (5 each)
-  TODO: come up with a research plan for this.
+  - [ ] train on kaggle classification datasets
+  - [ ] train on kaggle regression datasets
+  - [ ] train on openml/sklearn classification datasets, test on kaggle
+    classification datasets
+  - [ ] train on openml/sklearn regression datasets, test on kaggle
+    classification datasets
 - [ ] test controller on auto-sklearn paper classification datasets.
 - [ ] add support for automated ensembling. TBD: should this be implemented as
   part of the CASH controller, or should there be a separate module altogether
@@ -198,6 +203,9 @@ of the system). The ordering is the following:
 - [ ] 100% coverage of sklearn data preprocessors
 - [ ] 100% coverage of sklearn feature preprocessors
 - [ ] support for [XGBoost][xgboost]
+- [ ] support for [apricot submodular selection][apricot]
+- [ ] test transfer-learning ability of controller
+- [ ] test meta-learning ability of controller
 
 
 # Tooling Enhancements
@@ -242,6 +250,7 @@ REINFORCE algorithm.
 
 
 [neuralarchsearch]: https://arxiv.org/abs/1611.01578
+[apricot]: https://github.com/jmschrei/apricot
 [autosklearn]: papers.nips.cc/paper/5872-efficient-and-robust-automated-machine-learning.pdf
 [autosklearn-package]: https://automl.github.io/auto-sklearn/stable/
 [autosklearn-supp]: http://ml.informatik.uni-freiburg.de/papers/15-NIPS-auto-sklearn-supplementary.pdf

@@ -15,7 +15,8 @@ def _task_environment(
         target_types=["BINARY", "MULTICLASS"],
         dataset_names=["iris", "wine"],
         env_sources=["SKLEARN"],
-        enforce_limits=True):
+        enforce_limits=True,
+        n_samples=100):
     return TaskEnvironment(
         env_sources=env_sources,
         target_types=target_types,
@@ -25,7 +26,7 @@ def _task_environment(
         per_framework_memory_limit=1000,
         dataset_names=dataset_names,
         error_reward=0,
-        n_samples=100)
+        n_samples=n_samples)
 
 
 def _algorithm_space(classifiers=None, regressors=None):
@@ -206,7 +207,8 @@ def test_cash_kaggle_regression_data():
         t_env = _task_environment(
             env_sources=["KAGGLE"],
             target_types=["REGRESSION"],
-            dataset_names=[dataset])
+            dataset_names=[dataset],
+            n_samples=30)
         controller = _cash_controller(a_space, t_env)
         reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
         reinforce.fit(
@@ -223,11 +225,15 @@ def test_cash_kaggle_classification_data():
     for dataset in [
             "homesite_quote_conversion",
             "santander_customer_satisfaction",
+            "bnp_paribas_cardif_claims_management",
+            "poker_rule_induction",
+            "costa_rican_household_poverty_prediction",
             ]:
         t_env = _task_environment(
             env_sources=["KAGGLE"],
             target_types=["BINARY", "MULTICLASS"],
-            dataset_names=[dataset])
+            dataset_names=[dataset],
+            n_samples=30)
         controller = _cash_controller(a_space, t_env)
         reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
         reinforce.fit(
