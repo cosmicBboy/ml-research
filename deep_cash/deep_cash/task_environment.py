@@ -223,8 +223,16 @@ class TaskEnvironment(object):
             if error was raised by calling `mlf.fit`.
         """
         mlf_str = utils._ml_framework_string(mlf)
-        result = self.ml_framework_fitter(
-            clone(mlf), self.X_train, self.y_train)
+
+        try:
+            result = self.ml_framework_fitter(
+                clone(mlf), self.X_train, self.y_train)
+        except MemoryError as e:
+            # catch memory error that may occur when dumping results from
+            # the pynisher multiprocessing job.
+            logger.info("ENCOUNTERED MEMORY ERROR: %s, MLF: %s, RESULT: %s" %
+                        (e, mlf_str, result))
+
         try:
             mlf, fit_error = result
         except TypeError as e:
@@ -341,6 +349,7 @@ def _ml_framework_fitter(ml_framework, X, y):
         BaseException if calling `ml_framework.fit` if it successfully fits a
         model and None if it fit successfully.
     """
+    # TODO: handle MemoryError due to pynisher limits.
     # raise numpy overflow errors
     with warnings.catch_warnings():
         # TODO: calling this every time an mlf is evaluated seems
