@@ -2,6 +2,9 @@ deps:
 	conda install pytorch torchvision -y -c pytorch
 	conda install -c conda-forge \
 		click \
+		dash \
+		dash-core-components \
+		dash-html-components \
 		dill \
 		pandas \
 		numpy \
