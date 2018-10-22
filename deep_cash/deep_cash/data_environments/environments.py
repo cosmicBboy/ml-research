@@ -20,6 +20,10 @@ def sklearn_data_envs():
         c.update({
             "data": data["data"],
             "target": data["target"],
+            # sklearn datasets should always fall back on the default scorer
+            # specified in the TaskEnvironment since there is strictly no
+            # "correct" performance measure.
+            "scorer": None,
         })
         out.append(c)
     return out

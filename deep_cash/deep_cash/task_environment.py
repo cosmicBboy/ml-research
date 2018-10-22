@@ -2,33 +2,21 @@
 
 import logging
 import numpy as np
-import operator
 import pynisher
 import warnings
 
-from collections import namedtuple
 from functools import partial
 
 from sklearn.base import clone
-from sklearn.metrics import f1_score, mean_squared_error
 
 from .data_environments import environments
 from .data_types import FeatureType, TargetType, DataSourceType
 from .errors import NoPredictMethodError, is_valid_fit_error, \
     is_valid_predict_error, FIT_WARNINGS, SCORE_WARNINGS, SCORE_ERRORS
-from . import utils
+from . import scorers, utils
 
 logger = logging.getLogger(__name__)
 FIT_GRACE_PERIOD = 30
-
-f1_score_weighted_average = partial(f1_score, average="weighted")
-
-Scorer = namedtuple(
-    "Scorer", [
-        "fn",  # sklearn-compliant scoring function e.g. mean_squared_error
-        "reward_transformer",  # function that bounds range of scoring function
-        "comparator",  # function to determine if score a is better than b.
-    ])
 
 
 class TaskEnvironment(object):
@@ -296,37 +284,12 @@ class TaskEnvironment(object):
 
 
 def _get_scorers():
+    _f1_scorer = scorers.f1_score_weighted_average()
     return {
-        TargetType.BINARY: Scorer(
-            fn=f1_score_weighted_average,
-            reward_transformer=None,
-            comparator=operator.gt),
-        TargetType.MULTICLASS: Scorer(
-            fn=f1_score_weighted_average,
-            reward_transformer=None,
-            comparator=operator.gt),
-        TargetType.REGRESSION: Scorer(
-            fn=mean_squared_error,
-            reward_transformer=exponentiated_log,
-            comparator=operator.lt),
+        TargetType.BINARY: _f1_scorer,
+        TargetType.MULTICLASS: _f1_scorer,
+        TargetType.REGRESSION: scorers.mean_squared_error(),
     }
-
-
-def exponentiated_log(x, gamma=0.01):
-    """Bounds functions with a range of >= 0 to range of [0, 1].
-
-    :param float x: value to transform
-    :param float gamma: decay coefficient. Larger gamma means function decays
-        more quickly as x gets larger.
-    :returns: transformed value.
-    :rtype: float
-    """
-    if x < 0:
-        raise ValueError("value %s not a valid input. Must be >= 0")
-    if x == 0:
-        # since the below function is undefined at x=0, return 1 if x=0.
-        return 1.0
-    return 1 / (1 + np.power(np.e, np.log(gamma * x)))
 
 
 def _metafeatures(data_env_name, X_train, y_train):

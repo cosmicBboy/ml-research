@@ -7,6 +7,7 @@ from collections import OrderedDict
 from .kaggle_base import KaggleCompetition
 
 from ..data_types import FeatureType, TargetType
+from .. import scorers
 
 from .feature_maps import (
     kaggle_costa_rican_household_poverty_prediction,
@@ -37,7 +38,8 @@ def homesite_quote_conversion():
         target={"QuoteConversion_Flag": TargetType.BINARY},
         training_data_fname="train.csv.zip",
         test_data_fname="test.csv.zip",
-        custom_preprocessor=_preprocessor)
+        custom_preprocessor=_preprocessor,
+        scorer=scorers.roc_auc())
 
 
 def santander_customer_satisfaction():
@@ -51,7 +53,8 @@ def santander_customer_satisfaction():
         target={"TARGET": TargetType.BINARY},
         training_data_fname="train.csv.zip",
         test_data_fname="test.csv.zip",
-        custom_preprocessor=None)
+        custom_preprocessor=None,
+        scorer=scorers.roc_auc)
 
 
 def bnp_paribas_cardif_claims_management():
@@ -91,7 +94,8 @@ def bnp_paribas_cardif_claims_management():
         target={"target": TargetType.BINARY},
         training_data_fname="train.csv.zip",
         test_data_fname="test.csv.zip",
-        custom_preprocessor=None)
+        custom_preprocessor=None,
+        scorer=scorers.log_loss())
 
 
 def poker_rule_induction():
@@ -112,7 +116,8 @@ def poker_rule_induction():
         target={"hand": TargetType.MULTICLASS},
         training_data_fname="train.csv.zip",
         test_data_fname="test.csv.zip",
-        custom_preprocessor=None)
+        custom_preprocessor=None,
+        scorer=scorers.accuracy())
 
 
 def costa_rican_household_poverty_prediction():
@@ -153,4 +158,5 @@ def costa_rican_household_poverty_prediction():
         target={"Target": TargetType.MULTICLASS},
         training_data_fname="train.csv.zip",
         test_data_fname="test.csv.zip",
-        custom_preprocessor=_preprocessor)
+        custom_preprocessor=_preprocessor,
+        scorer=scorers.f1_score_macro())

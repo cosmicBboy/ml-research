@@ -194,50 +194,36 @@ def test_cash_missing_data():
 
 
 def test_cash_kaggle_regression_data():
-    """Test regression datasets from kaggle."""
+    """Test regression dataset from kaggle."""
     n_episodes = 2
     a_space = _algorithm_space()
-    for dataset in [
-            "restaurant_revenue_prediction",
-            "nyc_taxi_trip_duration",
-            "mercedes_benz_greener_manufacturing",
-            "allstate_claims_severity",
-            "house_prices_advanced_regression_techniques",
-            ]:
-        t_env = _task_environment(
-            env_sources=["KAGGLE"],
-            target_types=["REGRESSION"],
-            dataset_names=[dataset],
-            n_samples=30)
-        controller = _cash_controller(a_space, t_env)
-        reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
-        reinforce.fit(
-            n_episodes=n_episodes,
-            **_fit_kwargs())
-        history = pd.DataFrame(reinforce.history())
-        assert history.shape[0] == n_episodes
+    t_env = _task_environment(
+        env_sources=["KAGGLE"],
+        target_types=["REGRESSION"],
+        dataset_names=["restaurant_revenue_prediction"],
+        n_samples=30)
+    controller = _cash_controller(a_space, t_env)
+    reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
+    reinforce.fit(
+        n_episodes=n_episodes,
+        **_fit_kwargs())
+    history = pd.DataFrame(reinforce.history())
+    assert history.shape[0] == n_episodes
 
 
 def test_cash_kaggle_classification_data():
-    """Test classification datasets from kaggle."""
+    """Test classification dataset from kaggle."""
     n_episodes = 2
     a_space = _algorithm_space()
-    for dataset in [
-            "homesite_quote_conversion",
-            "santander_customer_satisfaction",
-            "bnp_paribas_cardif_claims_management",
-            "poker_rule_induction",
-            "costa_rican_household_poverty_prediction",
-            ]:
-        t_env = _task_environment(
-            env_sources=["KAGGLE"],
-            target_types=["BINARY", "MULTICLASS"],
-            dataset_names=[dataset],
-            n_samples=30)
-        controller = _cash_controller(a_space, t_env)
-        reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
-        reinforce.fit(
-            n_episodes=n_episodes,
-            **_fit_kwargs())
-        history = pd.DataFrame(reinforce.history())
-        assert history.shape[0] == n_episodes
+    t_env = _task_environment(
+        env_sources=["KAGGLE"],
+        target_types=["BINARY", "MULTICLASS"],
+        dataset_names=["costa_rican_household_poverty_prediction"],
+        n_samples=30)
+    controller = _cash_controller(a_space, t_env)
+    reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
+    reinforce.fit(
+        n_episodes=n_episodes,
+        **_fit_kwargs())
+    history = pd.DataFrame(reinforce.history())
+    assert history.shape[0] == n_episodes

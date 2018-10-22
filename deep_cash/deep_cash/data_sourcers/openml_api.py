@@ -120,7 +120,10 @@ def _open_ml_dataset(
         "feature_types": feature_types,
         "feature_indices": feature_indices,
         "target_preprocessor": target_preprocessor,
-        "source": DataSourceType.OPEN_ML
+        "source": DataSourceType.OPEN_ML,
+        # TODO: should there be a specific scorer here? Need to look at the
+        # openml API task object to see if there's a metric specified there.
+        "scorer": None
     }
 
 

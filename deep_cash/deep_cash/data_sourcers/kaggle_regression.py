@@ -5,6 +5,7 @@ from collections import OrderedDict
 from .kaggle_base import KaggleCompetition
 
 from ..data_types import FeatureType, TargetType
+from .. import scorers
 
 
 def restaurant_revenue_prediction():
@@ -24,7 +25,8 @@ def restaurant_revenue_prediction():
         target={"revenue": TargetType.REGRESSION},
         training_data_fname="train.csv.zip",
         test_data_fname="test.csv.zip",
-        custom_preprocessor=None)
+        custom_preprocessor=None,
+        scorer=scorers.root_mean_squared_error())
 
 
 def nyc_taxi_trip_duration():
@@ -47,7 +49,8 @@ def nyc_taxi_trip_duration():
         target={"trip_duration": TargetType.REGRESSION},
         training_data_fname="train.zip",
         test_data_fname="test.zip",
-        custom_preprocessor=None)
+        custom_preprocessor=None,
+        scorer=scorers.root_mean_squared_log_error())
 
 
 def mercedes_benz_greener_manufacturing():
@@ -68,7 +71,8 @@ def mercedes_benz_greener_manufacturing():
         target={"y": TargetType.REGRESSION},
         training_data_fname="train.csv.zip",
         test_data_fname="test.csv.zip",
-        custom_preprocessor=None)
+        custom_preprocessor=None,
+        scorer=scorers.r2_score())
 
 
 def allstate_claims_severity():
@@ -87,7 +91,8 @@ def allstate_claims_severity():
         target={"loss": TargetType.REGRESSION},
         training_data_fname="train.csv.zip",
         test_data_fname="test.csv.zip",
-        custom_preprocessor=None)
+        custom_preprocessor=None,
+        scorer=scorers.mean_absolute_error())
 
 
 def house_prices_advanced_regression_techniques():
@@ -180,4 +185,6 @@ def house_prices_advanced_regression_techniques():
             [(c, FeatureType.CONTINUOUS) for c in continuous_features]),
         target={"SalePrice": TargetType.REGRESSION},
         training_data_fname="train.csv.gz",
-        test_data_fname="test.csv.gz")
+        test_data_fname="test.csv.gz",
+        custom_preprocessor=None,
+        scorer=scorers.root_mean_squared_error())

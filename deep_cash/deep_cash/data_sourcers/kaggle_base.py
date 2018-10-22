@@ -23,6 +23,7 @@ class KaggleCompetition(object):
             target,
             training_data_fname,
             test_data_fname,
+            scorer=None,
             file_format="csv",
             cache=KAGGLE_CACHE_DIR,
             custom_preprocessor=None):
@@ -36,6 +37,8 @@ class KaggleCompetition(object):
             column to TargetType.
         :params str training_data_fname: filename of the training set.
         :params str test_data_fname: filename of the test set.
+        :params Scorer|None scorer: a `scorer.Scorer` named tuple that
+            specifies how to evaluate the performance of the dataset.
         :params str file_format: currently only csv files are supported.
         :params str cache: directory location for caching competition files.
         :param callable|None custom_preprocessor: a function for doing custom
@@ -51,6 +54,7 @@ class KaggleCompetition(object):
         self._target = target
         self._training_data_fname = training_data_fname
         self._test_data_fname = test_data_fname
+        self._scorer = scorer
         if file_format != "csv":
             raise ValueError(
                 "'%s' is not a valid file format, only '.csv' currently "
@@ -85,6 +89,11 @@ class KaggleCompetition(object):
     def url(self):
         """Return url to kaggle dataset."""
         return "%s/%s" % (KAGGLE_COMPETITION_URL, self._competition_id)
+
+    @property
+    def scorer(self):
+        """Return Scorer object."""
+        return self._scorer
 
     @property
     def _dataset_filepath(self):
@@ -168,4 +177,5 @@ class KaggleCompetition(object):
             "feature_indices": [i for i in range(len(self._feature_types))],
             "target_preprocessor": None,
             "source": DataSourceType.KAGGLE,
+            "scorer": self.scorer,
         }
