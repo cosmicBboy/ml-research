@@ -81,7 +81,7 @@ class TaskEnvironment(object):
         # scorer function to support different tasks. Currently, the default
         # is ROC AUC scorer on just classification tasks. Will need to
         # extend this for regression task error metrics.
-        self.scorers = _get_scorers() if scorers is None else scorers
+        self._scorers = _get_default_scorers() if scorers is None else scorers
         self.random_state = random_state
         self.enforce_limits = enforce_limits
         self.per_framework_time_limit = per_framework_time_limit
@@ -143,6 +143,10 @@ class TaskEnvironment(object):
         self.data_env_name = data_env["dataset_name"]
         self.feature_types = data_env["feature_types"]
         self.feature_indices = data_env["feature_indices"]
+        if data_env["scorer"]:
+            self.scorer = data_env["scorer"]
+        else:
+            self.scorer = self._scorers[self.target_type]
         if data_env["target_preprocessor"] is not None:
             # NOTE: this feature isn't really executed currently since none of
             # the classification environments have a specified
@@ -265,7 +269,6 @@ class TaskEnvironment(object):
         if mlf is None:
             return None, None, None
         y_hat = _ml_framework_predict(mlf, self.X_test, self.target_type)
-        scorer = self.scorers[self.target_type]
         if y_hat is None:
             return None, None, None
         with warnings.catch_warnings() as warning:
@@ -280,17 +283,21 @@ class TaskEnvironment(object):
             if warning:
                 logger.info("SCORE WARNING: %s" % warning)
             try:
-                score = scorer.fn(self.y_test, y_hat)
+                score = self.scorer.fn(self.y_test, y_hat)
             except SCORE_ERRORS:
                 return None, None, None
-            if scorer.reward_transformer is None:
+            if self.scorer.reward_transformer is None:
                 reward = score
             else:
-                reward = scorer.reward_transformer(score)
-        return reward, score, scorer.comparator
+                reward = self.scorer.reward_transformer(score)
+        return reward, score, self.scorer.comparator
 
 
-def _get_scorers():
+def _get_default_scorers():
+    # TODO: should scorers be a stochastic part of the environment? This
+    # would mean that the controller would have to learn how maximize a
+    # shifting reward function (model the reward function?)... might be
+    # complicated.
     _f1_scorer = scorers.f1_score_weighted_average()
     return {
         TargetType.BINARY: _f1_scorer,

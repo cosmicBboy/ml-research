@@ -7,6 +7,8 @@ import sklearn.metrics
 from collections import namedtuple
 from functools import partial
 
+# TODO: full coverage of sklearn.metrics
+
 
 Scorer = namedtuple(
     "Scorer", [
