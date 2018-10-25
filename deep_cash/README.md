@@ -204,13 +204,14 @@ of the system). The ordering is the following:
 - [ ] 100% coverage of sklearn feature preprocessors
 - [ ] support for [XGBoost][xgboost]
 - [ ] support for [apricot submodular selection][apricot]
+- [ ] support using [GANS for imputation][gan-imputation]
 - [ ] test transfer-learning ability of controller
 - [ ] test meta-learning ability of controller
 
 
 # Tooling Enhancements
 
-- [ ] support tuning experiments in the `experients.py` API. Extend the
+- [ ] support tuning experiments in the `experiments.py` API. Extend the
   experiment configuration so that user can specify more than one setting
   for a particular hyperparameter.
 - [ ] create experiment viewer, either as a static report rendered via
@@ -258,6 +259,7 @@ REINFORCE algorithm.
 [autosklearn-supp]: http://ml.informatik.uni-freiburg.de/papers/15-NIPS-auto-sklearn-supplementary.pdf
 [meta-rl]: https://arxiv.org/pdf/1611.05763.pdf
 [smac]: https://www.cs.ubc.ca/~hutter/papers/10-TR-SMAC.pdf
+[gan-imputation]: http://proceedings.mlr.press/v80/yoon18a.html
 [gru]: https://arxiv.org/pdf/1406.1078.pdf
 [reinforce]: https://www.quora.com/What-is-the-REINFORCE-algorithm
 [tpot]: https://github.com/EpistasisLab/tpot
