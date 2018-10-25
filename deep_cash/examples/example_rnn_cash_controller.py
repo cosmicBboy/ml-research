@@ -33,16 +33,24 @@ hidden_size = 30
 output_size = 30
 n_layers = 3
 
+torch.manual_seed(1000)
+
 
 t_env = TaskEnvironment(
     env_sources=["KAGGLE"],
     random_state=100,
     enforce_limits=True,
-    per_framework_time_limit=180,
-    per_framework_memory_limit=5000,
-    dataset_names=["homesite_quote_conversion"],
+    per_framework_time_limit=720,
+    per_framework_memory_limit=10000,
+    dataset_names=[
+        "restaurant_revenue_prediction",
+        "nyc_taxi_trip_duration",
+        "mercedes_benz_greener_manufacturing",
+        "allstate_claims_severity",
+        "house_prices_advanced_regression_techniques",
+    ],
     error_reward=error_reward,
-    n_samples=1000)
+    target_types=["REGRESSION"])
 
 # create algorithm space
 a_space = AlgorithmSpace(

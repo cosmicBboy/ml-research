@@ -8,6 +8,8 @@ from . import classification_environments, regression_environments
 from ..data_types import DataSourceType, FeatureType
 from ..data_sourcers import openml_api, kaggle_api
 
+# TODO: define a DataEnvironment class
+
 
 def sklearn_data_envs():
     """Create list of sklearn data environments."""

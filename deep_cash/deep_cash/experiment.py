@@ -25,6 +25,10 @@ from .loggers import get_loggers, empty_logger
 from .data_environments.environments import envs
 from . import utils
 
+# TODO: change date format of exp config files, replace ":" with ""
+# TODO: support ability to copy a config file with new name
+# TODO: support ability to run floyd job by experiment name
+
 
 logger = logging.getLogger(__name__)
 

@@ -130,6 +130,7 @@ SCORE_WARNINGS = [
     (UndefinedMetricWarning,
         "F-score is ill-defined and being set to 0.0 in labels with no true "
         "samples."),
+    (RuntimeWarning, "invalid value encountered in log"),
 ]
 
 
