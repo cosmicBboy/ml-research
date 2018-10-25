@@ -54,7 +54,7 @@ def santander_customer_satisfaction():
         training_data_fname="train.csv.zip",
         test_data_fname="test.csv.zip",
         custom_preprocessor=None,
-        scorer=scorers.roc_auc)
+        scorer=scorers.roc_auc())
 
 
 def bnp_paribas_cardif_claims_management():

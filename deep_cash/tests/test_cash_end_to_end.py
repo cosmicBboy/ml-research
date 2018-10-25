@@ -200,7 +200,13 @@ def test_cash_kaggle_regression_data():
     t_env = _task_environment(
         env_sources=["KAGGLE"],
         target_types=["REGRESSION"],
-        dataset_names=["restaurant_revenue_prediction"],
+        dataset_names=[
+            "restaurant_revenue_prediction",
+            "nyc_taxi_trip_duration",
+            "mercedes_benz_greener_manufacturing",
+            "allstate_claims_severity",
+            "house_prices_advanced_regression_techniques",
+        ],
         n_samples=30)
     controller = _cash_controller(a_space, t_env)
     reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
@@ -218,7 +224,13 @@ def test_cash_kaggle_classification_data():
     t_env = _task_environment(
         env_sources=["KAGGLE"],
         target_types=["BINARY", "MULTICLASS"],
-        dataset_names=["costa_rican_household_poverty_prediction"],
+        dataset_names=[
+            "homesite_quote_conversion",
+            "santander_customer_satisfaction",
+            "bnp_paribas_cardif_claims_management",
+            "poker_rule_induction",
+            "costa_rican_household_poverty_prediction",
+        ],
         n_samples=30)
     controller = _cash_controller(a_space, t_env)
     reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
