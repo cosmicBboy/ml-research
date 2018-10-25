@@ -27,8 +27,7 @@ parameters:
   env_sources:
   - KAGGLE
   target_types:
-  - BINARY
-  - MULTICLASS
+  - REGRESSION
   error_reward: 0
   per_framework_time_limit: 720
   per_framework_memory_limit: 10000

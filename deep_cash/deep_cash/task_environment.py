@@ -103,6 +103,9 @@ class TaskEnvironment(object):
             utils._create_metafeature_tensor,
             metafeature_spec=self.metafeature_spec)
 
+        # TODO: check if self.data_distribution is empty, if so raise 
+        # ValueError
+
         # enforce resource contraints on framework fitter
         # TODO: support heuristic schedule for changing these contraints
         # over time.
