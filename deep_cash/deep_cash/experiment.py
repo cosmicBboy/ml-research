@@ -101,6 +101,7 @@ def run_experiment(
         n_episodes=100,
         n_iter=16,
         learning_rate=0.005,
+        env_sources=["SKLEARN", "OPEN_ML", "KAGGLE"],
         target_types=["BINARY", "MULTICLASS"],
         error_reward=0,
         per_framework_time_limit=180,
@@ -113,14 +114,6 @@ def run_experiment(
     print("Running cash controller experiment with %d %s" % (
         n_trials, "trials" if n_trials > 1 else "trial"))
     torch.manual_seed(controller_seed)
-    env_names = _env_names()
-    if datasets:
-        datasets = list(datasets)
-        for ds in datasets:
-            if ds not in env_names:
-                raise ValueError(
-                    "dataset %s is not a valid dataset name, options: %s" % (
-                        ds, env_names))
     output_fp = os.path.dirname(__file__) + "/../output" if \
         output_fp is None else output_fp
     data_path = Path(output_fp)
@@ -152,6 +145,7 @@ def run_experiment(
 
     for i in range(n_trials):
         t_env = TaskEnvironment(
+            env_sources=env_sources,
             target_types=target_types,
             random_state=task_environment_seed,
             per_framework_time_limit=per_framework_time_limit,

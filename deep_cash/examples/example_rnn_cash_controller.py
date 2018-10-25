@@ -8,7 +8,6 @@ import torch
 
 from shutil import rmtree
 from sklearn.externals import joblib
-from sklearn.metrics import f1_score
 
 from deep_cash.task_environment import TaskEnvironment
 from deep_cash.algorithm_space import AlgorithmSpace
@@ -36,12 +35,14 @@ n_layers = 3
 
 
 t_env = TaskEnvironment(
+    env_sources=["KAGGLE"],
     random_state=100,
     enforce_limits=True,
-    per_framework_time_limit=10,
-    per_framework_memory_limit=1000,
-    dataset_names=["iris"],
-    error_reward=error_reward)
+    per_framework_time_limit=180,
+    per_framework_memory_limit=5000,
+    dataset_names=["homesite_quote_conversion"],
+    error_reward=error_reward,
+    n_samples=1000)
 
 # create algorithm space
 a_space = AlgorithmSpace(
