@@ -4,6 +4,7 @@ import colorlover
 import math
 import plotly.graph_objs as go
 
+from collections import defaultdict
 from plotly import tools
 
 PALETTE = colorlover.scales["4"]["qual"]["Paired"]
@@ -91,15 +92,16 @@ def plot_run_history(results):
             fig.layout[xax].update({"title": "episode"})
 
     fig.layout.update({
-        "height": 800,
+        "height": 600,
     })
+    for annotation in fig.layout.annotations:
+        annotation.font.update({"size": 12})
     return fig
 
 
-def plot_run_history_by_dataenv(results):
-    from collections import defaultdict
+def plot_run_history_by_dataenv(results, metric="mean_rewards"):
 
-    COLORMAP = {
+    colormap = {
         g: PALETTE[i] for i, g in
         enumerate(results.job_number.unique())}
 
@@ -107,7 +109,7 @@ def plot_run_history_by_dataenv(results):
         line_dict = dict(width=1)
         job_number = df["job_number"].iloc[0]
         env_name = df["data_env_names"].iloc[0]
-        color = COLORMAP.get(job_number)
+        color = colormap.get(job_number)
         showlegend = True if env_name == legend_metric else False
         if color is not None:
             line_dict.update(dict(color=color))
@@ -127,7 +129,7 @@ def plot_run_history_by_dataenv(results):
     _time_series_data = (
         results
         .groupby(["data_env_names", "job_number"])
-        .apply(time_series, y="mean_rewards")
+        .apply(time_series, y=metric)
         .to_dict()
     )
 
@@ -153,7 +155,42 @@ def plot_run_history_by_dataenv(results):
                 fig.layout[xax].update({"title": "episode"})
 
     fig.layout.update({
-        "height": 800,
+        "height": 600,
     })
 
+    for annotation in fig.layout.annotations:
+        annotation.font.update({"size": 12})
+
+    return fig
+
+
+def plot_best_mlfs(best_mlfs):
+    def create_best_mlf_timeline(x, y, color):
+        return go.Scatter(
+            x=x,
+            y=y,
+            mode='markers',
+            opacity=0.7,
+            line=dict(width=1, color=color)
+        )
+
+    colormap = {
+        g: PALETTE[i] for i, g in
+        enumerate(best_mlfs.job_number.unique())}
+
+    traces = (
+        best_mlfs.groupby("job_number")
+        .apply(lambda df: create_best_mlf_timeline(
+            df.episode, df.mlf, colormap.get(df.name)))
+    ).tolist()
+
+    fig = go.Figure(
+        data=traces,
+        layout=dict(
+            height=500,
+            margin=dict(l=600),
+            hovermode="closest"
+        ))
+
+    fig.layout["xaxis"].update({"title": "episode"})
     return fig
