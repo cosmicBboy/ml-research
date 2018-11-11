@@ -14,19 +14,11 @@ from pathlib import Path
 
 import plotting_helpers
 
-from deep_cash import utils
-
-app = dash.Dash(__name__)
-
 
 OUTPUT_ROOT = Path(os.path.dirname(__file__)) / ".." / "floyd_outputs"
-PERFORMANCE_METRICS = [
-    "mean_rewards",
-    "mean_validation_scores",
-    "best_validation_scores",
-    "hyperparam_diversity",
-    "mlf_diversity",
-]
+
+app = dash.Dash(__name__)
+app.title = "Experiment Viewer"
 
 
 def get_all_jobs():
@@ -82,7 +74,7 @@ def read_best_mlfs(job_nums, output_root=OUTPUT_ROOT):
             episode = int(
                 re.match("best_mlf_episode_(\d+).pkl", fp.name).group(1))
             mlf_str = "NONE" if mlf is None \
-                else utils._ml_framework_string(mlf)
+                else " > ".join(s[0] for s in mlf.steps)
             best_mlfs.append([job_num, episode, mlf_str])
     return pd.DataFrame(
         best_mlfs, columns=["job_number", "episode", "mlf"])
@@ -114,7 +106,7 @@ app.layout = html.Div(children=[
         id="performance-metric",
         options=[
             {"label": m.replace("_", " "), "value": m}
-            for m in PERFORMANCE_METRICS
+            for m in plotting_helpers.METRICS
         ],
         value="mean_rewards"),
     dcc.Graph(id="graph-run-history-by-dataenv"),

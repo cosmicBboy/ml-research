@@ -7,7 +7,7 @@ import plotly.graph_objs as go
 from collections import defaultdict
 from plotly import tools
 
-PALETTE = colorlover.scales["4"]["qual"]["Paired"]
+PALETTE = colorlover.scales["8"]["qual"]["Dark2"]
 METRICS = [
     "losses",
     "aggregate_gradients",
