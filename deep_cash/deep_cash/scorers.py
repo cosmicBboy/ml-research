@@ -20,7 +20,7 @@ Scorer = namedtuple(
     ])
 
 
-def exponentiated_log(x, gamma=0.01):
+def exponentiated_log(x, gamma=0.1):
     """Bounds functions with a range of >= 0 to range of [0, 1].
 
     This function is used for scorers where larger scores mean worse
