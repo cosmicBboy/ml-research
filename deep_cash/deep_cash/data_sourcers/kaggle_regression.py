@@ -187,4 +187,4 @@ def house_prices_advanced_regression_techniques():
         training_data_fname="train.csv.gz",
         test_data_fname="test.csv.gz",
         custom_preprocessor=None,
-        scorer=scorers.root_mean_squared_error())
+        scorer=scorers.root_mean_squared_log_error())
