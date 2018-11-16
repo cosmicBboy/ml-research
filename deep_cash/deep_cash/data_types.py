@@ -46,3 +46,10 @@ class DataSourceType(Enum):
     SKLEARN = 1
     OPEN_ML = 2
     KAGGLE = 3
+
+
+class CASHComponent(Enum):
+    """A component that the CASH controller predicts to form MLF."""
+
+    ALGORITHM = 1
+    HYPERPARAMETER = 2

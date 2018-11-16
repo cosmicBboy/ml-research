@@ -8,12 +8,16 @@ import torch
 
 from torch.autograd import Variable
 
+from .data_types import CASHComponent
+
 
 def create_metafeature_spec(data_distribution):
     """Create a metafeature spec.
 
     NOTE: may need to make this a class if it becomes more complex.
     """
+    # TODO: the data_env_name feature should be a categorical variable with
+    # a NONE token for new datasets that the controller has not seen before.
     return [
         ("data_env_name", str, [d["dataset_name"] for d in data_distribution]),
         ("number_of_examples", int, None),
@@ -60,6 +64,35 @@ def load_model(path, model_class, *args, **kwargs):
     rnn = model_class(*args, **kwargs)
     rnn.load_state_dict(torch.load(path))
     return rnn
+
+
+def freeze_model(model):
+    """Freeze all model weights to prevent training."""
+    for param in model.parameters():
+        param.requires_grad = False
+    return model
+
+
+def aux_tensor(prev_reward):
+    """Create an auxiliary input tensor for previous reward and action.
+
+    This is just the reward from the most recent iteration. At the beginning
+    of each episode, the previous reward is reset to 0.
+    """
+    r_tensor = torch.zeros(1, 1, 1)
+    r_tensor += prev_reward
+    return Variable(r_tensor)
+
+
+def get_mlf_components(actions):
+    algorithms = []
+    hyperparameters = {}
+    for action in actions:
+        if action["action_type"] == CASHComponent.ALGORITHM:
+            algorithms.append(action["action"])
+        if action["action_type"] == CASHComponent.HYPERPARAMETER:
+            hyperparameters[action["action_name"]] = action["action"]
+    return algorithms, hyperparameters
 
 
 def _create_metafeature_tensor(metafeatures, seq, metafeature_spec):

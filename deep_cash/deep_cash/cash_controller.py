@@ -17,12 +17,11 @@ from pathlib import Path
 from torch.autograd import Variable
 from torch.distributions import Categorical
 
+from .data_types import CASHComponent
+
 
 class CASHController(nn.Module):
     """RNN module to generate joint algorithm and hyperparameter controller."""
-
-    ALGORITHM = "algorithm"
-    HYPERPARAMETER = "hyperparameter"
 
     def __init__(
             self,
@@ -101,14 +100,15 @@ class CASHController(nn.Module):
         idx = 0
         for atype, components in all_components.items():
             # action classifier
-            self._add_action_classifier(idx, self.ALGORITHM, atype, components)
+            self._add_action_classifier(
+                idx, CASHComponent.ALGORITHM, atype, components)
             self.atype_map[atype] = idx
             idx += 1
             for component in components:
                 h_state_space = self.a_space.h_state_space([component])
                 for hname, hvalues in h_state_space.items():
                     self._add_action_classifier(
-                        idx, self.HYPERPARAMETER, hname, hvalues)
+                        idx, CASHComponent.HYPERPARAMETER, hname, hvalues)
                     self.acomponent_to_hyperparam[component].append(idx)
                     idx += 1
         self.n_actions = len(self.action_classifiers)

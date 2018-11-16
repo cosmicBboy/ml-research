@@ -213,7 +213,7 @@ class CASHReinforce(object):
         actions, action_activation = self.controller.decode(
             init_input_tensor=prev_action,
             target_type=target_type,
-            aux=aux_tensor(prev_reward),
+            aux=utils.aux_tensor(prev_reward),
             metafeatures=Variable(metafeature_tensor),
             init_hidden=self.controller.init_hidden())
         reward = self.evaluate_actions(actions, action_activation)
@@ -227,7 +227,7 @@ class CASHReinforce(object):
 
     def evaluate_actions(self, actions, action_activation):
         """Evaluate actions on the validation set of the data environment."""
-        algorithms, hyperparameters = self._get_mlf_components(actions)
+        algorithms, hyperparameters = utils.get_mlf_components(actions)
         mlf = self.controller.a_space.create_ml_framework(
             algorithms, hyperparameters=hyperparameters,
             env_dep_hyperparameters=self.t_env.env_dep_hyperparameters())
@@ -337,16 +337,6 @@ class CASHReinforce(object):
     def _update_current_baseline(self, new_baseline):
         self._baseline_fn["current"][self._baseline_fn_key()] = new_baseline
 
-    def _get_mlf_components(self, actions):
-        algorithms = []
-        hyperparameters = {}
-        for action in actions:
-            if action["action_type"] == self.controller.ALGORITHM:
-                algorithms.append(action["action"])
-            if action["action_type"] == self.controller.HYPERPARAMETER:
-                hyperparameters[action["action_name"]] = action["action"]
-        return algorithms, hyperparameters
-
 
 def _check_buffers(log_prob_buffer, reward_buffer, entropy_buffer):
     n_abuf = len(log_prob_buffer)
@@ -367,17 +357,6 @@ def normalize_reward(rbuffer):
     :returns: normalized tensor
     """
     return (rbuffer - rbuffer.mean()).div(rbuffer.std() + EPSILON)
-
-
-def aux_tensor(prev_reward):
-    """Create an auxiliary input tensor for previous reward and action.
-
-    This is just the reward from the most recent iteration. At the beginning
-    of each episode, the previous reward is reset to 0.
-    """
-    r_tensor = torch.zeros(1, 1, 1)
-    r_tensor += prev_reward
-    return Variable(r_tensor)
 
 
 def print_actions(actions):
