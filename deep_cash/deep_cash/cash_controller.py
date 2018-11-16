@@ -234,11 +234,11 @@ class CASHController(nn.Module):
         torch.save(self.state_dict(), path)
 
     @classmethod
-    def load(self, path):
+    def load(cls, path):
         """Load saved controller."""
         path = Path(path)
         config_fp = path.parent / (path.stem + ".pkl")
         with config_fp.open("r+b") as fp:
-            rnn = self(**dill.load(fp))
+            rnn = cls(**dill.load(fp))
         rnn.load_state_dict(torch.load(path))
         return rnn
