@@ -15,7 +15,7 @@ Scorer = namedtuple(
         "fn",  # sklearn-compliant scoring function e.g. mean_squared_error
         "reward_transformer",  # function that bounds range of scoring function
         # function to determine if score a is better than b. Has signature
-        # x, y -> bool, returning try if x is better than y.
+        # x, y -> bool, returning true if x is better than y.
         "comparator",
     ])
 

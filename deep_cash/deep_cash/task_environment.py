@@ -12,6 +12,7 @@ from pynisher import TimeoutException, MemorylimitException, \
 from sklearn.base import clone
 
 from .data_environments import environments
+from .data_environments.data_environment import NULL_DATA_ENV
 from .data_types import FeatureType, TargetType, DataSourceType
 from .errors import NoPredictMethodError, is_valid_fit_error, \
     is_valid_predict_error, FIT_WARNINGS, SCORE_WARNINGS, SCORE_ERRORS
@@ -32,6 +33,7 @@ class TaskEnvironment(object):
             self,
             env_sources=["SKLEARN", "OPEN_ML", "KAGGLE"],
             target_types=["BINARY", "MULTICLASS"],
+            test_set_config=None,
             scorers=None,
             score_transformers=None,
             random_state=None,
@@ -39,6 +41,7 @@ class TaskEnvironment(object):
             per_framework_time_limit=10,
             per_framework_memory_limit=3072,
             dataset_names=None,
+            test_dataset_names=None,
             error_reward=-0.1,
             n_samples=None):
         """Initialize task environment.
@@ -70,6 +73,9 @@ class TaskEnvironment(object):
             MLF fitting, the task environment returns an error reward.
         :param list[str] dataset_names: names of datasets to include in the
             task environment.
+        :param list[str] test_dataset_names: names of datasets to exclude from
+            the training task environment and should only be used in inference/
+            evaluation of the controller.
         :param float error_reward: value to return when:
             - runtime raises an error during fitting.
             - fitting exceeds time and memory limit.
@@ -81,19 +87,43 @@ class TaskEnvironment(object):
         # scorer function to support different tasks. Currently, the default
         # is ROC AUC scorer on just classification tasks. Will need to
         # extend this for regression task error metrics.
+
+        if test_dataset_names is not None:
+            dataset_intersection = set(dataset_names).intersection(
+                set(test_dataset_names))
+            if len(dataset_intersection) > 0:
+                raise ValueError(
+                    "dataset envs %s are also in test set. Training and test "
+                    "data environments should be mutually exclusive" %
+                    dataset_intersection)
+
         self._scorers = _get_default_scorers() if scorers is None else scorers
         self.random_state = random_state
         self.enforce_limits = enforce_limits
         self.per_framework_time_limit = per_framework_time_limit
         self.per_framework_memory_limit = per_framework_memory_limit
         self._dataset_names = dataset_names
+        self._test_dataset_names = test_dataset_names
         self._env_sources = [DataSourceType[e] for e in env_sources]
         self._target_types = [TargetType[t] for t in target_types]
-        self.data_distribution = environments.envs(
-            sources=self._env_sources, dataset_names=self._dataset_names,
-            target_types=self._target_types)
+
+        test_set_config = {} if test_set_config is None else test_set_config
+        self._test_set_config = {
+            DataSourceType[k]: v for k, v in test_set_config.items()}
+
+        # set train and test data environments
+        get_envs = partial(
+            environments.envs,
+            sources=self._env_sources,
+            target_types=self._target_types,
+            test_set_config=self._test_set_config)
+        self.data_distribution = get_envs(self._dataset_names)
+        self.test_data_distribution = None
+        if self._test_dataset_names is not None:
+            self.test_data_distribution = get_envs(self._test_dataset_names)
+
         self.metafeature_spec = utils.create_metafeature_spec(
-            self.data_distribution)
+            self.data_distribution, null_data_env=NULL_DATA_ENV)
         self.metafeature_dim = utils.get_metafeatures_dim(
             self.metafeature_spec)
         self.n_data_envs = len(self.data_distribution)
@@ -135,10 +165,14 @@ class TaskEnvironment(object):
         """Return reward in the situation of a fit/predict error."""
         return self._error_reward
 
-    def sample_data_distribution(self):
+    def sample_data_env(self):
         """Sample the data distribution."""
-        self.current_data_env = self.data_distribution[
-            np.random.randint(self.n_data_envs)]
+        self.set_data_env(self.data_distribution[
+            np.random.randint(self.n_data_envs)])
+
+    def set_data_env(self, data_env):
+        """Set data environment from which to sample tasks."""
+        self.current_data_env = data_env
         # TODO: probably want to standardize the scorer across tasks of
         # a certain target type, otherwise the reward function will very
         # complex
@@ -165,15 +199,30 @@ class TaskEnvironment(object):
                 if f == FeatureType.CATEGORICAL]
         }
 
-    def sample_task(self):
+    def sample_task_state(self, data_env_partition="train"):
         """Sample the current data_env for features and targets."""
         self._current_task = self.current_data_env.sample(self._n_samples)
+        if data_env_partition == "train":
+            name = self.current_data_env.name
+        elif data_env_partition == "test":
+            name = NULL_DATA_ENV
+        return self.get_task_state(name, self._current_task.X_train)
+
+    def get_test_task_state(self, data_env_partition="train"):
+        if data_env_partition == "train":
+            name = self.current_data_env.name
+        elif data_env_partition == "test":
+            # for test data envs, need to encode the data environment with the
+            # null token, since it's a new category.
+            name = NULL_DATA_ENV
+        return self.get_task_state(name, self.current_data_env.X_test)
+
+    def get_task_state(self, data_env_name, X):
+        """Get state of task env, used as initial state of MLF proposal."""
         return self.create_metafeature_tensor(
-            _metafeatures(
-                self.current_data_env.name,
-                self._current_task.X_train,
-                self._current_task.y_train),
-            [None])
+            _metafeatures(data_env_name, X),
+            # initial state is only a sequence of one item
+            seq=[None])
 
     def evaluate(self, mlf):
         """Evaluate an ML framework by fitting and scoring on data.
@@ -181,10 +230,11 @@ class TaskEnvironment(object):
         :params sklearn.pipeline.Pipeline mlf: an sklearn pipeline
         :returns: tuple where the first element is the reward the second
             element is the raw score.
-        :rtype: 2-tuple[float|None]
+        :rtype: 3-tuple of fitted mlf, reward, and validation score.
         """
         mlf = self._fit(mlf)
-        return self._score(mlf)
+        reward, score = self._score_validation_set(mlf)
+        return mlf, reward, score
 
     def _fit(self, mlf):
         """Fit proposed ML framework on currently sampled data environment.
@@ -241,15 +291,21 @@ class TaskEnvironment(object):
                 (fit_error, mlf_str, self.current_data_env.name))
             return None
 
-    def _score(self, mlf):
-        if mlf is None:
-            return None, None, None
-        y_hat = _ml_framework_predict(
+    def _score_validation_set(self, mlf):
+        return self.score(
             mlf,
             self._current_task.X_validation,
-            self.current_data_env.target_type)
+            self._current_task.y_validation)
+
+    def score(self, mlf, X, y):
+        """Scores an MLF against some data."""
+        none_return = None, None
+        if mlf is None:
+            return none_return
+        y_hat = _ml_framework_predict(
+            mlf, X, self.current_data_env.target_type)
         if y_hat is None:
-            return None, None, None
+            return none_return
         with warnings.catch_warnings() as warning:
             # raise exception for warnings not explicitly in SCORE_WARNINGS
             warnings.filterwarnings("error")
@@ -262,14 +318,14 @@ class TaskEnvironment(object):
             if warning:
                 logger.info("SCORE WARNING: %s" % warning)
             try:
-                score = self.scorer.fn(self._current_task.y_validation, y_hat)
+                score = self.scorer.fn(y, y_hat)
             except SCORE_ERRORS:
-                return None, None, None
+                return none_return
             if self.scorer.reward_transformer is None:
                 reward = score
             else:
                 reward = self.scorer.reward_transformer(score)
-        return reward, score, self.scorer.comparator
+        return reward, score
 
 
 def _get_default_scorers():
@@ -285,7 +341,7 @@ def _get_default_scorers():
     }
 
 
-def _metafeatures(data_env_name, X_train, y_train):
+def _metafeatures(data_env_name, X_train):
     """Create a metafeature vector.
 
     - data env name: categorical, e.g. "load_iris"

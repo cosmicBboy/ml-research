@@ -9,7 +9,7 @@ from .data_environment import DataEnvironment
 from ..data_types import FeatureType, TargetType, DataSourceType
 
 
-def envs():
+def envs(test_size=None, random_state=None):
     return OrderedDict([
         ("sklearn.boston", DataEnvironment(
             name="sklearn.boston",
@@ -34,6 +34,8 @@ def envs():
             fetch_training_data=partial(
                 sklearn.datasets.load_boston, return_X_y=True),
             fetch_test_data=None,
+            test_size=test_size,
+            random_state=random_state,
             target_preprocessor=None,
             scorer=None)),
         ("sklearn.diabetes", DataEnvironment(
@@ -45,6 +47,8 @@ def envs():
             fetch_training_data=partial(
                 sklearn.datasets.load_diabetes, return_X_y=True),
             fetch_test_data=None,
+            test_size=test_size,
+            random_state=random_state,
             target_preprocessor=None,
             scorer=None)),
         ("sklearn.linnerud", DataEnvironment(
@@ -56,6 +60,8 @@ def envs():
             fetch_training_data=partial(
                 sklearn.datasets.load_linnerud, return_X_y=True),
             fetch_test_data=None,
+            test_size=test_size,
+            random_state=random_state,
             target_preprocessor=None,
             scorer=None)),
     ])

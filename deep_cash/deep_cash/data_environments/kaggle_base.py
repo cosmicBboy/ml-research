@@ -167,11 +167,21 @@ class KaggleCompetition(object):
             dataset = self._custom_preprocessor(dataset)
 
         feature_data = dataset[self._feature_names].values
-        return feature_data
+        return feature_data, None
 
-    def data_env(self, n_samples=None):
-        """Create dictionary with keys matching _open_ml_dataset output."""
+    def data_env(self, n_samples=None, test_size=None, random_state=None):
+        """Convert kaggle competition to data environment."""
         self._download_and_cache()
+        # TODO: if called with test_size arg, override the fetch_test_data
+        # None and specify test_size and random_state. This should be used
+        # for partitioning a holdout test set from the training set. Still
+        # need to support `make_submission` and `get_submission_performance`
+        # methods below (should probably be pull those out into kaggle_api as
+        # their own functions).
+        if test_size:
+            fetch_test_data = None
+        else:
+            fetch_test_data = self.get_test_data
         return DataEnvironment(
             name=self.dataset_name,
             source=DataSourceType.KAGGLE,
@@ -179,7 +189,26 @@ class KaggleCompetition(object):
             feature_types=self._feature_types,
             feature_indices=[i for i in range(len(self._feature_types))],
             fetch_training_data=self.get_training_data,
-            fetch_test_data=self.get_test_data,
+            fetch_test_data=fetch_test_data,
+            test_size=test_size,
+            random_state=random_state,
             target_preprocessor=None,
             scorer=self.scorer,
         )
+
+    def make_submission(self):
+        """Submit predictions to kaggle platform for evaluation."""
+        # TODO: this requires a custom function with the signature:
+        # (predictions) -> submission object
+        # where submission object is in json or csv format and is
+        # written to a temporary file, uploaded via
+        # `kaggle competitions submit` cli command and then deleted.
+        # This should also generate a unique submission
+        # id that we can use when getting submission performance
+        pass
+
+    def get_submission_performance(self, submission_id):
+        # TODO: this should take the output of `make_submission` and use the
+        # `kaggle competitions submissions` command to get performance metric
+        # for a particular submission.
+        pass

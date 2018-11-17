@@ -10,7 +10,7 @@ from .data_environment import DataEnvironment
 from ..data_types import FeatureType, TargetType, DataSourceType
 
 
-def envs():
+def envs(test_size=None, random_state=None):
     return OrderedDict([
         ("sklearn.iris", DataEnvironment(
             name="sklearn.iris",
@@ -21,6 +21,8 @@ def envs():
             fetch_training_data=partial(
                 sklearn.datasets.load_iris, return_X_y=True),
             fetch_test_data=None,
+            test_size=test_size,
+            random_state=random_state,
             target_preprocessor=None,
             scorer=None)),
         ("sklearn.digits", DataEnvironment(
@@ -32,6 +34,8 @@ def envs():
             fetch_training_data=partial(
                 sklearn.datasets.load_digits, return_X_y=True),
             fetch_test_data=None,
+            test_size=test_size,
+            random_state=random_state,
             target_preprocessor=None,
             scorer=None)),
         ("sklearn.wine", DataEnvironment(
@@ -43,6 +47,8 @@ def envs():
             fetch_training_data=partial(
                 sklearn.datasets.load_wine, return_X_y=True),
             fetch_test_data=None,
+            test_size=test_size,
+            random_state=random_state,
             target_preprocessor=None,
             scorer=None)),
         ("sklearn.breast_cancer", DataEnvironment(
@@ -54,6 +60,8 @@ def envs():
             fetch_training_data=partial(
                 sklearn.datasets.load_breast_cancer, return_X_y=True),
             fetch_test_data=None,
+            test_size=test_size,
+            random_state=random_state,
             target_preprocessor=None,
             scorer=None)),
     ])

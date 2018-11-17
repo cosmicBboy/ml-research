@@ -39,7 +39,6 @@ def nyc_taxi_trip_duration():
         features=OrderedDict([
             ("vendor_id", FeatureType.CATEGORICAL),
             ("pickup_datetime", FeatureType.DATE),
-            ("dropoff_datetime", FeatureType.DATE),
             ("passenger_count", FeatureType.CONTINUOUS),
             ("pickup_longitude", FeatureType.CONTINUOUS),
             ("pickup_latitude", FeatureType.CONTINUOUS),

@@ -16,10 +16,10 @@ def test_task_env_datasampling():
     assert task_env.current_data_env is None
     assert task_env._current_task is None
     for _ in range(10):
-        task_env.sample_data_distribution()
+        task_env.sample_data_env()
         assert task_env.current_data_env is not None
         for _ in range(10):
-            metafeatures = task_env.sample_task()
+            metafeatures = task_env.sample_task_state()
             assert task_env._current_task is not None
             assert hasattr(task_env._current_task, "X_train")
             assert hasattr(task_env._current_task, "X_validation")

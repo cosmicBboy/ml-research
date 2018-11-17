@@ -5,7 +5,7 @@ https://www.openml.org/search?type=data
 
 import logging
 
-from collections import ChainMap, OrderedDict
+from collections import OrderedDict
 from functools import partial
 
 import openml
@@ -53,8 +53,8 @@ def get_datasets(dataset_ids):
 
 
 def openml_to_data_env(
-        openml_dataset, target_column, target_type, target_preprocessor=None,
-        include_features_with_na=False):
+        openml_dataset, target_column, target_type, test_size, random_state,
+        target_preprocessor=None, include_features_with_na=False):
     feature_indices = []
     feature_types = []
     target_index = None
@@ -96,12 +96,15 @@ def openml_to_data_env(
         fetch_training_data=partial(
             openml_dataset.get_data, include_row_id=True),
         fetch_test_data=None,
+        test_size=test_size,
+        random_state=random_state,
         target_preprocessor=target_preprocessor,
         scorer=None,
     )
 
 
-def classification_envs(n=N_CLASSIFICATION_ENVS):
+def classification_envs(
+        n=N_CLASSIFICATION_ENVS, test_size=None, random_state=None):
     clf_dataset_metadata = openml.tasks.list_tasks(
         task_type_id=OpenMLTaskType.SUPERVISED_CLASSIFICATION.value, size=n)
     dataset_ids = [v["source_data"] for v in clf_dataset_metadata.values()]
@@ -114,13 +117,14 @@ def classification_envs(n=N_CLASSIFICATION_ENVS):
     envs = []
     for ds, tc, tt in zip(clf_datasets, target_features, target_types):
         parsed_ds = openml_to_data_env(
-            ds, tc, tt, include_features_with_na=True)
+            ds, tc, tt, test_size, random_state, include_features_with_na=True)
         if parsed_ds:
             envs.append(parsed_ds)
     return OrderedDict([(d.name, d) for d in envs])
 
 
-def regression_envs(n=N_REGRESSION_ENVS):
+def regression_envs(
+        n=N_REGRESSION_ENVS, test_size=None, random_state=None):
     reg_dataset_metadata = openml.tasks.list_tasks(
         task_type_id=OpenMLTaskType.SUPERVISED_REGRESSION.value, size=n)
     dataset_ids = [v["source_data"] for v in reg_dataset_metadata.values()]
@@ -131,14 +135,7 @@ def regression_envs(n=N_REGRESSION_ENVS):
     for openml_dataset, target_column in zip(reg_datasets, target_features):
         parsed_ds = openml_to_data_env(
             openml_dataset, target_column, TargetType.REGRESSION,
-            include_features_with_na=True)
+            test_size, random_state, include_features_with_na=True)
         if parsed_ds:
             envs.append(parsed_ds)
     return OrderedDict([(d.name, d) for d in envs])
-
-
-def envs(dataset_names):
-    envs = ChainMap(classification_envs(), regression_envs())
-    if dataset_names is None:
-        return [envs[d] for d in envs]
-    return [envs[d] for d in dataset_names]

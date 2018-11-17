@@ -3,12 +3,12 @@
 See https://github.com/Kaggle/kaggle-api for more details.
 """
 
-from collections import ChainMap, OrderedDict
+from collections import OrderedDict
 
 from . import kaggle_regression, kaggle_classification
 
 
-def classification_envs():
+def classification_envs(test_size=None, random_state=None):
     competitions = [
         kaggle_classification.homesite_quote_conversion(),
         kaggle_classification.santander_customer_satisfaction(),
@@ -16,10 +16,13 @@ def classification_envs():
         kaggle_classification.poker_rule_induction(),
         kaggle_classification.costa_rican_household_poverty_prediction(),
     ]
-    return OrderedDict([(d.dataset_name, d.data_env()) for d in competitions])
+    return OrderedDict([
+        (d.dataset_name, d.data_env(
+            test_size=test_size, random_state=random_state))
+        for d in competitions])
 
 
-def regression_envs():
+def regression_envs(test_size=None, random_state=None):
     competitions = [
         kaggle_regression.restaurant_revenue_prediction(),
         kaggle_regression.nyc_taxi_trip_duration(),
@@ -27,11 +30,7 @@ def regression_envs():
         kaggle_regression.allstate_claims_severity(),
         kaggle_regression.house_prices_advanced_regression_techniques(),
     ]
-    return OrderedDict([(d.dataset_name, d.data_env()) for d in competitions])
-
-
-def envs(dataset_names):
-    envs = ChainMap(classification_envs(), regression_envs())
-    if dataset_names is None:
-        return [envs[d] for d in envs]
-    return [envs[d] for d in dataset_names]
+    return OrderedDict([
+        (d.dataset_name, d.data_env(
+            test_size=test_size, random_state=random_state))
+        for d in competitions])

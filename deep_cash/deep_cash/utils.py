@@ -3,24 +3,47 @@
 import logging
 import time
 
+import math
 import numpy as np
 import torch
 
+import torch.nn as nn
 from torch.autograd import Variable
 
 from .data_types import CASHComponent
 
 
-def create_metafeature_spec(data_distribution):
+def add_metafeatures_hidden_units(controller):
+
+    """Util function that adds hidden units to the metafeature embedding."""
+    weights = controller.metafeature_dense.weight.data
+    new_w = torch.zeros([weights.shape[0], 1])
+
+    # initialize using default method in pytorch:
+    # https://github.com/pytorch/pytorch/blob/master/torch/nn/modules/linear.py#L44-L48  # noqa
+    nn.init.kaiming_uniform(new_w, a=math.sqrt(5))
+    new_weights = torch.cat([weights, new_w], dim=1)
+
+    controller.metafeature_dense = nn.Linear(
+        new_weights.shape[1], controller.metafeature_encoding_size)
+    controller.metafeature_dense.weight.data = torch.Tensor(new_weights)
+    assert all(controller.metafeature_dense.weight.data[:, -1] ==
+               new_w.view(-1))
+    return controller
+
+
+def create_metafeature_spec(data_distribution, null_data_env=None):
     """Create a metafeature spec.
 
     NOTE: may need to make this a class if it becomes more complex.
     """
     # TODO: the data_env_name feature should be a categorical variable with
     # a NONE token for new datasets that the controller has not seen before.
+    data_dist_names = [data_env.name for data_env in data_distribution]
+    if null_data_env:
+        data_dist_names += [null_data_env]
     return [
-        ("data_env_name", str, [
-            data_env.name for data_env in data_distribution]),
+        ("data_env_name", str, data_dist_names),
         ("number_of_examples", int, None),
         ("number_of_features", int, None),
     ]

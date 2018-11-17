@@ -100,7 +100,7 @@ class CASHReinforce(object):
         self._baseline_buffer_history = defaultdict(list)
 
         for i_episode in range(self._n_episodes):
-            self.t_env.sample_data_distribution()
+            self.t_env.sample_data_env()
             self._action_buffer = []
             self._validation_scores = []
             self._successful_mlfs = []
@@ -120,6 +120,7 @@ class CASHReinforce(object):
             if len(buffer) == 0:
                 baseline = self._baseline_current()
             else:
+                # get last baseline value
                 baseline = buffer[-1]
                 del self._baseline_buffer()[:]
 
@@ -198,16 +199,16 @@ class CASHReinforce(object):
         """Begin training the controller."""
         self._n_valid_mlf = 0
         prev_reward, prev_action = 0, self.controller.init_action()
-        for i_iter in range(n_iter):
+        for i in range(n_iter):
             prev_reward, prev_action = self._fit_iter(
-                self.t_env.sample_task(),
+                self.t_env.sample_task_state(),
                 self.t_env.current_data_env.target_type,
                 prev_reward,
                 prev_action)
             if verbose:
                 print(
                     "iter %d - n valid mlf: %d/%d" % (
-                        i_iter, self._n_valid_mlf, i_iter + 1),
+                        i, self._n_valid_mlf, i + 1),
                     sep=" ", end="\r", flush=True)
 
     def _fit_iter(
@@ -233,7 +234,7 @@ class CASHReinforce(object):
         mlf = self.controller.a_space.create_ml_framework(
             algorithms, hyperparameters=hyperparameters,
             env_dep_hyperparameters=self.t_env.env_dep_hyperparameters())
-        reward, score, score_comparator = self.t_env.evaluate(mlf)
+        mlf, reward, score = self.t_env.evaluate(mlf)
         self._action_buffer.append(action_activation)
         self._algorithm_sets.append(algorithms)
         self._hyperparameter_sets.append(hyperparameters)
@@ -244,7 +245,8 @@ class CASHReinforce(object):
             self._n_valid_mlf += 1
             self._successful_mlfs.append(mlf)
             if self._best_validation_score is None or \
-                    score_comparator(score, self._best_validation_score):
+                    self.t_env.scorer.comparator(
+                        score, self._best_validation_score):
                 self._best_validation_score = score
                 self._best_mlf = mlf
             return reward
