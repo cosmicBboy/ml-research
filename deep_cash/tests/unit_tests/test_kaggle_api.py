@@ -1,7 +1,8 @@
 """Unit tests for Kaggle API."""
 
 from deep_cash.data_types import TargetType, DataSourceType
-from deep_cash.data_sourcers import kaggle_regression, kaggle_classification
+from deep_cash.data_environments import kaggle_regression, \
+    kaggle_classification
 
 
 def test_kaggle_regression_competitions():

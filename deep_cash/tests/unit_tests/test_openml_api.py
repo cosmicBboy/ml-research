@@ -1,6 +1,7 @@
 """Unit and integration tests for Openml API."""
 
-from deep_cash.data_sourcers import openml_api
+from deep_cash.data_types import TargetType
+from deep_cash.data_environments import openml_api
 
 
 def test_list_clf_datasets():
@@ -17,3 +18,10 @@ def test_classification_envs():
     # datasets can be invalid for several reasons (no valid target column,
     # no features parsed)
     assert len(datasets) <= 10
+
+
+def test_regression_envs():
+    reg_envs = openml_api.regression_envs(3)
+    assert len(reg_envs) == 3
+    assert all([
+        e["target_type"] == TargetType.REGRESSION for e in reg_envs])

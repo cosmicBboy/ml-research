@@ -4,9 +4,9 @@ import itertools
 import numpy as np
 import pandas as pd
 
-from . import classification_environments, regression_environments
 from ..data_types import DataSourceType, FeatureType
-from ..data_sourcers import openml_api, kaggle_api
+from . import openml_api, kaggle_api, sklearn_classification, \
+    sklearn_regression
 
 # TODO: define a DataEnvironment class
 
@@ -15,8 +15,8 @@ def sklearn_data_envs():
     """Create list of sklearn data environments."""
     out = []
     for env_fn, config in itertools.chain(
-            classification_environments.SKLEARN_DATA_ENV_CONFIG.items(),
-            regression_environments.SKLEARN_DATA_ENV_CONFIG.items()):
+            sklearn_classification.SKLEARN_DATA_ENV_CONFIG.items(),
+            sklearn_regression.SKLEARN_DATA_ENV_CONFIG.items()):
         data = env_fn()
         c = config.copy()
         c.update({
