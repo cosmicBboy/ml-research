@@ -32,6 +32,9 @@ def sklearn_data_envs():
 
 
 ENV_SOURCES = {
+    # TODO: these wrappers should take a list of dataset names as arguments
+    # and return only those dataset envs. Make this efficient by only creating
+    # the data envs specified.
     DataSourceType.SKLEARN: sklearn_data_envs,
     DataSourceType.OPEN_ML: openml_api.envs,
     DataSourceType.KAGGLE: kaggle_api.envs,
@@ -112,6 +115,8 @@ def preprocess_data_env(data_env):
 
 def envs(sources=None, names=None, target_types=None, n_samples=None):
     """Get classification environments."""
+    # TODO: need to set aside test set for each data env. This should be
+    # standardized (set a random seed) so that results are reproducible.
     _envs = []
     if sources is None:
         sources = list(ENV_SOURCES.keys())

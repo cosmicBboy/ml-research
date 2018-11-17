@@ -135,8 +135,14 @@ class TaskEnvironment(object):
 
     def sample_data_env(self):
         """Sample the data distribution."""
-        env_index = np.random.randint(self.n_data_envs)
-        data_env = self.data_distribution[env_index]
+        self.set_data_env(self.data_distribution[
+            np.random.randint(self.n_data_envs)])
+
+    def set_data_env(self, data_env):
+        # TODO: holding so much state in the TaskEnvironment is ugly...
+        # there should really be a DataEnvironment class that should handle the
+        # state and logic relating to data environment metadata that's being
+        # set here.
         X, y = data_env["data"], data_env["target"]
         if self._n_samples and X.shape[0] > self._n_samples:
             idx = np.random.choice(range(X.shape[0]), self._n_samples)
