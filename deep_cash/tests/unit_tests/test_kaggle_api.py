@@ -15,8 +15,8 @@ def test_kaggle_regression_competitions():
     ]
     for comp in kaggle_comps:
         env = comp.data_env()
-        assert env["target_type"] == TargetType.REGRESSION
-        assert env["source"] == DataSourceType.KAGGLE
+        assert env.target_type == TargetType.REGRESSION
+        assert env.source == DataSourceType.KAGGLE
 
 
 def test_kaggle_classification_competitions():
@@ -29,5 +29,5 @@ def test_kaggle_classification_competitions():
     ]
     for comp in kaggle_comps:
         env = comp.data_env()
-        assert env["target_type"] in [TargetType.BINARY, TargetType.MULTICLASS]
-        assert env["source"] == DataSourceType.KAGGLE
+        assert env.target_type in [TargetType.BINARY, TargetType.MULTICLASS]
+        assert env.source == DataSourceType.KAGGLE

@@ -4,12 +4,15 @@ https://www.openml.org/search?type=data
 """
 
 import logging
-import numpy as np
+
+from collections import ChainMap, OrderedDict
+from functools import partial
 
 import openml
 
 from openml.exceptions import OpenMLServerException
 
+from .data_environment import DataEnvironment
 from ..data_types import FeatureType, TargetType, OpenMLTaskType, \
     DataSourceType
 
@@ -20,28 +23,6 @@ logger = logging.getLogger(__name__)
 N_CLASSIFICATION_ENVS = 20
 N_REGRESSION_ENVS = 20
 
-# specifies range of classification tasks from 2-100 classes
-CLASS_RANGE = (2, 100)
-
-
-# NOTE: the key is the OpenML dataset_id
-# these are special case datasets that need to be slightly processed in order
-# to be usable by deep_cash. The single special case for now is a dataset
-# called "anneal", which was NaN values for its categorical data, however,
-# these values are actually "not applicable", i.e. they are legitimate discrete
-# values in the categorical distribution.
-CUSTOM_DATA_CONFIG = {
-    2: {
-        "dataset_name": "anneal",
-        "target_type": TargetType.MULTICLASS,
-        "target_index": 38,
-        "target_name": "class",
-        "target_preprocessor": None,
-        "fill_na_discrete": True,
-    }
-}
-
-CUSTOM_DATASET_IDS = frozenset(CUSTOM_DATA_CONFIG.keys())
 
 # Map OpenML feature data types to deep_cash feature data types
 FEATURE_TYPE_MAP = {
@@ -59,44 +40,6 @@ def _map_feature(feature):
     return feature_dtype
 
 
-def _reassign_categorical_data(col_vector):
-    """Reassigns categorical data.
-
-    Some openml datasets have the following quirk whereNaN values are present
-    in the dataset, but in fact these values should be "not applicable", i.e.
-    they are a valid discrete values.
-    """
-    null_values = np.isnan(col_vector)
-    if not np.any(null_values):
-        return col_vector
-    unique = np.unique(col_vector[~null_values])
-    fill_na_value = 0 if len(unique) == 0 else np.max(unique) + 1
-    # assume that null values that fall under "not applicable" value can take
-    # on the (n + 1)th index, where n is the max value of the categorical
-    # value index
-    col_vector[null_values] = fill_na_value
-    return col_vector
-
-
-def list_clf_datasets(n_results=None, exclude_missing=True):
-    """Get classification datasets.
-
-    :param int n_results: number of dataset metadata to list
-    :param bool exclude_missing: whether or not to exclude datasets with any
-        missing values (default=True).
-    :returns: OpenML datasets for classification tasks.
-    :rtype: list[openml.OpenMLDataset]
-    """
-    # TODO: figure out how to specify <n and >n filter operators based on
-    # the docs: https://www.openml.org/api_docs#!/data/get_data_list_filters
-    kwargs = {"number_classes": "%d..%d" % CLASS_RANGE}
-    if n_results:
-        kwargs.update({"size": n_results})
-    if exclude_missing:
-        kwargs.update({"number_missing_values": 0})
-    return openml.datasets.list_datasets(**kwargs)
-
-
 def get_datasets(dataset_ids):
     datasets = []
     for did in dataset_ids:
@@ -109,34 +52,14 @@ def get_datasets(dataset_ids):
     return datasets
 
 
-def _open_ml_dataset(
-        name, target_type, data, target, feature_types, feature_indices,
-        target_preprocessor):
-    return {
-        "dataset_name": name,
-        "target_type": target_type,
-        "data": data,
-        "target": target,
-        "feature_types": feature_types,
-        "feature_indices": feature_indices,
-        "target_preprocessor": target_preprocessor,
-        "source": DataSourceType.OPEN_ML,
-        # TODO: should there be a specific scorer here? Need to look at the
-        # openml API task object to see if there's a metric specified there.
-        "scorer": None
-    }
-
-
-def _parse_openml_dataset(
+def openml_to_data_env(
         openml_dataset, target_column, target_type, target_preprocessor=None,
         include_features_with_na=False):
     feature_indices = []
     feature_types = []
     target_index = None
     ignore_atts = openml_dataset.ignore_attributes
-    # include row id ensures that indices are correctly aligned with the data
     row_id_att = openml_dataset.row_id_attribute
-    data = openml_dataset.get_data(include_row_id=True)
     for key, feature in openml_dataset.features.items():
         if (ignore_atts and feature.name in ignore_atts) or \
                 (row_id_att and feature.name == row_id_att):
@@ -163,15 +86,18 @@ def _parse_openml_dataset(
         print("no features found for dataset %s, skipping." %
               openml_dataset.name)
         return None
-    return _open_ml_dataset(
-        name=openml_dataset.name,
+    return DataEnvironment(
+        name="openml.%s" % openml_dataset.name.lower(),
+        source=DataSourceType.OPEN_ML,
         target_type=target_type,
-        data=data[:, feature_indices],
-        target=data[:, target_index],
         feature_types=feature_types,
         feature_indices=feature_indices,
-        # this should only be specified for multilabel problems
+        # include row id ensures that indices are correctly aligned
+        fetch_training_data=partial(
+            openml_dataset.get_data, include_row_id=True),
+        fetch_test_data=None,
         target_preprocessor=target_preprocessor,
+        scorer=None,
     )
 
 
@@ -185,13 +111,13 @@ def classification_envs(n=N_CLASSIFICATION_ENVS):
          TargetType.MULTICLASS if v["NumberOfClasses"] > 2
             else TargetType.BINARY)
         for v in clf_dataset_metadata.values()])
-    out = []
+    envs = []
     for ds, tc, tt in zip(clf_datasets, target_features, target_types):
-        parsed_ds = _parse_openml_dataset(
+        parsed_ds = openml_to_data_env(
             ds, tc, tt, include_features_with_na=True)
         if parsed_ds:
-            out.append(parsed_ds)
-    return out
+            envs.append(parsed_ds)
+    return OrderedDict([(d.name, d) for d in envs])
 
 
 def regression_envs(n=N_REGRESSION_ENVS):
@@ -201,15 +127,18 @@ def regression_envs(n=N_REGRESSION_ENVS):
     reg_datasets = get_datasets(dataset_ids)
     target_features = [
         v["target_feature"] for v in reg_dataset_metadata.values()]
-    out = []
+    envs = []
     for openml_dataset, target_column in zip(reg_datasets, target_features):
-        parsed_ds = _parse_openml_dataset(
+        parsed_ds = openml_to_data_env(
             openml_dataset, target_column, TargetType.REGRESSION,
             include_features_with_na=True)
         if parsed_ds:
-            out.append(parsed_ds)
-    return out
+            envs.append(parsed_ds)
+    return OrderedDict([(d.name, d) for d in envs])
 
 
-def envs():
-    return classification_envs() + regression_envs()
+def envs(dataset_names):
+    envs = ChainMap(classification_envs(), regression_envs())
+    if dataset_names is None:
+        return [envs[d] for d in envs]
+    return [envs[d] for d in dataset_names]

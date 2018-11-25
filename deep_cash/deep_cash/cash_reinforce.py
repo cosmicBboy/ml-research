@@ -100,7 +100,7 @@ class CASHReinforce(object):
         self._baseline_buffer_history = defaultdict(list)
 
         for i_episode in range(self._n_episodes):
-            self.t_env.sample_data_env()
+            self.t_env.sample_data_distribution()
             self._action_buffer = []
             self._validation_scores = []
             self._successful_mlfs = []
@@ -109,7 +109,7 @@ class CASHReinforce(object):
             self._best_validation_score = None
             self._best_mlf = None
             msg = "episode %d, task: %s" % (
-                i_episode, self.t_env.data_env_name)
+                i_episode, self.t_env.current_data_env.name)
             if procnum is not None:
                 msg = "proc num: %d, %s" % (procnum, msg)
             print("\n" + msg)
@@ -134,7 +134,7 @@ class CASHReinforce(object):
                 n_unique_mlfs, n_iter)
             hyperparam_diversity = utils._diversity_metric(
                 n_unique_hyperparams, n_iter)
-            self.data_env_names.append(self.t_env.data_env_name)
+            self.data_env_names.append(self.t_env.current_data_env.name)
             self.mean_rewards.append(np.mean(self.controller.reward_buffer))
             if len(self._validation_scores) > 0:
                 self.mean_validation_scores.append(
@@ -200,7 +200,9 @@ class CASHReinforce(object):
         prev_reward, prev_action = 0, self.controller.init_action()
         for i_iter in range(n_iter):
             prev_reward, prev_action = self._fit_iter(
-                self.t_env.sample(), self.t_env.target_type, prev_reward,
+                self.t_env.sample_task(),
+                self.t_env.current_data_env.target_type,
+                prev_reward,
                 prev_action)
             if verbose:
                 print(
@@ -326,7 +328,7 @@ class CASHReinforce(object):
 
     def _baseline_fn_key(self):
         return SINGLE_BASELINE if self._single_baseline else \
-            self.t_env.data_env_name
+            self.t_env.current_data_env.name
 
     def _baseline_buffer(self):
         return self._baseline_fn["buffer"][self._baseline_fn_key()]

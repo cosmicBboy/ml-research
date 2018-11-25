@@ -90,7 +90,7 @@ class TaskEnvironment(object):
         self._env_sources = [DataSourceType[e] for e in env_sources]
         self._target_types = [TargetType[t] for t in target_types]
         self.data_distribution = environments.envs(
-            sources=self._env_sources, names=self._dataset_names,
+            sources=self._env_sources, dataset_names=self._dataset_names,
             target_types=self._target_types)
         self.metafeature_spec = utils.create_metafeature_spec(
             self.data_distribution)
@@ -99,6 +99,7 @@ class TaskEnvironment(object):
         self.n_data_envs = len(self.data_distribution)
         self._error_reward = error_reward
         self._n_samples = n_samples
+        self.current_data_env = None
         self.create_metafeature_tensor = partial(
             utils._create_metafeature_tensor,
             metafeature_spec=self.metafeature_spec)
@@ -133,37 +134,17 @@ class TaskEnvironment(object):
         """Return reward in the situation of a fit/predict error."""
         return self._error_reward
 
-    def sample_data_env(self):
+    def sample_data_distribution(self):
         """Sample the data distribution."""
-        self.set_data_env(self.data_distribution[
-            np.random.randint(self.n_data_envs)])
-
-    def set_data_env(self, data_env):
-        # TODO: holding so much state in the TaskEnvironment is ugly...
-        # there should really be a DataEnvironment class that should handle the
-        # state and logic relating to data environment metadata that's being
-        # set here.
-        X, y = data_env["data"], data_env["target"]
-        if self._n_samples and X.shape[0] > self._n_samples:
-            idx = np.random.choice(range(X.shape[0]), self._n_samples)
-            X, y = X[idx], y[idx]
-        self.X, self.y = X, y
-        self.target_type = data_env["target_type"]
-        self.data_env_name = data_env["dataset_name"]
-        self.feature_types = data_env["feature_types"]
-        self.feature_indices = data_env["feature_indices"]
-        if data_env["scorer"]:
-            self.scorer = data_env["scorer"]
+        self.current_data_env = self.data_distribution[
+            np.random.randint(self.n_data_envs)]
+        # TODO: probably want to standardize the scorer across tasks of
+        # a certain target type, otherwise the reward function will very
+        # complex
+        if self.current_data_env.scorer:
+            self.scorer = self.current_data_env.scorer
         else:
-            self.scorer = self._scorers[self.target_type]
-        if data_env["target_preprocessor"] is not None:
-            # NOTE: this feature isn't really executed currently since none of
-            # the classification environments have a specified
-            # target_preprocessor. This capability would be used in the case
-            # of multi-label or multi-headed tasks.
-            self.y = data_env["target_preprocessor"]().fit_transform(self.y)
-        self.data_env_index = np.array(range(self.X.shape[0]))
-        self.n_samples = len(self.data_env_index)
+            self.scorer = self._scorers[self.current_data_env.target_type]
 
     def env_dep_hyperparameters(self):
         """Get data environment-dependent hyperparameters.
@@ -178,36 +159,19 @@ class TaskEnvironment(object):
         return {
             "OneHotEncoder__categorical_features": [
                 index for f, index in
-                zip(self.feature_types, self.feature_indices)
+                zip(self.current_data_env.feature_types,
+                    self.current_data_env.feature_indices)
                 if f == FeatureType.CATEGORICAL]
         }
 
-    def sample(self):
-        """Sample the current data_env for features and targets.
-
-        This function sets the instance variables:
-
-        :ivar X_train: array of shape n_train x m where n_train is number of
-            training samples and m is number of features.
-        :ivar y_train: array of shape n_train x k where k is number of
-            classes/targets.
-        :ivar X_test: array of shape n_test x m where n_test is number of
-            test samples.
-        :ivar y_test: array of shape n_test x k.
-        :returns: array of shape 1 x m_meta where m_meta is the number of
-            metafeatures for a particular sample.
-        """
-        # number of training samples to bootstrap
-        train_index = np.random.choice(
-            self.data_env_index, self.n_samples, replace=True)
-        test_index = np.setdiff1d(self.data_env_index, train_index)
-        # save the test partitions for evaluation
-        self.X_train = self.X[train_index]
-        self.y_train = self.y[train_index]
-        self.X_test = self.X[test_index]
-        self.y_test = self.y[test_index]
+    def sample_task(self):
+        """Sample the current data_env for features and targets."""
+        self._current_task = self.current_data_env.sample(self._n_samples)
         return self.create_metafeature_tensor(
-            _metafeatures(self.data_env_name, self.X_train, self.y_train),
+            _metafeatures(
+                self.current_data_env.name,
+                self._current_task.X_train,
+                self._current_task.y_train),
             [None])
 
     def evaluate(self, mlf):
@@ -233,7 +197,9 @@ class TaskEnvironment(object):
 
         try:
             result = self.ml_framework_fitter(
-                clone(mlf), self.X_train, self.y_train)
+                clone(mlf),
+                self._current_task.X_train,
+                self._current_task.y_train)
         except MemoryError as e:
             # catch memory error that may occur when dumping results from
             # the pynisher multiprocessing job.
@@ -255,14 +221,14 @@ class TaskEnvironment(object):
             # environment should evaluate this as a negative reward.
             logger.info(
                 "FIT LIMIT EXCEEDED: [%s] generated by mlf: %s, data env: %s" %
-                (fit_error, mlf_str, self.data_env_name))
+                (fit_error, mlf_str, self.current_data_env.name))
             return None
         elif is_valid_fit_error(fit_error):
             # if mlf fit routine raised valid fit error, task environment
             # should evaluate this as a negative reward.
             logger.info(
                 "VALID FIT ERROR: [%s] generated by mlf %s, data env: %s" %
-                (fit_error, mlf_str, self.data_env_name))
+                (fit_error, mlf_str, self.current_data_env.name))
             return None
         else:
             # unrecognized fit errors should cause task environment to fail.
@@ -271,13 +237,16 @@ class TaskEnvironment(object):
             # evaluation are explicitly accounted for by the `errors` module.
             logger.exception(
                 "INVALID FIT ERROR: [%s] generated by mlf %s, data env: %s" %
-                (fit_error, mlf_str, self.data_env_name))
+                (fit_error, mlf_str, self.current_data_env.name))
             return None
 
     def _score(self, mlf):
         if mlf is None:
             return None, None, None
-        y_hat = _ml_framework_predict(mlf, self.X_test, self.target_type)
+        y_hat = _ml_framework_predict(
+            mlf,
+            self._current_task.X_validation,
+            self.current_data_env.target_type)
         if y_hat is None:
             return None, None, None
         with warnings.catch_warnings() as warning:
@@ -292,7 +261,7 @@ class TaskEnvironment(object):
             if warning:
                 logger.info("SCORE WARNING: %s" % warning)
             try:
-                score = self.scorer.fn(self.y_test, y_hat)
+                score = self.scorer.fn(self._current_task.y_validation, y_hat)
             except SCORE_ERRORS:
                 return None, None, None
             if self.scorer.reward_transformer is None:

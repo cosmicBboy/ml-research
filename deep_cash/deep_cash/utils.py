@@ -19,7 +19,8 @@ def create_metafeature_spec(data_distribution):
     # TODO: the data_env_name feature should be a categorical variable with
     # a NONE token for new datasets that the controller has not seen before.
     return [
-        ("data_env_name", str, [d["dataset_name"] for d in data_distribution]),
+        ("data_env_name", str, [
+            data_env.name for data_env in data_distribution]),
         ("number_of_examples", int, None),
         ("number_of_features", int, None),
     ]

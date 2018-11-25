@@ -13,7 +13,7 @@ from deep_cash.cash_reinforce import CASHReinforce
 
 def _task_environment(
         target_types=["BINARY", "MULTICLASS"],
-        dataset_names=["iris", "wine"],
+        dataset_names=["sklearn.iris", "sklearn.wine"],
         env_sources=["SKLEARN"],
         enforce_limits=True,
         n_samples=100):
@@ -99,8 +99,8 @@ def test_cash_reinforce_fit_multi_baseline():
     reinforce.fit(
         n_episodes=n_episodes,
         **_fit_kwargs())
-    assert reinforce._baseline_buffer_history["iris"] != \
-        reinforce._baseline_buffer_history["wine"]
+    assert reinforce._baseline_buffer_history["sklearn.iris"] != \
+        reinforce._baseline_buffer_history["sklearn.wine"]
 
 
 def test_cash_zero_gradient():
@@ -159,7 +159,7 @@ def test_cash_entropy_regularizer():
 def test_cash_reinforce_regressor():
     """Test cash reinforce regression data environments."""
     n_episodes = 4
-    for dataset in ["boston", "diabetes", "linnerud"]:
+    for dataset in ["sklearn.boston", "sklearn.diabetes", "sklearn.linnerud"]:
         a_space = _algorithm_space()
         t_env = _task_environment(
             target_types=["REGRESSION"],
@@ -201,11 +201,11 @@ def test_cash_kaggle_regression_data():
         env_sources=["KAGGLE"],
         target_types=["REGRESSION"],
         dataset_names=[
-            "restaurant_revenue_prediction",
-            "nyc_taxi_trip_duration",
-            "mercedes_benz_greener_manufacturing",
-            "allstate_claims_severity",
-            "house_prices_advanced_regression_techniques",
+            "kaggle.restaurant_revenue_prediction",
+            "kaggle.nyc_taxi_trip_duration",
+            "kaggle.mercedes_benz_greener_manufacturing",
+            "kaggle.allstate_claims_severity",
+            "kaggle.house_prices_advanced_regression_techniques",
         ],
         n_samples=30)
     controller = _cash_controller(a_space, t_env)
@@ -225,11 +225,11 @@ def test_cash_kaggle_classification_data():
         env_sources=["KAGGLE"],
         target_types=["BINARY", "MULTICLASS"],
         dataset_names=[
-            "homesite_quote_conversion",
-            "santander_customer_satisfaction",
-            "bnp_paribas_cardif_claims_management",
-            "poker_rule_induction",
-            "costa_rican_household_poverty_prediction",
+            "kaggle.homesite_quote_conversion",
+            "kaggle.santander_customer_satisfaction",
+            "kaggle.bnp_paribas_cardif_claims_management",
+            "kaggle.poker_rule_induction",
+            "kaggle.costa_rican_household_poverty_prediction",
         ],
         n_samples=30)
     controller = _cash_controller(a_space, t_env)

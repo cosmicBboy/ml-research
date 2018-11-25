@@ -6,6 +6,7 @@ import subprocess
 
 from pathlib import Path
 
+from .data_environment import DataEnvironment
 from ..data_types import DataSourceType, FeatureType
 
 
@@ -84,6 +85,10 @@ class KaggleCompetition(object):
                 self._test_set_filepath.exists()):
             subprocess.call(
                 self._download_api_cmd(), cwd=self._dataset_filepath)
+
+    @property
+    def dataset_name(self):
+        return "kaggle.%s" % self._competition_id.replace("-", "_")
 
     @property
     def url(self):
@@ -167,15 +172,14 @@ class KaggleCompetition(object):
     def data_env(self, n_samples=None):
         """Create dictionary with keys matching _open_ml_dataset output."""
         self._download_and_cache()
-        feature_data, target_data = self.get_training_data(n_samples)
-        return {
-            "dataset_name": self._competition_id.replace("-", "_"),
-            "target_type": self._target_type,
-            "data": feature_data,
-            "target": target_data,
-            "feature_types": self._feature_types,
-            "feature_indices": [i for i in range(len(self._feature_types))],
-            "target_preprocessor": None,
-            "source": DataSourceType.KAGGLE,
-            "scorer": self.scorer,
-        }
+        return DataEnvironment(
+            name=self.dataset_name,
+            source=DataSourceType.KAGGLE,
+            target_type=self._target_type,
+            feature_types=self._feature_types,
+            feature_indices=[i for i in range(len(self._feature_types))],
+            fetch_training_data=self.get_training_data,
+            fetch_test_data=self.get_test_data,
+            target_preprocessor=None,
+            scorer=self.scorer,
+        )
