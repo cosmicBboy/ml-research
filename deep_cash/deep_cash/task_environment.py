@@ -100,6 +100,7 @@ class TaskEnvironment(object):
         self._error_reward = error_reward
         self._n_samples = n_samples
         self.current_data_env = None
+        self._current_task = None
         self.create_metafeature_tensor = partial(
             utils._create_metafeature_tensor,
             metafeature_spec=self.metafeature_spec)
