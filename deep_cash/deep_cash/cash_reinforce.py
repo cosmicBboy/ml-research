@@ -76,6 +76,7 @@ class CASHReinforce(object):
         self._n_episodes = n_episodes
 
         # track metrics
+        self.episodes = []
         self.data_env_names = []
         self.scorers = []
         self.losses = []
@@ -136,6 +137,7 @@ class CASHReinforce(object):
                 n_unique_mlfs, n_iter)
             hyperparam_diversity = utils._diversity_metric(
                 n_unique_hyperparams, n_iter)
+            self.episodes.append(i_episode + 1)
             self.data_env_names.append(self.t_env.current_data_env.name)
             self.scorers.append(self.t_env.scorer.name)
             self.mean_rewards.append(np.mean(self.controller.reward_buffer))
@@ -181,7 +183,7 @@ class CASHReinforce(object):
     def history(self):
         """Get metadata history."""
         return {
-            "episode": range(1, self._n_episodes + 1),
+            "episode": self.episodes,
             "data_env_names": self.data_env_names,
             "scorers": self.scorers,
             "losses": self.losses,

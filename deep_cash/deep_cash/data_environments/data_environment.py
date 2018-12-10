@@ -6,7 +6,7 @@ import pandas as pd
 from collections import namedtuple
 from sklearn.model_selection import train_test_split
 
-from ..data_types import FeatureType
+from ..data_types import FeatureType, TargetType
 
 NULL_DATA_ENV = "<NULL_DATA_ENV>"
 
@@ -169,6 +169,12 @@ class DataEnvironment(object):
                 "to the DataEnvironment initializer, or specify the test_size "
                 "argument.")
         return self.cache_fetch_data("test")
+
+    @property
+    def classes(self):
+        if self.target_type is TargetType.MULTICLASS:
+            return sorted(list(set(self.training_data[1])))
+        return None
 
     @property
     def X_test(self):

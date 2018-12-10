@@ -107,6 +107,11 @@ def run_experiment(
         learning_rate=0.005,
         env_sources=["SKLEARN", "OPEN_ML", "KAGGLE"],
         target_types=["BINARY", "MULTICLASS"],
+        test_set_config=OrderedDict([
+            ("SKLEARN", OrderedDict([
+                ("test_size", 0.8),
+                ("random_state", 100)]))
+        ]),
         error_reward=0,
         per_framework_time_limit=180,
         per_framework_memory_limit=5000,
@@ -151,6 +156,7 @@ def run_experiment(
         t_env = TaskEnvironment(
             env_sources=env_sources,
             target_types=target_types,
+            test_set_config=test_set_config,
             random_state=task_environment_seed,
             per_framework_time_limit=per_framework_time_limit,
             per_framework_memory_limit=per_framework_memory_limit,

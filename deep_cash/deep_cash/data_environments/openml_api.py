@@ -86,6 +86,11 @@ def openml_to_data_env(
         print("no features found for dataset %s, skipping." %
               openml_dataset.name)
         return None
+
+    def _fetch_training_data():
+        data = openml_dataset.get_data(include_row_id=True)
+        return data[:, feature_indices], data[:, target_index]
+
     return DataEnvironment(
         name="openml.%s" % openml_dataset.name.lower(),
         source=DataSourceType.OPEN_ML,
@@ -93,8 +98,7 @@ def openml_to_data_env(
         feature_types=feature_types,
         feature_indices=feature_indices,
         # include row id ensures that indices are correctly aligned
-        fetch_training_data=partial(
-            openml_dataset.get_data, include_row_id=True),
+        fetch_training_data=_fetch_training_data,
         fetch_test_data=None,
         test_size=test_size,
         random_state=random_state,

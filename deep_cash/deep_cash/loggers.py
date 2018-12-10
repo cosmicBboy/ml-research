@@ -23,8 +23,9 @@ def empty_logger(*args, **kwargs):
     pass
 
 
-def _log_floyd(metric, value):
-    print('{"metric": "%s", "value": %0.10f}' % (metric, value))
+def _log_floyd(metric, value, step):
+    print('{"metric": "%s", "value": %0.10f, "step": %d}' %
+          (metric, value, step))
 
 
 def floyd_logger(cash_reinforce, prefix=""):
@@ -42,9 +43,10 @@ def floyd_logger(cash_reinforce, prefix=""):
         metrics_dict = {m: "%s__%s" % (prefix, m) for m in metrics}
     for metric in metrics:
         value = getattr(cash_reinforce, metric)[-1]
+        step = getattr(cash_reinforce, "episodes")[-1]
         if value is None or np.isnan(value):
             continue
-        _log_floyd(metrics_dict.get(metric, metric), value)
+        _log_floyd(metrics_dict.get(metric, metric), value, step)
 
 
 def floyd_multiprocess_logger(
@@ -58,7 +60,10 @@ def floyd_multiprocess_logger(
     :param str metric: metric to display
     """
     metric_name = prefix + metric if prefix else metric
-    _log_floyd(metric_name, getattr(cash_reinforce, metric)[-1])
+    _log_floyd(
+        metric_name,
+        getattr(cash_reinforce, metric)[-1],
+        getattr(cash_reinforce, "episodes")[-1])
 
 
 def get_loggers():

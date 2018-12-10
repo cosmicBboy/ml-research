@@ -37,20 +37,16 @@ torch.manual_seed(1000)
 
 
 t_env = TaskEnvironment(
-    env_sources=["KAGGLE"],
+    env_sources=["OPEN_ML"],
     random_state=100,
     enforce_limits=True,
     per_framework_time_limit=720,
     per_framework_memory_limit=10000,
     dataset_names=[
-        "restaurant_revenue_prediction",
-        "nyc_taxi_trip_duration",
-        "mercedes_benz_greener_manufacturing",
-        "allstate_claims_severity",
-        "house_prices_advanced_regression_techniques",
+        "openml.anneal"
     ],
     error_reward=error_reward,
-    target_types=["REGRESSION"])
+    target_types=["BINARY", "MULTICLASS"])
 
 # create algorithm space
 a_space = AlgorithmSpace(

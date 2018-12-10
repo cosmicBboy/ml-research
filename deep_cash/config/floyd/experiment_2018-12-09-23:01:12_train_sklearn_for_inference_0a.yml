@@ -1,10 +1,9 @@
-name: kaggle_classification_poker_rule_induction_exp_1b
-description: poker rule induction training with exploration
-created_at: 2018-11-12-10:36:04
-git_hash: b48e953
+name: train_sklearn_for_inference_0a
+description: test run new API with inference engine
+created_at: 2018-12-09-23:01:12
+git_hash: 2bcfaaf
 parameters:
-  datasets:
-  - "poker_rule_induction"
+  datasets: null
   output_fp: /output
   n_trials: 1
   input_size: 30
@@ -13,21 +12,22 @@ parameters:
   n_layers: 3
   dropout_rate: 0.2
   beta: 0.9
-  entropy_coef: 0.5
+  entropy_coef: 0.02
   with_baseline: true
   single_baseline: true
   normalize_reward: false
-  n_episodes: 500
+  n_episodes: 300
   n_iter: 16
   learning_rate: 0.005
   env_sources:
-  - KAGGLE
+  - SKLEARN
+  - OPEN_ML
   target_types:
   - BINARY
   - MULTICLASS
   error_reward: 0
-  per_framework_time_limit: 540
-  per_framework_memory_limit: 10000
+  per_framework_time_limit: 180
+  per_framework_memory_limit: 5000
   metric_logger: floyd
   fit_verbose: 0
   controller_seed: 1000

@@ -53,6 +53,10 @@ class TaskEnvironment(object):
         :param list[str] target_types: list of target types that the task
             environment will sample from. These should correspond with the
             TargetType enum names.
+        :param dict[DataSourceType -> dict] test_set_config: a dictionary where
+            keys DataSourceTypes and values are dictionaries of the form:
+            {"test_size": float, "random_state": int}. This is used to set the
+            task environment test set sizes.
         :param dict[TargetType: Scorer]|None scorers: where Scorer is a
             namedtuple composed of the following elements:
             - fn: an sklearn-compliant scoring function
@@ -318,13 +322,12 @@ class TaskEnvironment(object):
         # need to reshape y and y_hat for multiclass cases
         if self.scorer.needs_proba and \
                 self.current_data_env.target_type is TargetType.MULTICLASS:
-            classes = sorted(list(set(y)))
-            y = label_binarize(y, classes)
+            y = label_binarize(y, self.current_data_env.classes)
             # is y_hat is a one-dimensional array, assume that y_hat consists
             # of prediction labels that are reshaped to a binary array
             # representation.
             if len(y_hat.shape) == 1:
-                y_hat = label_binarize(y_hat, classes)
+                y_hat = label_binarize(y_hat, self.current_data_env.classes)
 
         with warnings.catch_warnings() as warning:
             # raise exception for warnings not explicitly in SCORE_WARNINGS
