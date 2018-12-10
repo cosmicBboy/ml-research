@@ -32,11 +32,11 @@ experiment_results["data_env_names"] = experiment_results[
 # rnn_cash_controller_experiment.csv file.
 dataset_scorers = {
     "kaggle.bnp_paribas_cardif_claims_management": scorers.log_loss(),
-    # "kaggle.costa_rican_household_poverty_prediction":
-    #     scorers.f1_score_macro(),
-    # "kaggle.homesite_quote_conversion": scorers.roc_auc(),
-    # "kaggle.poker_rule_induction": scorers.accuracy(),
-    # "kaggle.santander_customer_satisfaction": scorers.roc_auc(),
+    "kaggle.costa_rican_household_poverty_prediction":
+        scorers.f1_score_macro(),
+    "kaggle.homesite_quote_conversion": scorers.roc_auc(),
+    "kaggle.poker_rule_induction": scorers.accuracy(),
+    "kaggle.santander_customer_satisfaction": scorers.roc_auc(),
 }
 
 # just make simple assumption that if comparator is not operator.gt, it can

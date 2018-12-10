@@ -10,6 +10,7 @@ from functools import partial
 from pynisher import TimeoutException, MemorylimitException, \
     CpuTimeoutException, SubprocessException, AnythingException
 from sklearn.base import clone
+from sklearn.preprocessing import label_binarize
 
 from .data_environments import environments
 from .data_environments.data_environment import NULL_DATA_ENV
@@ -302,10 +303,23 @@ class TaskEnvironment(object):
         none_return = None, None
         if mlf is None:
             return none_return
+
         y_hat = _ml_framework_predict(
-            mlf, X, self.current_data_env.target_type)
+            mlf, X, self.current_data_env.target_type, self.scorer.needs_proba)
         if y_hat is None:
             return none_return
+
+        # need to reshape y and y_hat for multiclass cases
+        if self.scorer.needs_proba and \
+                self.current_data_env.target_type is TargetType.MULTICLASS:
+            classes = sorted(list(set(y)))
+            y = label_binarize(y, classes)
+            # is y_hat is a one-dimensional array, assume that y_hat consists
+            # of prediction labels that are reshaped to a binary array
+            # representation.
+            if len(y_hat.shape) == 1:
+                y_hat = label_binarize(y_hat, classes)
+
         with warnings.catch_warnings() as warning:
             # raise exception for warnings not explicitly in SCORE_WARNINGS
             warnings.filterwarnings("error")
@@ -333,10 +347,10 @@ def _get_default_scorers():
     # would mean that the controller would have to learn how maximize a
     # shifting reward function (model the reward function?)... might be
     # complicated.
-    _f1_scorer = scorers.f1_score_weighted_average()
+    # _f1_scorer = scorers.f1_score_weighted_average()
     return {
-        TargetType.BINARY: _f1_scorer,
-        TargetType.MULTICLASS: _f1_scorer,
+        TargetType.BINARY: scorers.roc_auc(),
+        TargetType.MULTICLASS: scorers.roc_auc(),
         TargetType.REGRESSION: scorers.mean_squared_error(),
     }
 
@@ -351,14 +365,14 @@ def _metafeatures(data_env_name, X_train):
     return np.array([data_env_name, X_train.shape[0], X_train.shape[1]])
 
 
-def _ml_framework_fitter(ml_framework, X, y):
+def _ml_framework_fitter(mlf, X, y):
     """Fits an ML framework to training data.
 
     This function handles warnings and errors
 
     :returns: a two-tuple where the first element is the proposed ML framework
         (sklearn.pipeline.Pipeline) and the second element is a subclass of
-        BaseException if calling `ml_framework.fit` if it successfully fits a
+        BaseException if calling `mlf.fit` if it successfully fits a
         model and None if it fit successfully.
     """
     # TODO: handle MemoryError due to pynisher limits.
@@ -372,52 +386,28 @@ def _ml_framework_fitter(ml_framework, X, y):
                 "ignore", message=msg, category=warning_type)
         with np.errstate(all="raise"):
             try:
-                return ml_framework.fit(X, y), None
+                return mlf.fit(X, y), None
             except Exception as error:
-                return ml_framework, error
+                return mlf, error
 
 
-def _binary_predict_proba(pred_proba):
-    # TODO: see note in _score method above. Keeping this function for now even
-    # though it seems redundant with _multiclass_predict_proba
-    return pred_proba.argmax(axis=1)
-
-
-def _multiclass_predict_proba(pred_proba):
-    # TODO: see note in _score method above. Keeping this function for now even
-    # though it seems reduntant with _binary_predict_proba
-    return pred_proba.argmax(axis=1)
-
-
-def _ml_framework_predict(ml_framework, X, target_type):
+def _ml_framework_predict(mlf, X, target_type, needs_proba):
     """Generate predictions from a fit ml_framework.
 
     Handles errors at the predict layer, any over which need to be handled
     by the evaluation function.
     """
-    # TODO: see note in _score method above.
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         with np.errstate(all="raise"):
             try:
-                if hasattr(ml_framework, "predict_proba"):
-                    pred = ml_framework.predict_proba(X)
-                    if target_type == TargetType.MULTICLASS:
-                        pred = _multiclass_predict_proba(pred)
-                    elif target_type == TargetType.BINARY:
-                        pred = _binary_predict_proba(pred)
-                    else:
-                        pass
-                elif hasattr(ml_framework, "predict"):
-                    pred = ml_framework.predict(X)
-                    if target_type == TargetType.BINARY:
-                        pred = pred
+                if needs_proba and hasattr(mlf, "predict_proba"):
+                    pred = mlf.predict_proba(X)
                 else:
-                    raise NoPredictMethodError(
-                        "ml_framework has no prediction function")
+                    pred = mlf.predict(X)
                 return pred
             except Exception as error:
-                mlf_str = utils._ml_framework_string(ml_framework)
+                mlf_str = utils._ml_framework_string(mlf)
                 if is_valid_predict_error(error):
                     logger.info(
                         "VALID PREDICT ERROR: %s, no pipeline returned by "

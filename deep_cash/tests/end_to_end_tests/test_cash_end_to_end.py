@@ -13,7 +13,7 @@ from deep_cash.cash_reinforce import CASHReinforce
 
 def _task_environment(
         target_types=["BINARY", "MULTICLASS"],
-        dataset_names=["sklearn.iris", "sklearn.wine"],
+        dataset_names=["sklearn.iris", "sklearn.breast_cancer"],
         env_sources=["SKLEARN"],
         enforce_limits=True,
         n_samples=100):
@@ -69,7 +69,7 @@ def _fit_kwargs():
 
 def test_cash_reinforce_fit():
     """Ensure DeepCASH training routine executes."""
-    n_episodes = 4
+    n_episodes = 20
     t_env = _task_environment()
     a_space = _algorithm_space()
     controller = _cash_controller(a_space, t_env)
