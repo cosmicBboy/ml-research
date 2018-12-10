@@ -12,6 +12,7 @@ from functools import partial
 
 Scorer = namedtuple(
     "Scorer", [
+        "name",
         "fn",  # sklearn-compliant scoring function e.g. mean_squared_error
         "reward_transformer",  # function that bounds range of scoring function
         # function to determine if score a is better than b. Has signature
@@ -62,6 +63,7 @@ def rectified_linear(x):
 def accuracy():
     """Accuracy scorer."""
     return Scorer(
+        name="accuracy",
         fn=sklearn.metrics.accuracy_score,
         reward_transformer=None,
         comparator=operator.gt,
@@ -71,6 +73,7 @@ def accuracy():
 def f1_score_weighted_average():
     """F1 score weighted average scorer."""
     return Scorer(
+        name="f1_weighted_average",
         fn=partial(sklearn.metrics.f1_score, average="weighted"),
         reward_transformer=None,
         comparator=operator.gt,
@@ -80,6 +83,7 @@ def f1_score_weighted_average():
 def f1_score_macro():
     """F1 score macro scorer."""
     return Scorer(
+        name="f1_macro",
         fn=partial(sklearn.metrics.f1_score, average="macro"),
         reward_transformer=None,
         comparator=operator.gt,
@@ -89,6 +93,7 @@ def f1_score_macro():
 def log_loss():
     """Logistic loss (cross-entropy loss) scorer."""
     return Scorer(
+        name="log_loss",
         fn=sklearn.metrics.log_loss,
         reward_transformer=exponentiated_log,
         comparator=operator.lt,
@@ -98,6 +103,7 @@ def log_loss():
 def roc_auc():
     """ROC AUC scorer."""
     return Scorer(
+        name="roc_auc",
         fn=sklearn.metrics.roc_auc_score,
         reward_transformer=None,
         comparator=operator.gt,
@@ -109,6 +115,7 @@ def roc_auc():
 def mean_absolute_error():
     """Mean absolute error scorer."""
     return RegressionScorer(
+        name="mean_absolute_error",
         fn=sklearn.metrics.mean_absolute_error,
         reward_transformer=exponentiated_log,
         comparator=operator.lt)
@@ -117,6 +124,7 @@ def mean_absolute_error():
 def mean_squared_error():
     """Mean squared error scorer."""
     return RegressionScorer(
+        name="mean_squared_error",
         fn=sklearn.metrics.mean_squared_error,
         reward_transformer=exponentiated_log,
         comparator=operator.lt)
@@ -125,6 +133,7 @@ def mean_squared_error():
 def r2_score():
     """R^2 coefficient of determination scorer."""
     return RegressionScorer(
+        name="r2",
         fn=sklearn.metrics.r2_score,
         reward_transformer=rectified_linear,
         comparator=operator.gt)
@@ -136,6 +145,7 @@ def root_mean_squared_error():
         return np.sqrt(sklearn.metrics.mean_squared_error(*args, **kwargs))
 
     return RegressionScorer(
+        name="root_mean_squared_error",
         fn=_rmse_scorer,
         reward_transformer=exponentiated_log,
         comparator=operator.lt)
@@ -147,6 +157,7 @@ def root_mean_squared_log_error():
         return np.sqrt(sklearn.metrics.mean_squared_log_error(*args, **kwargs))
 
     return RegressionScorer(
+        name="root_mean_squared_log_error",
         fn=_rmsle_scorer,
         reward_transformer=exponentiated_log,
         comparator=operator.lt)

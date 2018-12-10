@@ -86,6 +86,20 @@ def test_cash_reinforce_fit():
             "best_validation_scores"]:
         assert (history[metric].dropna() <= 1).all()
         assert (history[metric].dropna() >= 0).all()
+    for col in [
+            "episode",
+            "data_env_names",
+            "scorers",
+            "losses",
+            "aggregate_gradients",
+            "std_validation_scores",
+            "n_successful_mlfs",
+            "n_unique_mlfs",
+            "n_unique_hyperparams",
+            "mlf_diversity",
+            "hyperparam_diversity",
+            "best_mlfs"]:
+        assert col in history
 
 
 def test_cash_reinforce_fit_multi_baseline():

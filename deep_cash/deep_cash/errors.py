@@ -134,14 +134,6 @@ SCORE_WARNINGS = [
 ]
 
 
-class NoPredictMethodError(Exception):
-    pass
-
-
-class TargetNotCompatible(Exception):
-    pass
-
-
 def _is_valid_error(error, error_message_tuples):
     error_str = str(error)
     for etype, msg in error_message_tuples:

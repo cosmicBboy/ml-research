@@ -77,6 +77,7 @@ class CASHReinforce(object):
 
         # track metrics
         self.data_env_names = []
+        self.scorers = []
         self.losses = []
         self.mean_rewards = []
         self.aggregate_gradients = []
@@ -136,6 +137,7 @@ class CASHReinforce(object):
             hyperparam_diversity = utils._diversity_metric(
                 n_unique_hyperparams, n_iter)
             self.data_env_names.append(self.t_env.current_data_env.name)
+            self.scorers.append(self.t_env.scorer.name)
             self.mean_rewards.append(np.mean(self.controller.reward_buffer))
             if len(self._validation_scores) > 0:
                 self.mean_validation_scores.append(
@@ -181,6 +183,7 @@ class CASHReinforce(object):
         return {
             "episode": range(1, self._n_episodes + 1),
             "data_env_names": self.data_env_names,
+            "scorers": self.scorers,
             "losses": self.losses,
             "aggregate_gradients": self.aggregate_gradients,
             "mean_rewards": self.mean_rewards,

@@ -15,8 +15,8 @@ from sklearn.preprocessing import label_binarize
 from .data_environments import environments
 from .data_environments.data_environment import NULL_DATA_ENV
 from .data_types import FeatureType, TargetType, DataSourceType
-from .errors import NoPredictMethodError, is_valid_fit_error, \
-    is_valid_predict_error, FIT_WARNINGS, SCORE_WARNINGS, SCORE_ERRORS
+from .errors import is_valid_fit_error, is_valid_predict_error, \
+    FIT_WARNINGS, SCORE_WARNINGS, SCORE_ERRORS
 from . import scorers, utils
 
 logger = logging.getLogger(__name__)
@@ -36,6 +36,7 @@ class TaskEnvironment(object):
             target_types=["BINARY", "MULTICLASS"],
             test_set_config=None,
             scorers=None,
+            use_target_type_scorers=True,
             score_transformers=None,
             random_state=None,
             enforce_limits=True,
@@ -61,6 +62,9 @@ class TaskEnvironment(object):
             - comparator: a function with the signature (x, y) -> bool and
               returns True if x is a better score than y.
             If None, uses default scorers per target type.
+        :param bool use_target_type_scorers: whether or not to use target-type-
+            specific scorers specified in the `scorers` argument, or to use
+            data-environment-specific scorers when available.
         :param int|None random_state: random seed determining the order of
             sampled data environments and the composition of the
             training/validation sets.
@@ -99,6 +103,7 @@ class TaskEnvironment(object):
                     dataset_intersection)
 
         self._scorers = _get_default_scorers() if scorers is None else scorers
+        self._use_target_type_scorers = use_target_type_scorers
         self.random_state = random_state
         self.enforce_limits = enforce_limits
         self.per_framework_time_limit = per_framework_time_limit
@@ -177,10 +182,11 @@ class TaskEnvironment(object):
         # TODO: probably want to standardize the scorer across tasks of
         # a certain target type, otherwise the reward function will very
         # complex
-        if self.current_data_env.scorer:
-            self.scorer = self.current_data_env.scorer
-        else:
+        if self._use_target_type_scorers or \
+                self.current_data_env.scorer is None:
             self.scorer = self._scorers[self.current_data_env.target_type]
+        else:
+            self.scorer = self.current_data_env.scorer
 
     def env_dep_hyperparameters(self):
         """Get data environment-dependent hyperparameters.
