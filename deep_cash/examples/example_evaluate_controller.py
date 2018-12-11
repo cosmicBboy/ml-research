@@ -14,7 +14,7 @@ from deep_cash.task_environment import TaskEnvironment
 from deep_cash import utils, scorers
 
 
-build_path = Path(os.path.dirname(__file__)) / ".." / "floyd_outputs" / "221"
+build_path = Path(os.path.dirname(__file__)) / ".." / "floyd_outputs" / "225"
 
 controller = CASHController.load(build_path / "controller_trial_0.pt")
 experiment_results = pd.read_csv(

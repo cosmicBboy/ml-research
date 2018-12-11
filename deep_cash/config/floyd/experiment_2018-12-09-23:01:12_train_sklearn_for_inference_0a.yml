@@ -21,7 +21,6 @@ parameters:
   learning_rate: 0.005
   env_sources:
   - SKLEARN
-  - OPEN_ML
   target_types:
   - BINARY
   - MULTICLASS
