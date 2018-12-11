@@ -1,10 +1,12 @@
 name: train_sklearn_for_inference_0b
-description: test run new API with inference engine
+description: >
+  test run new API with inference engine. Note experiment filename was
+  mispelled.
 created_at: 2018-12-09-23:31:43
 git_hash: 2bcfaaf
 parameters:
   datasets: null
-  output_fp: ./output
+  output_fp: /output
   n_trials: 1
   input_size: 30
   hidden_size: 30
@@ -12,11 +14,11 @@ parameters:
   n_layers: 3
   dropout_rate: 0.2
   beta: 0.9
-  entropy_coef: 0.02
+  entropy_coef: 0.04
   with_baseline: true
   single_baseline: true
   normalize_reward: false
-  n_episodes: 100
+  n_episodes: 300
   n_iter: 16
   learning_rate: 0.005
   env_sources:
