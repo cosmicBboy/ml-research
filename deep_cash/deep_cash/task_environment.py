@@ -106,7 +106,7 @@ class TaskEnvironment(object):
                     "data environments should be mutually exclusive" %
                     dataset_intersection)
 
-        self._scorers = _get_default_scorers() if scorers is None else scorers
+        self._scorers = get_default_scorers() if scorers is None else scorers
         self._use_target_type_scorers = use_target_type_scorers
         self.random_state = random_state
         self.enforce_limits = enforce_limits
@@ -351,7 +351,7 @@ class TaskEnvironment(object):
         return reward, score
 
 
-def _get_default_scorers():
+def get_default_scorers():
     # TODO: should scorers be a stochastic part of the environment? This
     # would mean that the controller would have to learn how maximize a
     # shifting reward function (model the reward function?)... might be

@@ -13,6 +13,7 @@ import openml
 from openml.exceptions import OpenMLServerException
 
 from .data_environment import DataEnvironment
+from . import autosklearn_clf_task_ids
 from ..data_types import FeatureType, TargetType, OpenMLTaskType, \
     DataSourceType
 
@@ -29,6 +30,8 @@ FEATURE_TYPE_MAP = {
     "nominal": FeatureType.CATEGORICAL,
     "numeric": FeatureType.CONTINUOUS,
 }
+DATASOURCE_TYPES = [
+    DataSourceType.OPEN_ML, DataSourceType.AUTOSKLEARN_BENCHMARK]
 
 
 def _map_feature(feature):
@@ -40,21 +43,14 @@ def _map_feature(feature):
     return feature_dtype
 
 
-def get_datasets(dataset_ids):
-    datasets = []
-    for did in dataset_ids:
-        try:
-            datasets.append(openml.datasets.get_dataset(did))
-        except OpenMLServerException as e:
-            logger.info(
-                "OpenML server exception on dataset_id %s, %s" %
-                (did, e))
-    return datasets
-
-
 def openml_to_data_env(
-        openml_dataset, target_column, target_type, test_size, random_state,
-        target_preprocessor=None, include_features_with_na=False):
+        openml_dataset, target_column, target_type,
+        data_source_type, test_size, random_state, target_preprocessor=None,
+        include_features_with_na=False):
+    if data_source_type not in DATASOURCE_TYPES:
+        raise ValueError(
+            "expected one of %s, found : %s" % (
+                DATASOURCE_TYPES, data_source_type))
     feature_indices = []
     feature_types = []
     target_index = None
@@ -93,7 +89,7 @@ def openml_to_data_env(
 
     return DataEnvironment(
         name="openml.%s" % openml_dataset.name.lower(),
-        source=DataSourceType.OPEN_ML,
+        source=data_source_type,
         target_type=target_type,
         feature_types=feature_types,
         feature_indices=feature_indices,
@@ -107,39 +103,94 @@ def openml_to_data_env(
     )
 
 
+def _get_target_type(num_classes, task_type):
+    if task_type is OpenMLTaskType.SUPERVISED_REGRESSION:
+        return TargetType.REGRESSION
+    elif task_type is OpenMLTaskType.SUPERVISED_CLASSIFICATION:
+        if num_classes > 2:
+            return TargetType.MULTICLASS
+        else:
+            return TargetType.BINARY
+    else:
+        raise ValueError(
+            "task_type %s is currently not recognized by deep_cash." %
+            task_type)
+
+
+def _get_dataset_metadata(openml_task_metadata, task_type):
+    target_columns, target_types = zip(*[
+        (v["target_feature"],
+         _get_target_type(v.get("NumberOfClasses", 0), task_type))
+        for v in openml_task_metadata.values()])
+    dataset_ids = [v["source_data"] for v in openml_task_metadata.values()]
+    return openml.datasets.get_datasets(dataset_ids), \
+        target_columns, target_types
+
+
+def _create_envs(
+        data_source_type, datasets, target_columns, target_types, test_size,
+        random_state):
+    _openml_to_data_env = partial(
+        openml_to_data_env,
+        data_source_type=data_source_type,
+        test_size=test_size,
+        random_state=random_state,
+        include_features_with_na=True)
+    envs = [_openml_to_data_env(*args) for args in zip(
+                datasets, target_columns, target_types)]
+    return OrderedDict([(d.name, d) for d in envs if d])
+
+
 def classification_envs(
         n=N_CLASSIFICATION_ENVS, test_size=None, random_state=None):
-    clf_dataset_metadata = openml.tasks.list_tasks(
-        task_type_id=OpenMLTaskType.SUPERVISED_CLASSIFICATION.value, size=n)
-    dataset_ids = [v["source_data"] for v in clf_dataset_metadata.values()]
-    clf_datasets = openml.datasets.get_datasets(dataset_ids)
-    target_features, target_types = zip(*[
-        (v["target_feature"],
-         TargetType.MULTICLASS if v["NumberOfClasses"] > 2
-            else TargetType.BINARY)
-        for v in clf_dataset_metadata.values()])
-    envs = []
-    for ds, tc, tt in zip(clf_datasets, target_features, target_types):
-        parsed_ds = openml_to_data_env(
-            ds, tc, tt, test_size, random_state, include_features_with_na=True)
-        if parsed_ds:
-            envs.append(parsed_ds)
-    return OrderedDict([(d.name, d) for d in envs])
+    task_type = OpenMLTaskType.SUPERVISED_CLASSIFICATION
+    dataset_metadata = _get_dataset_metadata(
+        openml.tasks.list_tasks(task_type_id=task_type.value, size=n),
+        task_type)
+    return _create_envs(
+        DataSourceType.OPEN_ML, *dataset_metadata +
+        (test_size, random_state))
 
 
 def regression_envs(
         n=N_REGRESSION_ENVS, test_size=None, random_state=None):
-    reg_dataset_metadata = openml.tasks.list_tasks(
-        task_type_id=OpenMLTaskType.SUPERVISED_REGRESSION.value, size=n)
-    dataset_ids = [v["source_data"] for v in reg_dataset_metadata.values()]
-    reg_datasets = get_datasets(dataset_ids)
-    target_features = [
-        v["target_feature"] for v in reg_dataset_metadata.values()]
-    envs = []
-    for openml_dataset, target_column in zip(reg_datasets, target_features):
-        parsed_ds = openml_to_data_env(
-            openml_dataset, target_column, TargetType.REGRESSION,
-            test_size, random_state, include_features_with_na=True)
-        if parsed_ds:
-            envs.append(parsed_ds)
-    return OrderedDict([(d.name, d) for d in envs])
+    task_type = OpenMLTaskType.SUPERVISED_REGRESSION
+    dataset_metadata = _get_dataset_metadata(
+        openml.tasks.list_tasks(task_type_id=task_type.value, size=n),
+        task_type)
+    return _create_envs(
+        DataSourceType.OPEN_ML, *dataset_metadata + (test_size, random_state))
+
+
+def autosklearn_paper_classification_envs(
+        n=None, test_size=None, random_state=None, verbose=False):
+    """From Feurer et al. "Efficient and Robust Automated Machine Learning.
+
+    https://papers.nips.cc/paper/5872-efficient-and-robust-automated-machine-learning  # noqa
+    """
+    def _get_task(id):
+        if verbose:
+            print("getting task metadata for task id %d" % id)
+        try:
+            task = openml.tasks.get_task(id)
+            if task is None:
+                print("skipping dataset %d id. "
+                      "openml.tasks.get_task return null" % id)
+            return task
+        except OpenMLServerException as e:
+            print("skipping dataset %d. error: %s" % (id, e))
+
+    if n is None:
+        task_ids = autosklearn_clf_task_ids.TASK_IDS
+    else:
+        task_ids = autosklearn_clf_task_ids.TASK_IDS[:n]
+    openml_tasks = list(filter(
+        None, [_get_task(id) for id in task_ids]))
+    openml_datasets = [t.get_dataset() for t in openml_tasks]
+    target_columns = (t.target_name for t in openml_tasks)
+    target_types = (_get_target_type(
+        len(t.class_labels),
+        OpenMLTaskType.SUPERVISED_CLASSIFICATION) for t in openml_tasks)
+    return _create_envs(
+        DataSourceType.OPEN_ML, openml_datasets, target_columns, target_types,
+        test_size, random_state)

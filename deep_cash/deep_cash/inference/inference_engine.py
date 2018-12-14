@@ -134,7 +134,7 @@ class CASHInference(object):
             self, metafeature_tensor, target_type, prev_reward, prev_action):
         mlf, action_activation = self.propose_mlf(
             metafeature_tensor, target_type, prev_reward, prev_action)
-        reward, validation_score, is_valid = self.evaluate_mlf(mlf)
+        mlf, reward, validation_score, is_valid = self.evaluate_mlf(mlf)
         return InferenceResult(
             mlf, reward, Variable(action_activation), validation_score,
             is_valid)
@@ -156,9 +156,9 @@ class CASHInference(object):
 
     def evaluate_mlf(self, mlf):
         """Evaluate actions on the validation set of the data environment."""
-        reward, validation_score = self.t_env.evaluate(mlf)
+        mlf, reward, validation_score = self.t_env.evaluate(mlf)
         reward, is_valid = self.is_valid_mlf(reward)
-        return reward, validation_score, is_valid
+        return mlf, reward, validation_score, is_valid
 
     def is_valid_mlf(self, reward):
         if reward is None:

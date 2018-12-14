@@ -46,6 +46,7 @@ class DataSourceType(Enum):
     SKLEARN = 1
     OPEN_ML = 2
     KAGGLE = 3
+    AUTOSKLEARN_BENCHMARK = 5
 
 
 class CASHComponent(Enum):
