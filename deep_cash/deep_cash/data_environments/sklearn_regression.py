@@ -9,7 +9,8 @@ from .data_environment import DataEnvironment
 from ..data_types import FeatureType, TargetType, DataSourceType
 
 
-def envs(test_size=None, random_state=None):
+def envs(n=5, test_size=None, random_state=None, verbose=False):
+    # TODO: limit number of envs by n
     return OrderedDict([
         ("sklearn.boston", DataEnvironment(
             name="sklearn.boston",

@@ -33,6 +33,7 @@ class TaskEnvironment(object):
     def __init__(
             self,
             env_sources=["SKLEARN", "OPEN_ML", "KAGGLE"],
+            test_env_sources=None,
             target_types=["BINARY", "MULTICLASS"],
             test_set_config=None,
             scorers=None,
@@ -50,6 +51,9 @@ class TaskEnvironment(object):
 
         :param list[str] env_sources: list of data environment source names.
             These should correspond with the DataSourceType enum names.
+        :param list[str]|None test_env_sources: list of data environment
+            source names for test. These should correspond with the
+            DataSourceType enum names.
         :param list[str] target_types: list of target types that the task
             environment will sample from. These should correspond with the
             TargetType enum names.
@@ -115,6 +119,8 @@ class TaskEnvironment(object):
         self._dataset_names = dataset_names
         self._test_dataset_names = test_dataset_names
         self._env_sources = [DataSourceType[e] for e in env_sources]
+        test_env_sources = [] if test_env_sources is None else test_env_sources
+        self._test_env_sources = [DataSourceType[e] for e in test_env_sources]
         self._target_types = [TargetType[t] for t in target_types]
 
         test_set_config = {} if test_set_config is None else test_set_config
@@ -124,14 +130,20 @@ class TaskEnvironment(object):
         # set train and test data environments
         get_envs = partial(
             environments.envs,
-            sources=self._env_sources,
             target_types=self._target_types,
             test_set_config=self._test_set_config)
-        self.data_distribution = get_envs(self._dataset_names)
+        self.data_distribution = get_envs(
+            self._dataset_names, self._env_sources)
         self.test_data_distribution = None
-        if self._test_dataset_names is not None:
-            self.test_data_distribution = get_envs(self._test_dataset_names)
+        if self._test_env_sources is not None:
+            self.test_data_distribution = get_envs(
+                self._test_dataset_names, self._test_env_sources)
 
+        # TODO: the metafeature spec should be somehow persisted along with the
+        # trained CASHController. Need to create a method in cash_reinforce
+        # module that saves the data env, and test env training datasets.
+        # This is required so that the data_env_name in the metafeature spec
+        # is consistent at test time.
         self.metafeature_spec = utils.create_metafeature_spec(
             self.data_distribution, null_data_env=NULL_DATA_ENV)
         self.metafeature_dim = utils.get_metafeatures_dim(

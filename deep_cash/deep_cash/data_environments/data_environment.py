@@ -99,6 +99,9 @@ def _create_data_partition_fns(fetch_training_data, test_size, random_state):
     X_train, X_test, y_train, y_test = train_test_split(
         *fetch_training_data(), test_size=test_size, random_state=random_state)
 
+    # TODO: figure out a way of doing this lazily without having to actually
+    # fetch the training data when data environment is initialized
+
     def _fetch_training_data():
         return X_train, y_train
 

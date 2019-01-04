@@ -8,7 +8,8 @@ from collections import OrderedDict
 from . import kaggle_regression, kaggle_classification
 
 
-def classification_envs(test_size=None, random_state=None):
+def classification_envs(n=5, test_size=None, random_state=None, verbose=False):
+    # TODO: limit number of envs by n
     competitions = [
         kaggle_classification.homesite_quote_conversion(),
         kaggle_classification.santander_customer_satisfaction(),
@@ -22,7 +23,8 @@ def classification_envs(test_size=None, random_state=None):
         for d in competitions])
 
 
-def regression_envs(test_size=None, random_state=None):
+def regression_envs(n=5, test_size=None, random_state=None, verbose=False):
+    # TODO: limit number of envs by n
     competitions = [
         kaggle_regression.restaurant_revenue_prediction(),
         kaggle_regression.nyc_taxi_trip_duration(),

@@ -8,6 +8,7 @@ import logging
 from collections import OrderedDict
 from functools import partial
 
+import numpy as np
 import openml
 
 from openml.exceptions import OpenMLServerException
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 N_CLASSIFICATION_ENVS = 20
 N_REGRESSION_ENVS = 20
+SPARSE_DATA_FORMAT = "Sparse_ARFF"
 
 
 # Map OpenML feature data types to deep_cash feature data types
@@ -65,6 +67,7 @@ def openml_to_data_env(
 
         if feature.name == target_column:
             target_index = key
+            continue
         if feature.number_missing_values != 0:
             if include_features_with_na:
                 feature_indices.append(key)
@@ -84,8 +87,12 @@ def openml_to_data_env(
         return None
 
     def _fetch_training_data():
-        data = openml_dataset.get_data(include_row_id=True)
-        return data[:, feature_indices], data[:, target_index]
+        data = openml_dataset.get_data(
+            include_row_id=True, include_ignore_attributes=True)
+        if openml_dataset.format == SPARSE_DATA_FORMAT:
+            # TODO: currently the controller can't handle sparse matrices.
+            data = np.array(data.todense())
+        return data[:,  feature_indices], data[:, target_index].ravel()
 
     return DataEnvironment(
         name="openml.%s" % openml_dataset.name.lower(),
@@ -142,7 +149,8 @@ def _create_envs(
 
 
 def classification_envs(
-        n=N_CLASSIFICATION_ENVS, test_size=None, random_state=None):
+        n=N_CLASSIFICATION_ENVS, test_size=None, random_state=None,
+        verbose=False):
     task_type = OpenMLTaskType.SUPERVISED_CLASSIFICATION
     dataset_metadata = _get_dataset_metadata(
         openml.tasks.list_tasks(task_type_id=task_type.value, size=n),
@@ -153,7 +161,7 @@ def classification_envs(
 
 
 def regression_envs(
-        n=N_REGRESSION_ENVS, test_size=None, random_state=None):
+        n=N_REGRESSION_ENVS, test_size=None, random_state=None, verbose=False):
     task_type = OpenMLTaskType.SUPERVISED_REGRESSION
     dataset_metadata = _get_dataset_metadata(
         openml.tasks.list_tasks(task_type_id=task_type.value, size=n),
@@ -162,35 +170,44 @@ def regression_envs(
         DataSourceType.OPEN_ML, *dataset_metadata + (test_size, random_state))
 
 
+def _task_ids(n):
+    if n is None:
+        task_ids = autosklearn_clf_task_ids.TASK_IDS
+    else:
+        task_ids = autosklearn_clf_task_ids.TASK_IDS[:n]
+    return task_ids
+
+
+def _get_task(id, verbose):
+    if verbose:
+        print("getting task metadata for task id %d" % id)
+    try:
+        task = openml.tasks.get_task(id)
+        if task is None:
+            print("skipping dataset %d id. "
+                  "openml.tasks.get_task return null" % id)
+        return task
+    except OpenMLServerException as e:
+        print("skipping dataset %d. error: %s" % (id, e))
+
+
 def autosklearn_paper_classification_envs(
         n=None, test_size=None, random_state=None, verbose=False):
     """From Feurer et al. "Efficient and Robust Automated Machine Learning.
 
     https://papers.nips.cc/paper/5872-efficient-and-robust-automated-machine-learning  # noqa
     """
-    def _get_task(id):
-        if verbose:
-            print("getting task metadata for task id %d" % id)
-        try:
-            task = openml.tasks.get_task(id)
-            if task is None:
-                print("skipping dataset %d id. "
-                      "openml.tasks.get_task return null" % id)
-            return task
-        except OpenMLServerException as e:
-            print("skipping dataset %d. error: %s" % (id, e))
-
     if n is None:
         task_ids = autosklearn_clf_task_ids.TASK_IDS
     else:
         task_ids = autosklearn_clf_task_ids.TASK_IDS[:n]
     openml_tasks = list(filter(
-        None, [_get_task(id) for id in task_ids]))
+        None, [_get_task(id, verbose) for id in task_ids]))
     openml_datasets = [t.get_dataset() for t in openml_tasks]
     target_columns = (t.target_name for t in openml_tasks)
     target_types = (_get_target_type(
         len(t.class_labels),
         OpenMLTaskType.SUPERVISED_CLASSIFICATION) for t in openml_tasks)
     return _create_envs(
-        DataSourceType.OPEN_ML, openml_datasets, target_columns, target_types,
-        test_size, random_state)
+        DataSourceType.AUTOSKLEARN_BENCHMARK, openml_datasets, target_columns,
+        target_types, test_size, random_state)

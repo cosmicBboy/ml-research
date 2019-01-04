@@ -9,11 +9,12 @@ from . import openml_api, kaggle_api, sklearn_classification, \
 
 
 def get_envs_from_source(
-        classification_envs_fn, regression_envs_fn, dataset_names,
-        test_size=None, random_state=None):
-    envs = ChainMap(
-        classification_envs_fn(test_size=test_size, random_state=random_state),
-        regression_envs_fn(test_size=test_size, random_state=random_state))
+        env_fns, dataset_names, n=None, test_size=None, random_state=None,
+        verbose=None):
+    envs = ChainMap(*[
+        env_fn(n=n, test_size=test_size, random_state=random_state,
+               verbose=verbose)
+        for env_fn in env_fns])
     if dataset_names is None:
         return [envs[d] for d in envs]
     return [envs[d] for d in dataset_names if d in envs]
@@ -25,16 +26,19 @@ ENV_SOURCES = {
     # the data envs specified.
     DataSourceType.SKLEARN: partial(
         get_envs_from_source,
-        sklearn_classification.envs,
-        sklearn_regression.envs),
+        [sklearn_classification.envs,
+         sklearn_regression.envs]),
     DataSourceType.OPEN_ML: partial(
         get_envs_from_source,
-        openml_api.classification_envs,
-        openml_api.regression_envs),
+        [openml_api.classification_envs,
+         openml_api.regression_envs]),
     DataSourceType.KAGGLE: partial(
         get_envs_from_source,
-        kaggle_api.classification_envs,
-        kaggle_api.regression_envs),
+        [kaggle_api.classification_envs,
+         kaggle_api.regression_envs]),
+    DataSourceType.AUTOSKLEARN_BENCHMARK: partial(
+        get_envs_from_source,
+        [openml_api.autosklearn_paper_classification_envs])
 }
 
 
