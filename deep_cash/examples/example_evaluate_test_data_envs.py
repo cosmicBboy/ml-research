@@ -41,7 +41,6 @@ best_mlfs = (
 
 sklearn_data_envs = sklearn_classification.envs()
 openml_data_envs = openml_api.classification_envs()
-autosklearn_bench_envs = openml_api.autosklearn_paper_classification_envs(n=5)
 
 torch.manual_seed(10)
 task_env = TaskEnvironment(
@@ -52,7 +51,7 @@ task_env = TaskEnvironment(
     per_framework_time_limit=720,
     per_framework_memory_limit=10000,
     dataset_names=list(sklearn_data_envs.keys()),
-    test_dataset_names=list(autosklearn_bench_envs.keys()),
+    test_dataset_names=list(openml_data_envs.keys()),
     error_reward=0,
     target_types=["BINARY", "MULTICLASS"])
 
@@ -62,4 +61,3 @@ inference_engine = CASHInference(controller, task_env)
 train_env_results = inference_engine.evaluate_training_data_envs(
     n=1, datasets=sklearn_data_envs.keys(), verbose=True)
 test_env_results = inference_engine.evaluate_test_data_envs(n=50, verbose=True)
-import ipdb; ipdb.set_trace()

@@ -12,7 +12,7 @@ TestSetResult = namedtuple(
     "TestSetResult", ["ml_framework", "reward", "test_score"])
 InferenceResult = namedtuple(
     "InferenceResult",
-    ["ml_framework", "reward", "action", "validation_score", "is_valid"])
+    ["mlf_description", "reward", "action", "validation_score", "is_valid"])
 
 
 class CASHInference(object):
@@ -101,8 +101,10 @@ class CASHInference(object):
         for test_data_env in self.t_env.test_data_distribution:
             if datasets and test_data_env.name not in datasets:
                 continue
+            print("evaluating test data env: %s" % test_data_env.name)
             self.t_env.set_data_env(test_data_env)
-            test_data_env_results[test_data_env.name] = self.infer(n, verbose)
+            test_data_env_results[test_data_env.name] = self.infer(
+                n, verbose)
         return test_data_env_results
 
     def infer(self, n, verbose):
@@ -116,17 +118,19 @@ class CASHInference(object):
         inference_results = []
         n_valid_mlf = 0
         for i in range(n):
-            inference = self._infer_iter(
+            mlf, inference = self._infer_iter(
                 self.t_env.sample_task_state(data_env_partition="test"),
                 self.t_env.current_data_env.target_type,
                 prev_reward,
                 prev_action)
+            # TODO: serialize the top k mlfs here
             inference_results.append(inference)
             prev_reward, prev_action = inference.reward, inference.action
             n_valid_mlf += int(inference.is_valid)
             if verbose:
                 print(
-                    "iter %d - n valid mlf: %d/%d" % (i, n_valid_mlf, i + 1),
+                    "iter %d - n valid mlf: %d/%d%s" % (
+                        i, n_valid_mlf, i + 1, " " * 10),
                     sep=" ", end="\r", flush=True)
         return inference_results
 
@@ -135,9 +139,11 @@ class CASHInference(object):
         mlf, action_activation = self.propose_mlf(
             metafeature_tensor, target_type, prev_reward, prev_action)
         mlf, reward, validation_score, is_valid = self.evaluate_mlf(mlf)
-        return InferenceResult(
-            mlf, reward, Variable(action_activation), validation_score,
-            is_valid)
+
+        return mlf, InferenceResult(
+            str(mlf.named_steps) if mlf is not None else mlf,
+            reward, Variable(action_activation),
+            validation_score, is_valid)
 
     def propose_mlf(
             self, task_state_tensor, target_type, prev_reward, prev_action):

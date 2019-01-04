@@ -23,7 +23,7 @@ data_path = os.path.dirname(__file__) + "/artifacts"
 
 # hyperparameters
 n_episodes = 100
-n_iter = 100
+n_iter = 10
 learning_rate = 0.003
 error_reward = 0
 logger = None
@@ -37,14 +37,12 @@ torch.manual_seed(1000)
 
 
 t_env = TaskEnvironment(
-    env_sources=["OPEN_ML"],
+    env_sources=["SKLEARN"],
+    dataset_names=["sklearn.digits"],
     random_state=100,
     enforce_limits=True,
     per_framework_time_limit=720,
     per_framework_memory_limit=10000,
-    dataset_names=[
-        "openml.anneal"
-    ],
     error_reward=error_reward,
     target_types=["BINARY", "MULTICLASS"])
 

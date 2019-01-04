@@ -19,7 +19,8 @@ class AlgorithmComponent(object):
             component_type=None,
             hyperparameters=None,
             constant_hyperparameters=None,
-            env_dep_hyperparameters=None):
+            env_dep_hyperparameters=None,
+            exclusion_conditions=None):
         """Initialize an AlgorithmComponent.
 
         :param str name: name of component.
@@ -29,11 +30,12 @@ class AlgorithmComponent(object):
             Hyperparameter objects, which specify algorithms' hyperparameter
             space.
         :param dict constant_hyperparameters: a set of hyperparameters that
-            shouldn't be picked by
+            shouldn't be picked by the controller
         :param dict env_dep_hyperparameters: a set of hyperparameters in the
             algorithm component that are dependent on the data environment.
             For now these hyperparameters are set by the data environment and
             are not tuned by the controller. This may change in the future.
+        :param dict[str -> dict[]] hyperparameter_conditions:
         """
         if component_type not in constants.ALGORITHM_TYPES:
             raise ValueError("%s is not a valid algorithm type: choose %s" % (
@@ -46,6 +48,7 @@ class AlgorithmComponent(object):
             constant_hyperparameters is None else constant_hyperparameters
         self.env_dep_hyperparameters = {} if env_dep_hyperparameters is None \
             else env_dep_hyperparameters
+        self.exclusion_conditions = exclusion_conditions
 
     def __call__(self):
         """Instantiate the algorithm.
@@ -86,8 +89,25 @@ class AlgorithmComponent(object):
             dict(hsetting) for hsetting in
             list(itertools.product(*expanded_state_space)))
 
+    def hyperparameter_exclusion_conditions(self):
+        """Get the conditional map of which hyperparameters go together."""
+        if self.hyperparameters is None or self.exclusion_conditions is None:
+            return OrderedDict([])
+
+        def format_exclusion_conditions(conds):
+            return {h: {"%s__%s" % (self.name, k): v for k, v in ex.items()}
+                    for h, ex in conds.items()}
+
+        return OrderedDict([
+            ("%s__%s" % (self.name, hname),
+                format_exclusion_conditions(exclusion_conditions))
+            for hname, exclusion_conditions
+            in self.exclusion_conditions.items()])
+
     def sample_hyperparameter_state_space(self):
         """Return a random sample from the hyperparameter state space."""
+        # TODO: incorporate the exclusion criteria in sampling the state space
+        # such that only valid combinations of hyperparameters are given.
         settings = {}
         for key, values in self.hyperparameter_state_space().items():
             settings[key] = values[np.random.randint(len(values))]

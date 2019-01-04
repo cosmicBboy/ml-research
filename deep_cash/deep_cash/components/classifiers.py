@@ -82,18 +82,32 @@ def logistic_regression():
         component_type=constants.CLASSIFIER,
         hyperparameters=[
             CategoricalHyperparameter("penalty", ["l1", "l2"], default="l2"),
-            CategoricalHyperparameter("dual", [True, False], default=False),
+            CategoricalHyperparameter(
+                "dual", [True, False], default=False,
+                exclude_conditions={
+                    True: {"solver": ["newton-cg", "lbfgs", "sag", "saga"]}
+                }),
             CategoricalHyperparameter(
                 "fit_intercept", [True, False], default=True),
             CategoricalHyperparameter(
                 "class_weight", ["balanced", None], default=None),
             CategoricalHyperparameter(
                 "solver", ["newton-cg", "lbfgs", "liblinear", "sag", "saga"],
-                default="liblinear"),
+                default="liblinear",
+                exclude_conditions={
+                    "liblinear": {"multi_class": ["multinomial"]}
+                }),
             CategoricalHyperparameter(
                 "multi_class", ["ovr", "multinomial"], default="ovr"),
             UniformIntHyperparameter("C", 1, 300, default=1.0, log=True, n=5),
-        ])
+        ],
+        exclusion_conditions={
+            "penalty": {
+                "l1": {"dual": [True],
+                       "solver": ["newton-cg", "lbfgs", "sag"]}},
+            "dual": {True: {"solver": ["newton-cg", "lbfgs", "sag", "saga"]}},
+            "solver": {"liblinear": {"multi_class": ["multinomial"]}},
+        })
 
 
 # ==========================

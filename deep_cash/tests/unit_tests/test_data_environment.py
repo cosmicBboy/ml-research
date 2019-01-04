@@ -8,6 +8,8 @@ from deep_cash.data_environments import environments, data_environment
 
 def test_envs():
     for dsourcetype in data_types.DataSourceType:
+        if dsourcetype != data_types.DataSourceType.SKLEARN:
+            continue
         envs = environments.envs(sources=[dsourcetype])
         assert all([isinstance(e.source, data_types.DataSourceType)
                     for e in envs])

@@ -73,6 +73,9 @@ class CASHController(nn.Module):
         # maps algorithm component to list of index pointers referring to
         # action classifier for hyperparameters for that component
         self.acomponent_to_hyperparam = defaultdict(list)
+        # maps hyperparameter actions to conditional masks that determines what
+        # subsequent actions the agent can make.
+        self.hyperparam_exclude_conditions = defaultdict(dict)
 
         # buffers needed for backprop
         self.log_prob_buffer = []
@@ -98,22 +101,42 @@ class CASHController(nn.Module):
         all_components = self.a_space.component_dict_from_signature(
             self.a_space.ALL_COMPONENTS)
         idx = 0
-        for atype, components in all_components.items():
+        for atype, acomponents in all_components.items():
             # action classifier
             self._add_action_classifier(
-                idx, CASHComponent.ALGORITHM, atype, components)
+                idx, CASHComponent.ALGORITHM, atype, acomponents, None)
             self.atype_map[atype] = idx
             idx += 1
-            for component in components:
-                h_state_space = self.a_space.h_state_space([component])
-                for hname, hvalues in h_state_space.items():
+            for acomponent in acomponents:
+                h_state_space = self.a_space.h_state_space([acomponent])
+                h_exclude_cond_map = self.a_space.h_exclusion_conditions(
+                    [acomponent])
+                for hname, hchoices in h_state_space.items():
+                    exclude_masks = self._get_exclude_masks(
+                        h_state_space, h_exclude_cond_map.get(hname, None))
                     self._add_action_classifier(
-                        idx, CASHComponent.HYPERPARAMETER, hname, hvalues)
-                    self.acomponent_to_hyperparam[component].append(idx)
+                        idx, CASHComponent.HYPERPARAMETER, hname, hchoices,
+                        exclude_masks)
+                    self.acomponent_to_hyperparam[acomponent].append(idx)
                     idx += 1
         self.n_actions = len(self.action_classifiers)
 
-    def _add_action_classifier(self, action_index, action_type, name, choices):
+    def _get_exclude_masks(self, h_state_space, exclude):
+        if exclude is None:
+            return None
+
+        exclude_masks = defaultdict(dict)
+        for choice, exclude_conditions in exclude.items():
+            for hname, exclude_values in exclude_conditions.items():
+                exclude_masks[choice].update({
+                    hname: torch.ByteTensor(
+                        [i in exclude_values for i in h_state_space[hname]])})
+
+        return exclude_masks
+
+    def _add_action_classifier(
+            self, action_index, action_type, name, choices,
+            exclude_masks):
         """Add action classifier to the nn.Module."""
         dense_attr = "action_dense_%s" % action_index
         softmax_attr = "action_softmax_%s" % action_index
@@ -131,6 +154,7 @@ class CASHController(nn.Module):
             "dense_attr": dense_attr,
             "softmax_attr": softmax_attr,
             "embedding_attr": embedding_attr,
+            "exclude_masks": exclude_masks,
         })
 
     def forward(self, input, aux, metafeatures, hidden, action_index):
@@ -144,6 +168,8 @@ class CASHController(nn.Module):
         action_classifier = self.action_classifiers[action_index]
         dense = getattr(self, action_classifier["dense_attr"])
         softmax = getattr(self, action_classifier["softmax_attr"])
+
+        action_classifier = self.action_classifiers[action_index]
 
         # obtain action probability distribution
         rnn_output = rnn_output.view(rnn_output.shape[0], -1)
@@ -161,6 +187,9 @@ class CASHController(nn.Module):
         """
         input_tensor, hidden = init_input_tensor, init_hidden
         actions = []
+        # create attribute dictionary that maps hyperparameter names to
+        # conditional masks
+        self._exclude_masks = {}
         # for each algorithm component type, select an algorithm
         for atype in self.a_space.component_dict_from_target_type(
                 target_type):
@@ -168,7 +197,7 @@ class CASHController(nn.Module):
                 input_tensor, aux, metafeatures, hidden, self.atype_map[atype])
             actions.append(action)
             # each algorithm is associated with a set of hyperparameters
-            for h_index in self.acomponent_to_hyperparam[action["action"]]:
+            for h_index in self.acomponent_to_hyperparam[action["choice"]]:
                 action, input_tensor, hidden = self._decode_action(
                     input_tensor, aux, metafeatures, hidden, h_index)
                 actions.append(action)
@@ -186,15 +215,39 @@ class CASHController(nn.Module):
     def select_action(self, action_probs, action_index):
         """Select action based on action probability distribution."""
         action_classifier = self.action_classifiers[action_index]
+
+        # compute unmasked log probabilities. This
         log_action_probs = action_probs.log()
+
+        # apply exclusion masks to current action if applicable
+        if action_classifier["name"] in self._exclude_masks:
+            mask = ~self._exclude_masks[action_classifier["name"]].view(1, -1)
+            action_probs = torch.mul(
+                action_probs, Variable(mask.type(torch.FloatTensor)))
+            if (action_probs.data > 0).sum() == 0:
+                raise RuntimeError(
+                    "at least one action probability must be > 0")
+
         choice_index = Categorical(action_probs).sample()
         _choice_index = int(choice_index.data)
+        choice = action_classifier["choices"][_choice_index]
+
+        # accumulate exclusion masks if any
+        if action_classifier["exclude_masks"] is not None and \
+                choice in action_classifier["exclude_masks"]:
+            for _, masks in action_classifier["exclude_masks"].items():
+                for hname, m in masks.items():
+                    mask = self._exclude_masks.get(hname, None)
+                    if mask is None:
+                        self._exclude_masks[hname] = m
+                    else:
+                        self._exclude_masks[hname] = (m + mask) > 0
         return {
             "action_type": action_classifier["action_type"],
             "action_name": action_classifier["name"],
             "choices": action_classifier["choices"],
             "choice_index": _choice_index,
-            "action": action_classifier["choices"][_choice_index],
+            "choice": choice,
             "log_prob": log_action_probs.index_select(1, choice_index),
             "entropy": -(log_action_probs * action_probs).sum(1, keepdim=True)
         }

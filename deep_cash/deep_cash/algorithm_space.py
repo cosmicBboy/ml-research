@@ -165,8 +165,8 @@ class AlgorithmSpace(object):
         """Get hyperparameter state space by components.
 
         :param list[AlgorithmComponent] components: list of components
-        :returns: list of hyperparameter names
-        :rtype: list[str]
+        :returns: OrderedDict of hyperparameters
+        :rtype: dict[str -> list]
         """
         hyperparam_states = OrderedDict()
         for c in components:
@@ -174,6 +174,15 @@ class AlgorithmSpace(object):
                 hyperparam_states.update(
                     c.hyperparameter_state_space(with_none_token))
         return hyperparam_states
+
+    def h_exclusion_conditions(self, components):
+        """Get the conditional map of which hyperparameters go together."""
+        exclude_conditions = OrderedDict()
+        for c in components:
+            if c and c.hyperparameters is not None:
+                exclude_conditions.update(
+                    c.hyperparameter_exclusion_conditions())
+        return exclude_conditions
 
     def sample_component(self, component_type):
         """Sample a component of a particular type.

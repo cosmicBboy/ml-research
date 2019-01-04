@@ -113,9 +113,12 @@ def get_mlf_components(actions):
     hyperparameters = {}
     for action in actions:
         if action["action_type"] == CASHComponent.ALGORITHM:
-            algorithms.append(action["action"])
-        if action["action_type"] == CASHComponent.HYPERPARAMETER:
-            hyperparameters[action["action_name"]] = action["action"]
+            algorithms.append(action["choice"])
+        elif action["action_type"] == CASHComponent.HYPERPARAMETER:
+            hyperparameters[action["action_name"]] = action["choice"]
+        else:
+            raise ValueError(
+                "action_type %s not recognized" % action["action_type"])
     return algorithms, hyperparameters
 
 
