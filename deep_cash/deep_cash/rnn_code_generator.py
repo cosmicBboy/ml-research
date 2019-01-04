@@ -1,5 +1,7 @@
 """An RNN to generate sklearn code.
 
+TODO: move this to its own project at top level `ml-research` root
+
 IDEAS:
 - instead of sampling the max probability prediction, sample based on the
   probability distribution of the softmax.

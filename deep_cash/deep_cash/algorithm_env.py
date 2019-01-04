@@ -1,5 +1,7 @@
 """Module for generating auto-ml data.
 
+TODO: move this to its own project at top level `ml-research` root
+
 This module should provide an interface to generate the following training data
 
 create a set of utility functions that creates the following tuples:

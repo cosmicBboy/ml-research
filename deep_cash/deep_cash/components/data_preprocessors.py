@@ -5,7 +5,7 @@ from sklearn.preprocessing import (
     QuantileTransformer, OneHotEncoder, Imputer, MinMaxScaler, StandardScaler,
     RobustScaler, Normalizer)
 
-from .algorithm import AlgorithmComponent
+from .algorithm_component import AlgorithmComponent
 from . import constants
 from .hyperparameter import (
     CategoricalHyperparameter, UniformIntHyperparameter,

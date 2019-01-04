@@ -25,7 +25,7 @@ from sklearn.kernel_approximation import RBFSampler, Nystroem
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.svm import LinearSVC
 
-from .algorithm import AlgorithmComponent
+from .algorithm_component import AlgorithmComponent
 from .hyperparameter import (
     CategoricalHyperparameter, UniformIntHyperparameter,
     UniformFloatHyperparameter, TuplePairHyperparameter)
