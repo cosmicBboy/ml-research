@@ -29,13 +29,48 @@ class AlgorithmComponent(object):
         :param list[Hyperparameters]|None hyperparameters: list of
             Hyperparameter objects, which specify algorithms' hyperparameter
             space.
+
+            The CASHController interprets `hyperparameters` as a DAG where
+            at each node represents a hyperparameter in algorithm space.
+            At each node, the agent selects a hyperparameter value (currently
+            these can only be a discrete set of values). The agent then
+            continues to traverse the graph until all hyperparameters have
+            been selected.
         :param dict constant_hyperparameters: a set of hyperparameters that
             shouldn't be picked by the controller
         :param dict env_dep_hyperparameters: a set of hyperparameters in the
             algorithm component that are dependent on the data environment.
             For now these hyperparameters are set by the data environment and
             are not tuned by the controller. This may change in the future.
-        :param dict[str -> dict[]] hyperparameter_conditions:
+        :param dict[str -> dict[str -> list]] exclusion_conditions: a
+            dictionary specifying the which of the subsequent hyperparameters
+            should be excluded conditioned on picking a particular
+            hyperparameter value. For example:
+
+            {
+                "hyperparam1": {
+                    "h1_value1": {
+                        "hyperparam2": ["h2_value1", "h2_value2"]
+                    }
+                },
+                "hyperparam2": {
+                    "h2_value_3": {
+                        "hyperparam3": ["h3_value1"]
+                    }
+                }
+            }
+
+            The exclusion criteria are executed in the order specified by
+            `hyperparameters`. In the example, if the agent selects
+            "h1_value1", then, when it comes to the agent selecting a value
+            for `hyperparam2`, the agent will only be able to sample from
+            the action probabilities that are not `"h2_value1"` or
+            `"h2_value2"`.
+
+            These "action probability masks" prevent the agent from selecting
+            actions that the environment (in this case the AlgorithmSpace)
+            knows is an invalid combination of hyperparameters.
+
         """
         if component_type not in constants.ALGORITHM_TYPES:
             raise ValueError("%s is not a valid algorithm type: choose %s" % (
@@ -48,18 +83,15 @@ class AlgorithmComponent(object):
             constant_hyperparameters is None else constant_hyperparameters
         self.env_dep_hyperparameters = {} if env_dep_hyperparameters is None \
             else env_dep_hyperparameters
+        # TODO: consider making a class for exclusion conditions
         self.exclusion_conditions = exclusion_conditions
 
     def __call__(self):
-        """Instantiate the algorithm.
-
-        When instantiating the algorithm, optionally supply a data-envirionment
-        specific set of hyperparameters.
-        """
+        """Instantiate the algorithm object."""
         return self.component_class(**self.constant_hyperparameters)
 
     def env_dep_hyperparameter_name_space(self):
-        """Return a dictionary of hyperparameters in algorithm name space."""
+        """Get environment-dependent hyperparameters."""
         return {
             "%s__%s" % (self.name, h): value
             for h, value in self.env_dep_hyperparameters.items()
@@ -76,9 +108,8 @@ class AlgorithmComponent(object):
         if self.hyperparameters is None:
             return OrderedDict()
         return OrderedDict([
-            ("%s__%s" % (self.name, h.hname),
-                h.get_state_space(with_none_token))
-            for h in self.hyperparameters])
+            (n, h.get_state_space(with_none_token)) for n, h in
+            zip(self.hyperparameter_name_space(), self.hyperparameters)])
 
     def hyperparameter_iterator(self):
         """Return a generator of all possible hyperparameter combinations."""
@@ -87,12 +118,12 @@ class AlgorithmComponent(object):
             expanded_state_space.append([(key, v) for v in values])
         return (
             dict(hsetting) for hsetting in
-            list(itertools.product(*expanded_state_space)))
+            itertools.product(*expanded_state_space))
 
     def hyperparameter_exclusion_conditions(self):
         """Get the conditional map of which hyperparameters go together."""
         if self.hyperparameters is None or self.exclusion_conditions is None:
-            return OrderedDict([])
+            return OrderedDict()
 
         def format_exclusion_conditions(conds):
             return {h: {"%s__%s" % (self.name, k): v for k, v in ex.items()}

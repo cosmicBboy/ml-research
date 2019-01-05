@@ -39,10 +39,7 @@ def one_hot_encoder():
     which are continuous, so this component would only be applied to the
     categorical features of a particular dataset.
 
-    Note that we defer to defaults for the following hyperparameters:
-    - n_values = "auto"
-
-    The categorical_features hyperparameter is set as a
+    The categorical_features hyperparameter is set as
     data-environment-dependent because the controller isn't designed to
     propose the feature columns in which to perform feature transformations.
     This may change in the future. By definition, data-environment-dependent

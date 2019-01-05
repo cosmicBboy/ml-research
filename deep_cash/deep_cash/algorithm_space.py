@@ -251,8 +251,7 @@ class AlgorithmSpace(object):
             hyperparameters.update(env_dep_hyperparameters)
         for a in components:
             steps.append((a.name, a()))
-            hyperparameters.update(
-                a.env_dep_hyperparameter_name_space())
+            hyperparameters.update(a.env_dep_hyperparameter_name_space())
         ml_framework = Pipeline(memory=memory, steps=steps)
         ml_framework.set_params(**hyperparameters)
         return ml_framework
