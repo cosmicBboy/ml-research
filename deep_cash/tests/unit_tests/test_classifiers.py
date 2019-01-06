@@ -20,9 +20,7 @@ def test_classifier_components():
             classifiers.rbf_gaussian_process_classifier,
             classifiers.random_forest_classifier,
             classifiers.support_vector_classifier_linear,
-            classifiers.support_vector_classifier_poly,
-            classifiers.support_vector_classifier_rbf,
-            classifiers.support_vector_classifier_sigmoid]:
+            classifiers.support_vector_classifier_nonlinear]:
         clf_component = algorithm_component()
 
         hyperparam_name_space = clf_component.hyperparameter_name_space()

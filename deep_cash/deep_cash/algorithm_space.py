@@ -304,9 +304,7 @@ def get_classifiers():
         components.classifiers.random_forest_classifier(),
         components.classifiers.rbf_gaussian_process_classifier(),
         components.classifiers.support_vector_classifier_linear(),
-        components.classifiers.support_vector_classifier_poly(),
-        components.classifiers.support_vector_classifier_rbf(),
-        components.classifiers.support_vector_classifier_sigmoid(),
+        components.classifiers.support_vector_classifier_nonlinear(),
     ]
 
 

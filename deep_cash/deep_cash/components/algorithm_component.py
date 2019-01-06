@@ -9,6 +9,10 @@ import itertools
 from . import constants
 
 
+# this variable indicates that a hyperparameter should be completely ignored.
+EXCLUDE_ALL = "ALL"
+
+
 class AlgorithmComponent(object):
     """A component of a machine learning framework F."""
 
@@ -125,6 +129,7 @@ class AlgorithmComponent(object):
         if self.hyperparameters is None or self.exclusion_conditions is None:
             return OrderedDict()
 
+        # TODO: make sure that keys are actually hyperparameter names
         def format_exclusion_conditions(conds):
             return {h: {"%s__%s" % (self.name, k): v for k, v in ex.items()}
                     for h, ex in conds.items()}

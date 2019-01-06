@@ -9,7 +9,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import LinearSVC, SVC
 from sklearn.tree import DecisionTreeClassifier
 
-from .algorithm_component import AlgorithmComponent
+from .algorithm_component import AlgorithmComponent, EXCLUDE_ALL
 from .hyperparameter import (
     CategoricalHyperparameter, UniformIntHyperparameter,
     UniformFloatHyperparameter, BaseEstimatorHyperparameter)
@@ -143,29 +143,6 @@ def k_nearest_neighbors():
 # ==========================
 # Support-vector Classifiers
 # ==========================
-#
-# NOTE: supporting conditional hyperparameters would introduce more complexity
-# to the cash controller decoder implementation, which is more trouble than
-# it's worth for now. This is because the controller only chooses
-# hyperparameter values in an array of hyperparameters for a particular
-# estimator/transformer.
-#
-# In order to support conditional hyperparameters, the controller would need
-# to keep track of conditional dependencies among softmax (hyperparameter
-# action) classifiers, i.e. if "rbf" kernel is picked, then the "degree"
-# hyperparameter shouldn't be chosen.
-#
-# Options:
-# 1) just specify all hyperparameters in a single algorithm component,
-#    with the assumption that sklearn will handle ignoring irrelevant
-#    hyperparameters (and also eat the added computational cost of spending
-#    training time on hyperparameter settings that don't make sense).
-# 2) express the conditionality of hyperparameters by spinning off different
-#    algorithm components.
-# 3) support conditional hyperparameters in the CashController.
-#
-# Going for option (2) for now, gonna wait and see if there are more
-# justifications to go for (3) as the project goes on.
 
 def support_vector_classifier_linear():
     """Create linear support vector classifier component.
@@ -198,77 +175,40 @@ def support_vector_classifier_linear():
         })
 
 
-def _libsvm_hyperparameters():
-    return [
-        UniformFloatHyperparameter(
-            "C", 0.03125, 32768, default=1.0, log=True),
-        UniformFloatHyperparameter(
-            "gamma", 3.0517578125e-05, 8, default=0.1, log=True),
-        CategoricalHyperparameter(
-            "shrinking", [True, False], default=True),
-        UniformFloatHyperparameter(
-            "tol", 1e-5, 1e-1, default=1e-3, log=True),
-    ]
-
-
-def _libsvm_poly_sigmoid_hyperparameters():
-    return [
-        UniformFloatHyperparameter("coef0", -1, -1, default=0)
-    ]
-
-
-def _libsvm_constant_hyperparameters():
-    return {
-        "max_iter": -1,
-        "cache_size": 200,
-        "decision_function_shape": "ovr",
-    }
-
-
-def support_vector_classifier_poly():
-    """Create linear support vector classifier component."""
-    constant_hyperparameters = {"kernel": "poly"}
-    constant_hyperparameters.update(_libsvm_constant_hyperparameters())
+def support_vector_classifier_nonlinear():
+    """Create nonlinear support vector classifier (rbf, poly, sigmoid)"""
     return AlgorithmComponent(
-        name="PolyKernelSVC",
+        name="NonlinearSVC",
         component_class=SVC,
         component_type=constants.CLASSIFIER,
-        hyperparameters=(
-            _libsvm_hyperparameters() +
-            _libsvm_poly_sigmoid_hyperparameters() +
-            [UniformIntHyperparameter("degree", 2, 5, default=3)]
-        ),
-        constant_hyperparameters=constant_hyperparameters,
-    )
-
-
-def support_vector_classifier_rbf():
-    """Create linear support vector classifier component."""
-    constant_hyperparameters = {"kernel": "rbf"}
-    constant_hyperparameters.update(_libsvm_constant_hyperparameters())
-    return AlgorithmComponent(
-        name="RBFKernelSVC",
-        component_class=SVC,
-        component_type=constants.CLASSIFIER,
-        hyperparameters=_libsvm_hyperparameters(),
-        constant_hyperparameters=constant_hyperparameters
-    )
-
-
-def support_vector_classifier_sigmoid():
-    """Create linear support vector classifier component."""
-    constant_hyperparameters = {"kernel": "sigmoid"}
-    constant_hyperparameters.update(_libsvm_constant_hyperparameters())
-    return AlgorithmComponent(
-        name="SigmoidKernelSVC",
-        component_class=SVC,
-        component_type=constants.CLASSIFIER,
-        hyperparameters=(
-            _libsvm_hyperparameters() +
-            _libsvm_poly_sigmoid_hyperparameters()
-        ),
-        constant_hyperparameters=constant_hyperparameters,
-    )
+        hyperparameters=[
+            UniformFloatHyperparameter(
+                "C", 0.03125, 32768, default=1.0, log=True),
+            CategoricalHyperparameter(
+                "kernel", ["rbf", "poly", "sigmoid"], default="rbf"),
+            UniformIntHyperparameter("degree", 2, 5, default=3),
+            UniformFloatHyperparameter(
+                "gamma", 3.0517578125e-05, 8, default=0.1, log=True),
+            UniformFloatHyperparameter("coef0", -1, -1, default=0),
+            CategoricalHyperparameter(
+                "shrinking", [True, False], default=True),
+            UniformFloatHyperparameter(
+                "tol", 1e-5, 1e-1, default=1e-3, log=True),
+        ],
+        constant_hyperparameters={
+            "max_iter": -1,
+            "cache_size": 200,
+            "decision_function_shape": "ovr",
+        },
+        exclusion_conditions={
+            "kernel": {
+                "rbf": {
+                    "degree": EXCLUDE_ALL,
+                    "coef0": EXCLUDE_ALL,
+                },
+                "sigmoid": {"degree": EXCLUDE_ALL}
+            },
+        })
 
 
 # ======================
