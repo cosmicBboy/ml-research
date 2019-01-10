@@ -29,21 +29,10 @@ FIT_ERROR_MESSAGES = [
         "cosine was provided as affinity. Ward can only work with "
         "euclidean distances"),
     (ValueError, "No feature in X meets the variance threshold"),
-    (ValueError, "Solver lbfgs supports only dual=False, got dual=True"),
-    (ValueError, "Solver lbfgs supports only l2 penalties, got l1 penalty"),
-    (ValueError, "Solver newton-cg supports only l2 penalties"),
-    (ValueError, "Solver newton-cg supports only dual=False, got dual=True"),
-    (ValueError, "Solver sag supports only dual=False, got dual=True"),
-    (ValueError, "Solver sag supports only l2 penalties, got l1 penalty"),
-    (ValueError, "Solver saga supports only dual=False, got dual=True"),
-    (ValueError, "Solver liblinear does not support a multinomial backend"),
     (ValueError,
         "The condensed distance matrix must contain only finite values"),
     (ValueError, "n_components must be < n_features"),
     (ValueError, "max_features must be in \(0, n_features\]"),
-    (ValueError,
-        "Unsupported set of arguments: The combination of penalty='l1' and "
-        "loss='logistic_regression' are not supported when dual=True"),
     (ValueError,
         "Input contains NaN, infinity or a value too large for "
         "dtype\('float64'\)"),

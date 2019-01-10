@@ -268,7 +268,6 @@ def get_data_preprocessors():
     return [
         components.data_preprocessors.impute_numeric(),
         components.data_preprocessors.one_hot_encoder(),
-        components.data_preprocessors.variance_threshold_filter(),
         components.data_preprocessors.minmax_scaler(),
         components.data_preprocessors.standard_scaler(),
         components.data_preprocessors.robust_scaler(),
@@ -288,6 +287,7 @@ def get_feature_preprocessors():
         components.feature_preprocessors.polynomial_features(),
         components.feature_preprocessors.random_trees_embedding(),
         components.feature_preprocessors.truncated_svd(),
+        components.feature_preprocessors.variance_threshold_filter(),
     ]
 
 

@@ -20,7 +20,8 @@ from sklearn.decomposition import PCA, FastICA, KernelPCA, TruncatedSVD
 from sklearn.ensemble import (
     RandomTreesEmbedding, ExtraTreesClassifier, ExtraTreesRegressor)
 from sklearn.feature_selection import (
-    SelectFromModel, SelectPercentile, GenericUnivariateSelect)
+    SelectFromModel, SelectPercentile, GenericUnivariateSelect,
+    VarianceThreshold)
 from sklearn.kernel_approximation import RBFSampler, Nystroem
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.svm import LinearSVC
@@ -237,4 +238,18 @@ def truncated_svd():
         component_type=constants.FEATURE_PREPROCESSOR,
         hyperparameters=[
             UniformIntHyperparameter("n_components", 10, 256, default=128)
+        ])
+
+
+def variance_threshold_filter():
+    """Create a variance threshold filter component.
+
+    Removes features that are below a threshold variance.
+    """
+    return AlgorithmComponent(
+        name="VarianceThresholdFilter",
+        component_class=VarianceThreshold,
+        component_type=constants.FEATURE_PREPROCESSOR,
+        hyperparameters=[
+            UniformFloatHyperparameter("threshold", 0.0, 10.0, default=0.0)
         ])

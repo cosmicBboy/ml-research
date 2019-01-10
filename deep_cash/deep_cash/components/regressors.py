@@ -7,7 +7,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.svm import LinearSVR, SVR
 from sklearn.tree import DecisionTreeRegressor
 
-from .algorithm_component import AlgorithmComponent
+from .algorithm_component import AlgorithmComponent, EXCLUDE_ALL
 from .hyperparameter import (
     CategoricalHyperparameter, UniformIntHyperparameter,
     UniformFloatHyperparameter, BaseEstimatorHyperparameter)
@@ -229,23 +229,63 @@ def k_nearest_neighbors_regression():
 
 
 def support_vector_regression_linear():
+    # just following the parameterization used by auto-sklearn:
+    # https://github.com/automl/auto-sklearn/blob/master/autosklearn/pipeline/components/regression/liblinear_svr.py  # noqa
     return AlgorithmComponent(
         name="LinearSVR",
         component_class=LinearSVR,
         component_type=constants.REGRESSOR,
         hyperparameters=[
             UniformFloatHyperparameter(
+                "C", 0.03125, 32768, default=1.0, log=True, n=10),
+            UniformFloatHyperparameter(
                 "epsilon", 0.001, 1, default=0.1, log=True, n=10),
             UniformFloatHyperparameter(
                 "tol", 1e-5, 1e-1, default=1e-4, log=True, n=10),
-            UniformFloatHyperparameter(
-                "C", 0.03125, 32768, default=1.0, log=True, n=10),
         ],
         constant_hyperparameters={
             "loss": "squared_epsilon_insensitive",
             "dual": False,
             "fit_intercept": True,
             "intercept_scaling": 1,
+        })
+
+
+def support_vector_regression_nonlinear():
+    return AlgorithmComponent(
+        name="NonlinearSVR",
+        component_class=SVR,
+        component_type=constants.REGRESSOR,
+        hyperparameters=[
+            UniformFloatHyperparameter(
+                "C", 0.03125, 32768, default=1.0, log=True),
+            UniformFloatHyperparameter(
+                "epsilon", 0.001, 1, default=0.1, log=True),
+            CategoricalHyperparameter(
+                "kernel", ["rbf", "poly", "sigmoid"], default="rbf"),
+            UniformIntHyperparameter("degree", 2, 5, default=3),
+            UniformFloatHyperparameter(
+                "gamma", 3.0517578125e-05, 8, default=0.1, log=True),
+            UniformFloatHyperparameter("coef0", -1, -1, default=0),
+            CategoricalHyperparameter(
+                "shrinking", [True, False], default=True),
+            UniformFloatHyperparameter(
+                "tol", 1e-5, 1e-1, default=1e-3, log=True),
+        ],
+        constant_hyperparameters={
+            "max_iter": -1,
+            "cache_size": 200,
+        },
+        exclude_conditions={
+            "kernel": {
+                "rbf": {
+                    "coef0": EXCLUDE_ALL,
+                    "degree": EXCLUDE_ALL,
+                },
+                "sigmoid": {
+                    "degree": EXCLUDE_ALL
+                }
+            }
         })
 
 

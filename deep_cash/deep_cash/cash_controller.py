@@ -102,6 +102,7 @@ class CASHController(nn.Module):
         all_components = self.a_space.component_dict_from_signature(
             self.a_space.ALL_COMPONENTS)
         idx = 0
+        # TODO: this logic should be in algorithm_space
         for atype, acomponents in all_components.items():
             # action classifier
             self._add_action_classifier(
@@ -123,7 +124,7 @@ class CASHController(nn.Module):
         self.n_actions = len(self.action_classifiers)
 
     def _exclusion_condition_to_mask(self, h_state_space, exclude):
-        # TODO: this can probably be moved to algorithm_component.py
+        # TODO: this can probably be moved to algorithm_space.py
         if exclude is None:
             return None
 
@@ -205,6 +206,7 @@ class CASHController(nn.Module):
         return actions, input_tensor
 
     def _get_exclusion_mask(self, action_name):
+
         if action_name in self._exclude_masks:
             mask = ~self._exclude_masks[action_name].view(1, -1)
             return Variable(mask.type(torch.FloatTensor))

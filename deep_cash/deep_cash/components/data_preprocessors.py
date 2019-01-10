@@ -1,6 +1,5 @@
 """Data Preprocessor components."""
 
-from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import (
     QuantileTransformer, OneHotEncoder, Imputer, MinMaxScaler, StandardScaler,
     RobustScaler, Normalizer)
@@ -58,20 +57,6 @@ def one_hot_encoder():
         env_dep_hyperparameters={
             "categorical_features": [],
             "sparse": False})
-
-
-def variance_threshold_filter():
-    """Create a variance threshold filter component.
-
-    Removes features that are below a threshold variance.
-    """
-    return AlgorithmComponent(
-        name="VarianceThresholdFilter",
-        component_class=VarianceThreshold,
-        component_type=constants.FEATURE_PREPROCESSOR,
-        hyperparameters=[
-            UniformFloatHyperparameter("threshold", 0.0, 10.0, default=0.0)
-        ])
 
 
 def minmax_scaler():

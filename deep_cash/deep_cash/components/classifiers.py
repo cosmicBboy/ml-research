@@ -1,7 +1,7 @@
 """Classifier components."""
 
-from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier, \
-    GradientBoostingClassifier
+from sklearn.ensemble import AdaBoostClassifier, ExtraTreesClassifier, \
+    GradientBoostingClassifier, RandomForestClassifier
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB, MultinomialNB
@@ -170,8 +170,14 @@ def support_vector_classifier_linear():
                 "C", 0.03215, 32768, log=True, default=1.0)
         ],
         constant_hyperparameters={
-            "dual": False,
             "multi_class": "ovr",
+            "dual": False
+        },
+        exclusion_conditions={
+            "penalty": {
+                "l1": {"loss": ["hinge"]},
+                "l2": {"loss": ["hinge"]},
+            },
         })
 
 
@@ -282,14 +288,36 @@ def adaboost():
         ])
 
 
-def bagging():
-    """Create bagging classifier component."""
-    pass
-
-
 def extra_trees():
-    """Create extra trees classifier component."""
-    pass
+    """Create extra trees classifier component.
+
+    Just follows:
+    https://github.com/automl/auto-sklearn/blob/master/autosklearn/pipeline/components/classification/extra_trees.py  # noqa
+    """
+    return ExtraTreesClassifier(
+        name="ExtraTreesClassifier",
+        component_class=ExtraTreesClassifier,
+        component_type=constants.CLASSIFIER,
+        hyperparameters=[
+            CategoricalHyperparameter(
+                "criterion", ["gini", "entropy"], default="gini"),
+            UniformFloatHyperparameter(
+                "max_features", 0., 1., default=0.5),
+            UniformIntHyperparameter("min_samples_split", 2, 20, default=2),
+            UniformIntHyperparameter("min_samples_leaf", 1, 20, default=1),
+            CategoricalHyperparameter(
+                "bootstrap", [True, False], default=False),
+            CategoricalHyperparameter(
+                "class_weight", ["balanced", "balanced_subsample", None],
+                default=None),
+        ],
+        constant_hyperparameters={
+            "n_estimators": 100,
+            "max_depth": None,
+            "min_weight_fraction_leaf": 0.,
+            "max_leaf_nodes": None,
+            "min_impurity_decrease": 0.,
+        })
 
 
 def gradient_boosting():
@@ -337,6 +365,8 @@ def random_forest_classifier():
                 "min_samples_leaf", 1, 20, default=1),
             CategoricalHyperparameter(
                 "bootstrap", [True, False], default=True),
+            CategoricalHyperparameter(
+                "class_weight", ["balanced", None], default=None)
         ],
         constant_hyperparameters={
             "max_depth": None,
