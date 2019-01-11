@@ -15,6 +15,8 @@ from .hyperparameter import (
     UniformFloatHyperparameter, BaseEstimatorHyperparameter)
 from . import constants
 
+# TODO: add sgd classifier, xgboost classifier
+
 
 # ===========
 # Naive Bayes
@@ -83,20 +85,14 @@ def logistic_regression():
         hyperparameters=[
             CategoricalHyperparameter("penalty", ["l1", "l2"], default="l2"),
             CategoricalHyperparameter(
-                "dual", [True, False], default=False,
-                exclude_conditions={
-                    True: {"solver": ["newton-cg", "lbfgs", "sag", "saga"]}
-                }),
+                "dual", [True, False], default=False),
             CategoricalHyperparameter(
                 "fit_intercept", [True, False], default=True),
             CategoricalHyperparameter(
                 "class_weight", ["balanced", None], default=None),
             CategoricalHyperparameter(
                 "solver", ["newton-cg", "lbfgs", "liblinear", "sag", "saga"],
-                default="liblinear",
-                exclude_conditions={
-                    "liblinear": {"multi_class": ["multinomial"]}
-                }),
+                default="liblinear"),
             CategoricalHyperparameter(
                 "multi_class", ["ovr", "multinomial"], default="ovr"),
             UniformIntHyperparameter("C", 1, 300, default=1.0, log=True, n=5),

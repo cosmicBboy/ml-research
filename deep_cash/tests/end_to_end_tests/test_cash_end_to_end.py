@@ -260,32 +260,22 @@ def test_cash_kaggle_classification_data():
     assert history.shape[0] == n_episodes
 
 
-def test_cash_exclusion_mask():
-    n_episodes = 10
+def _exclusion_mask_test_harness(n_episodes, a_space_kwargs, t_env_kwargs):
     a_space = AlgorithmSpace(
         data_preprocessors=[
             components.data_preprocessors.impute_numeric(),
             components.data_preprocessors.one_hot_encoder(),
             components.data_preprocessors.standard_scaler(),
         ],
-        feature_preprocessors=[
-            components.feature_preprocessors.pca(),
-        ],
-        classifiers=[
-            components.classifiers.logistic_regression(),
-            components.classifiers.support_vector_classifier_linear(),
-        ])
+        **a_space_kwargs)
     t_env = _task_environment(
-        env_sources=["SKLEARN"],
-        target_types=["BINARY"],
-        dataset_names=["sklearn.breast_cancer"],
-        n_samples=20)
-
+        env_sources=["SKLEARN"], n_samples=20, **t_env_kwargs)
     controller = _cash_controller(a_space, t_env)
-
-    t_env.sample_data_env()
     prev_reward, prev_action = 0, controller.init_action()
-    for i in range(200):
+    # NOTE: this is a pared down version of how the reinforce fitter implements
+    # the fit method
+    t_env.sample_data_env()
+    for i in range(n_episodes):
         metafeature_tensor = t_env.sample_task_state()
         target_type = t_env.current_data_env.target_type
         actions, action_activation = controller.decode(
@@ -295,7 +285,59 @@ def test_cash_exclusion_mask():
             metafeatures=Variable(metafeature_tensor),
             init_hidden=controller.init_hidden())
         for action in actions:
+            # actions that are in the _exclude_masks dict attribute should
+            # have a value of zero since excluded action probabilities should
+            # be zeroed out.
             if action["action_name"] in controller._exclude_masks:
                 exclude_mask = controller._exclude_masks[
                     action["action_name"]].tolist()
                 assert exclude_mask[action["choice_index"]] == 0
+
+
+def test_cash_classifier_exclusion_masks():
+    """Test classifier exclusion mask logic."""
+    _exclusion_mask_test_harness(
+        200,
+        a_space_kwargs={
+            "feature_preprocessors": [components.feature_preprocessors.pca()],
+            "classifiers": [
+                components.classifiers.logistic_regression(),
+                components.classifiers.support_vector_classifier_linear()]
+        },
+        t_env_kwargs={
+            "target_types": ["BINARY"],
+            "dataset_names": ["sklearn.breast_cancer"],
+        })
+
+
+def test_cash_regressor_exclusion_masks():
+    """Test regression exclusion mask logic."""
+    _exclusion_mask_test_harness(
+        200,
+        a_space_kwargs={
+            "feature_preprocessors": [components.feature_preprocessors.pca()],
+            "regressors": [
+                components.regressors.support_vector_regression_nonlinear()]
+        },
+        t_env_kwargs={
+            "target_types": ["REGRESSION"],
+            "dataset_names": ["sklearn.diabetes"],
+        })
+
+
+def test_cash_feature_processor_exclusion_masks():
+    """Test feature processor exclusion mask logic."""
+    _exclusion_mask_test_harness(
+        200,
+        a_space_kwargs={
+            "feature_preprocessors": [
+                components.feature_preprocessors.kernel_pca(),
+                components.feature_preprocessors.nystroem_sampler()],
+            "classifiers": [components.classifiers.k_nearest_neighbors()],
+            "regressors": [
+                components.regressors.k_nearest_neighbors_regression()]
+        },
+        t_env_kwargs={
+            "target_types": ["BINARY", "REGRESSION"],
+            "dataset_names": ["sklearn.breast_cancer", "sklearn.diabetes"],
+        })

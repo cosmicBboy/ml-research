@@ -26,7 +26,7 @@ from sklearn.kernel_approximation import RBFSampler, Nystroem
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.svm import LinearSVC
 
-from .algorithm_component import AlgorithmComponent
+from .algorithm_component import AlgorithmComponent, EXCLUDE_ALL
 from .hyperparameter import (
     CategoricalHyperparameter, UniformIntHyperparameter,
     UniformFloatHyperparameter, TuplePairHyperparameter)
@@ -119,7 +119,24 @@ def kernel_pca():
                 "gamma", GAMMA_MIN, 8.0, default=1.0, log=True),
             UniformIntHyperparameter("degree", 2, 5, 3),
             UniformIntHyperparameter("coef0", -1, 1, default=0),
-        ])
+        ],
+        exclusion_conditions={
+            "kernel": {
+                "rbf": {
+                    "degree": EXCLUDE_ALL,
+                    "coef0": EXCLUDE_ALL,
+                },
+                "sigmoid": {
+                    "degree": EXCLUDE_ALL,
+                    "gamma": EXCLUDE_ALL,
+                },
+                "cosine": {
+                    "degree": EXCLUDE_ALL,
+                    "coef0": EXCLUDE_ALL,
+                    "gamma": EXCLUDE_ALL,
+                },
+            }
+        })
 
 
 def rbf_sampler():
@@ -156,7 +173,22 @@ def nystroem_sampler():
                 "gamma", GAMMA_MIN, 8.0, log=True, default=1.0),
             UniformIntHyperparameter("degree", 2, 5, 3),
             UniformFloatHyperparameter("coef0", -1, 1, default=0),
-        ])
+        ],
+        exclusion_conditions={
+            "kernel": {
+                "rbf": {
+                    "degree": EXCLUDE_ALL,
+                    "coef0": EXCLUDE_ALL,
+                },
+                "cosine": {
+                    "degree": EXCLUDE_ALL,
+                    "coef0": EXCLUDE_ALL
+                },
+                "sigmoid": {
+                    "degree": EXCLUDE_ALL
+                },
+            }
+        })
 
 
 def pca():

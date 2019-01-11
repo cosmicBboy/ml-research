@@ -1,6 +1,7 @@
 """Define algorithm component."""
 
 from collections import OrderedDict
+from typing import List, Tuple, Any, Union
 
 import numpy as np
 
@@ -9,8 +10,31 @@ import itertools
 from . import constants
 
 
+Hyperparameters = List[List[Tuple[str, Any]]]
+
 # this variable indicates that a hyperparameter should be completely ignored.
 EXCLUDE_ALL = "ALL"
+
+
+def _check_hyperparameters(
+        hyperparameters: Hyperparameters,
+        exclusion_conditions: dict) -> Union[dict, None]:
+    exclude_cases = {}
+    for key, value in hyperparameters:
+
+        if key in exclude_cases and value in exclude_cases[key]:
+            # early return: the hyperparameter setting is invalid if any of
+            # the selected values are specified in the exclude cases
+            return None
+
+        exclude_dict = exclusion_conditions.get(key, None)
+        if exclude_dict is None:
+            continue
+        elif value not in exclude_dict:
+            continue
+        exclude_cases.update(exclude_dict[value])
+
+    return dict(hyperparameters)
 
 
 class AlgorithmComponent(object):
@@ -117,12 +141,14 @@ class AlgorithmComponent(object):
 
     def hyperparameter_iterator(self):
         """Return a generator of all possible hyperparameter combinations."""
+
         expanded_state_space = []
         for key, values in self.hyperparameter_state_space().items():
             expanded_state_space.append([(key, v) for v in values])
-        return (
-            dict(hsetting) for hsetting in
-            itertools.product(*expanded_state_space))
+        return filter(None, (
+            _check_hyperparameters(
+                hsetting, self.hyperparameter_exclusion_conditions())
+            for hsetting in itertools.product(*expanded_state_space)))
 
     def hyperparameter_exclusion_conditions(self):
         """Get the conditional map of which hyperparameters go together."""

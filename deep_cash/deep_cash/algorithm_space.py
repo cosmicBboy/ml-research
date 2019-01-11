@@ -321,7 +321,5 @@ def get_regressors():
         components.regressors.rbf_gaussian_process_regression(),
         components.regressors.ridge_regression(),
         components.regressors.support_vector_regression_linear(),
-        components.regressors.support_vector_regression_poly(),
-        components.regressors.support_vector_regression_rbf(),
-        components.regressors.support_vector_regression_sigmoid(),
+        components.regressors.support_vector_regression_nonlinear(),
     ]

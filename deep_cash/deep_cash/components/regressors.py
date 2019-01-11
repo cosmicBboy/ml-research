@@ -14,6 +14,9 @@ from .hyperparameter import (
 from . import constants
 
 
+# TODO: add sgd regressor, xgboost regressor
+
+
 # ===================
 # Ensemble Regressors
 # ===================
@@ -276,7 +279,7 @@ def support_vector_regression_nonlinear():
             "max_iter": -1,
             "cache_size": 200,
         },
-        exclude_conditions={
+        exclusion_conditions={
             "kernel": {
                 "rbf": {
                     "coef0": EXCLUDE_ALL,
