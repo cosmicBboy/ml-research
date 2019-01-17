@@ -77,7 +77,8 @@ class AlgorithmSpace(object):
                  with_none_token=False,
                  hyperparam_with_start_token=False,
                  hyperparam_with_end_token=False,
-                 hyperparam_with_none_token=True):
+                 hyperparam_with_none_token=False,
+                 random_state=None):
         """Initialize a structured algorithm environment.
 
         :param list[AlgorithmComponent]|None data_preprocessors: algorithm
@@ -102,6 +103,8 @@ class AlgorithmSpace(object):
         self.hyperparam_with_start_token = hyperparam_with_start_token
         self.hyperparam_with_end_token = hyperparam_with_end_token
         self.hyperparam_with_none_token = hyperparam_with_none_token
+        self.random_state = random_state
+        np.random.seed(self.random_state)
 
     @property
     def components(self):
@@ -122,15 +125,6 @@ class AlgorithmSpace(object):
     def n_components(self):
         """Return number of components in the algorithm space."""
         return len(self.components)
-
-    def sample_components_from_signature(self, signature):
-        """Sample algorithm components from ML signature.
-
-        :param list[str] signature: ML framework signature indicating the
-            ordering of algorithm components to form a sklearn Pipeline.
-        """
-        return [self.sample_component(component_type)
-                for component_type in signature]
 
     def component_dict_from_signature(self, signature):
         """Return dictionary of algorithm types and list of components.
@@ -196,7 +190,16 @@ class AlgorithmSpace(object):
         component_subset = self.get_components(component_type)
         return component_subset[np.random.randint(len(component_subset))]
 
-    def sample_ml_framework(self, signature, random_state=None):
+    def sample_components_from_signature(self, signature):
+        """Sample algorithm components from ML signature.
+
+        :param list[str] signature: ML framework signature indicating the
+            ordering of algorithm components to form a sklearn Pipeline.
+        """
+        return [self.sample_component(component_type)
+                for component_type in signature]
+
+    def sample_ml_framework(self, signature):
         """Sample a random ML framework from the algorithm space.
 
         :param list[str] signature: ML framework signature indicating the
@@ -204,7 +207,6 @@ class AlgorithmSpace(object):
         :param int|None random_state: provide random state, which determines
             the ML framework sampled.
         """
-        np.random.seed(random_state)
         components = self.sample_components_from_signature(signature)
         framework_hyperparameters = {}
         for a in components:
@@ -212,27 +214,6 @@ class AlgorithmSpace(object):
                 a.sample_hyperparameter_state_space())
         return self.create_ml_framework(
             components, hyperparameters=framework_hyperparameters)
-
-    def framework_iterator(self, signature):
-        """Return a generator of all algorithm and hyperparameter combos.
-
-        This is potentially a huge space, creating a generator that yields
-        a machine learning framework (sklearn.Pipeline object) based on all
-        possible estimator combinations and all possible hyperparameter
-        combinations of those estimators.
-
-        :param list[str] signature: ML framework signature indicating the
-            ordering of algorithm components to form a sklearn Pipeline.
-        """
-        return (
-            self.create_ml_framework(
-                component_list,
-                hyperparameters=self._combine_dicts(hyperparam_list_dicts))
-            for component_list in itertools.product(
-                self.sample_components_from_signature(signature))
-            for hyperparam_list_dicts in itertools.product(
-                [c.hyperparameter_iterator() for c in component_list])
-        )
 
     def create_ml_framework(
             self, components, memory=None, hyperparameters=None,
@@ -259,8 +240,12 @@ class AlgorithmSpace(object):
     def _combine_dicts(self, dicts):
         combined_dicts = {}
         for d in dicts:
-            combined_dicts.update(d)
+            for h in d:
+                combined_dicts.update(h)
         return combined_dicts
+
+    def set_random_state(self, random_state):
+        np.random.seed(random_state)
 
 
 def get_data_preprocessors():
