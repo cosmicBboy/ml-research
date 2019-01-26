@@ -13,6 +13,7 @@ from deep_cash.algorithm_space import AlgorithmSpace, \
 from deep_cash.task_environment import TaskEnvironment
 from deep_cash.cash_controller import CASHController
 from deep_cash.cash_reinforce import CASHReinforce
+from deep_cash.random_search import CASHRandomSearch
 from deep_cash import utils
 
 
@@ -109,7 +110,7 @@ def test_cash_reinforce_fit():
 
 def test_cash_reinforce_fit_multi_baseline():
     """Make sure that baseline function maintains buffers per data env."""
-    n_episodes = 5
+    n_episodes = 20
     t_env = _task_environment()
     a_space = _algorithm_space()
     controller = _cash_controller(a_space, t_env)
@@ -138,8 +139,10 @@ def test_cash_zero_gradient():
         n_episodes=n_episodes,
         **_fit_kwargs())
     # make sure there's at least one zero-valued aggregate gradient
-    assert any([g == 0 for g in reinforce.aggregate_gradients])
-    for r, g in zip(reinforce.mean_rewards, reinforce.aggregate_gradients):
+    assert any([g == 0 for g in
+                reinforce.tracker.history["aggregate_gradients"]])
+    for r, g in zip(reinforce.tracker.history["mean_rewards"],
+                    reinforce.tracker.history["aggregate_gradients"]):
         if r == 0:
             assert g == 0
         else:
@@ -169,7 +172,7 @@ def test_cash_entropy_regularizer():
         reinforce.fit(
             n_episodes=n_episodes,
             **_fit_kwargs())
-        losses[model] = reinforce.losses
+        losses[model] = reinforce.tracker.history["losses"]
     assert (
         np.array(losses["entropy_regularized"]) <
         np.array(losses["baseline"])).all()
@@ -341,3 +344,11 @@ def test_cash_feature_processor_exclusion_masks():
             "target_types": ["BINARY", "REGRESSION"],
             "dataset_names": ["sklearn.breast_cancer", "sklearn.diabetes"],
         })
+
+
+def test_random_search():
+    """Test random search CASH object."""
+    cash_random = CASHRandomSearch(
+        _algorithm_space(),
+        _task_environment())
+    cash_random.fit(3, 10)

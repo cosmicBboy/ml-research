@@ -7,7 +7,8 @@ import torch.nn as nn
 from collections import defaultdict
 from torch.autograd import Variable
 
-from . import utils
+from . import utils, loggers
+from .tracking import MetricsTracker
 
 SINGLE_BASELINE = "all_data_envs"
 EPSILON = np.finfo(np.float32).eps.item()
@@ -25,7 +26,7 @@ class CASHReinforce(object):
             with_baseline=True,
             single_baseline=True,
             normalize_reward=True,
-            metrics_logger=None):
+            metrics_logger=loggers.default_logger):
         """Initialize CASH Reinforce Algorithm.
 
         :param pytorch.nn.Module controller: A CASH controller to select
@@ -42,9 +43,9 @@ class CASHReinforce(object):
             each data environment available to the task environment.
         :param bool normalize_reward: whether or not to mean-center and
             standard-deviation-scale the reward signal for backprop.
-        :param callable metrics_logger: loggin function to use. The function
-            takes as input a CASHReinforce object and prints out a message,
-            with access to all properties in CASHReinforce.
+        :param callable metrics_logger: logging function to use. The function
+            takes as input a tracking.TrackerBase object and prints out a
+            message.
         :ivar defaultdict[str -> list] _baseline_fn: a map that keeps track
             of the baseline function for a particular task environment state
             (i.e. the sampled data environment at a particular episode).
@@ -76,21 +77,7 @@ class CASHReinforce(object):
         self._n_episodes = n_episodes
 
         # track metrics
-        self.episodes = []
-        self.data_env_names = []
-        self.scorers = []
-        self.losses = []
-        self.mean_rewards = []
-        self.aggregate_gradients = []
-        self.mean_validation_scores = []
-        self.std_validation_scores = []
-        self.n_successful_mlfs = []
-        self.n_unique_mlfs = []
-        self.n_unique_hyperparams = []
-        self.mlf_diversity = []
-        self.hyperparam_diversity = []
-        self.best_validation_scores = []
-        self.best_mlfs = []
+        self.tracker = MetricsTracker()
 
         # baseline reward
         self._baseline_fn = {
@@ -137,68 +124,41 @@ class CASHReinforce(object):
                 n_unique_mlfs, n_iter)
             hyperparam_diversity = utils._diversity_metric(
                 n_unique_hyperparams, n_iter)
-            self.episodes.append(i_episode + 1)
-            self.data_env_names.append(self.t_env.current_data_env.name)
-            self.scorers.append(self.t_env.scorer.name)
-            self.mean_rewards.append(np.mean(self.controller.reward_buffer))
+
+            mean_rewards = np.mean(self.controller.reward_buffer)
             if len(self._validation_scores) > 0:
-                self.mean_validation_scores.append(
-                    np.mean(self._validation_scores))
-                self.std_validation_scores.append(
-                    np.std(self._validation_scores))
+                mean_val_scores = np.mean(self._validation_scores)
+                std_val_scores = np.std(self._validation_scores)
             else:
-                self.mean_validation_scores.append(np.nan)
-                self.std_validation_scores.append(np.nan)
-            self.n_successful_mlfs.append(n_successful_mlfs)
-            self.n_unique_mlfs.append(n_unique_mlfs)
-            self.n_unique_hyperparams.append(n_unique_hyperparams)
-            self.mlf_diversity.append(mlf_diversity)
-            self.hyperparam_diversity.append(hyperparam_diversity)
-            self.best_validation_scores.append(self._best_validation_score)
-            self.best_mlfs.append(self._best_mlf)
+                mean_val_scores, std_val_scores = np.nan, np.nan
 
             # backward pass through controller
-            loss, grad_agg = self.end_episode(
-                baseline, mlf_diversity, hyperparam_diversity)
-            self.losses.append(loss)
-            self.aggregate_gradients.append(grad_agg)
-            if self._metrics_logger:
-                self._metrics_logger(self)
-            else:
-                print(
-                    "\nloss: %0.02f - "
-                    "mean performance: %0.02f - "
-                    "mean reward: %0.02f - "
-                    "grad agg: %0.02f - "
-                    "mlf diversity: %d/%d" % (
-                        self.losses[-1],
-                        self.mean_validation_scores[-1],
-                        self.mean_rewards[-1],
-                        self.aggregate_gradients[-1],
-                        self.n_unique_mlfs[-1],
-                        self.n_successful_mlfs[-1])
-                )
+            loss, grad_agg = self.end_episode(baseline, mlf_diversity)
+
+            self.tracker.update_metrics({
+                "episode": i_episode + 1,
+                "data_env_names": self.t_env.current_data_env.name,
+                "scorers": self.t_env.scorer.name,
+                "losses": loss,
+                "mean_rewards": mean_rewards,
+                "aggregate_gradients": grad_agg,
+                "mean_validation_scores": mean_val_scores,
+                "std_validation_scores": std_val_scores,
+                "best_validation_scores": self._best_validation_score,
+                "best_mlfs": self._best_mlf,
+                "n_successful_mlfs": n_successful_mlfs,
+                "n_unique_mlfs": n_unique_mlfs,
+                "n_unique_hyperparams": n_unique_hyperparams,
+                "mlf_diversity": mlf_diversity,
+                "hyperparam_diversity": hyperparam_diversity
+            })
+            if self._metrics_logger is not None:
+                self._metrics_logger(self.tracker)
         return self
 
     def history(self):
         """Get metadata history."""
-        return {
-            "episode": self.episodes,
-            "data_env_names": self.data_env_names,
-            "scorers": self.scorers,
-            "losses": self.losses,
-            "aggregate_gradients": self.aggregate_gradients,
-            "mean_rewards": self.mean_rewards,
-            "mean_validation_scores": self.mean_validation_scores,
-            "std_validation_scores": self.std_validation_scores,
-            "n_successful_mlfs": self.n_successful_mlfs,
-            "n_unique_mlfs": self.n_unique_mlfs,
-            "n_unique_hyperparams": self.n_unique_hyperparams,
-            "mlf_diversity": self.mlf_diversity,
-            "hyperparam_diversity": self.hyperparam_diversity,
-            "best_validation_scores": self.best_validation_scores,
-            "best_mlfs": self.best_mlfs,
-        }
+        return self.tracker.history
 
     def start_episode(self, n_iter, verbose):
         """Begin training the controller."""
@@ -225,6 +185,7 @@ class CASHReinforce(object):
             metafeatures=Variable(metafeature_tensor),
             init_hidden=self.controller.init_hidden())
         reward = self.evaluate_actions(actions, action_activation)
+        # TODO: directly update the underlying data structures
         self._update_log_prob_buffer(actions)
         self._update_reward_buffer(reward)
         self._update_entropy_buffer(actions)
@@ -256,11 +217,7 @@ class CASHReinforce(object):
                 self._best_mlf = mlf
             return reward
 
-    def end_episode(
-            self,
-            baseline,
-            mlf_diversity,
-            h_diversity):
+    def end_episode(self, baseline, mlf_diversity):
         """End an episode with one backpropagation step.
 
         Since REINFORCE algorithm is a gradient ascent method, negate the log
@@ -271,9 +228,6 @@ class CASHReinforce(object):
             rewards over previous episodes.
         :param float mlf_diversity: 1.0 means all successfully fitted mlfs
             are unique, 0.0 if there is only a single unique mlf in the batch.
-        :param float h_diversity: 1.0 means all successfully
-            fitted mlfs are have unique hyperparameters, 0.0 if there is only a
-            single unique hyperparameter setting in the batch.
         :returns: tuple of loss and aggregated gradient.
         :rtype: tuple[float, float]
         """

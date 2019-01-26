@@ -28,7 +28,23 @@ def _log_floyd(metric, value, step):
           (metric, value, step))
 
 
-def floyd_logger(cash_reinforce, prefix=""):
+def default_logger(tracker):
+    print(
+        "\nloss: %0.02f - "
+        "mean performance: %0.02f - "
+        "mean reward: %0.02f - "
+        "grad agg: %0.02f - "
+        "mlf diversity: %d/%d" % (
+            tracker["losses"][-1],
+            tracker["mean_validation_scores"][-1],
+            tracker["mean_rewards"][-1],
+            tracker["aggregate_gradients"][-1],
+            tracker["mlf_diversity"][-1],
+        ),
+    )
+
+
+def floyd_logger(tracker, prefix=""):
     """Log metrics for floydhub.
 
     prints metrics to stdout as required by floydhub metrics tracking:
@@ -42,8 +58,8 @@ def floyd_logger(cash_reinforce, prefix=""):
     if prefix:
         metrics_dict = {m: "%s__%s" % (prefix, m) for m in metrics}
     for metric in metrics:
-        value = getattr(cash_reinforce, metric)[-1]
-        step = getattr(cash_reinforce, "episodes")[-1]
+        value = tracker[metric][-1]
+        step = tracker["episodes"][-1]
         if value is None or np.isnan(value):
             continue
         _log_floyd(metrics_dict.get(metric, metric), value, step)
