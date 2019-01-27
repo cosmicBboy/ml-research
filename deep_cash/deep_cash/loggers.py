@@ -34,12 +34,12 @@ def default_logger(tracker):
         "mean performance: %0.02f - "
         "mean reward: %0.02f - "
         "grad agg: %0.02f - "
-        "mlf diversity: %d/%d" % (
-            tracker["losses"][-1],
-            tracker["mean_validation_scores"][-1],
-            tracker["mean_rewards"][-1],
-            tracker["aggregate_gradients"][-1],
-            tracker["mlf_diversity"][-1],
+        "mlf diversity: %0.02f" % (
+            tracker.history["losses"][-1],
+            tracker.history["mean_validation_scores"][-1],
+            tracker.history["mean_rewards"][-1],
+            tracker.history["aggregate_gradients"][-1],
+            tracker.history["mlf_diversity"][-1],
         ),
     )
 
@@ -58,8 +58,8 @@ def floyd_logger(tracker, prefix=""):
     if prefix:
         metrics_dict = {m: "%s__%s" % (prefix, m) for m in metrics}
     for metric in metrics:
-        value = tracker[metric][-1]
-        step = tracker["episodes"][-1]
+        value = tracker.history[metric][-1]
+        step = tracker.history["episodes"][-1]
         if value is None or np.isnan(value):
             continue
         _log_floyd(metrics_dict.get(metric, metric), value, step)

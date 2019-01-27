@@ -120,8 +120,7 @@ class CASHReinforce(object):
             n_unique_mlfs = len(set((tuple(s) for s in self._algorithm_sets)))
             n_unique_hyperparams = len(set(
                 [str(d.items()) for d in self._hyperparameter_sets]))
-            mlf_diversity = utils._diversity_metric(
-                n_unique_mlfs, n_iter)
+            mlf_diversity = utils._diversity_metric(n_unique_mlfs, n_iter)
             hyperparam_diversity = utils._diversity_metric(
                 n_unique_hyperparams, n_iter)
 

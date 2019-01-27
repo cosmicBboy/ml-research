@@ -351,4 +351,5 @@ def test_random_search():
     cash_random = CASHRandomSearch(
         _algorithm_space(),
         _task_environment())
-    cash_random.fit(3, 10)
+    cash_random.fit(n_episodes=10, n_iter=20)
+    assert all([len(x) == 10 for x in cash_random.history().values()])
