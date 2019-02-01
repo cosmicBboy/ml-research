@@ -368,10 +368,9 @@ def get_default_scorers():
     # would mean that the controller would have to learn how maximize a
     # shifting reward function (model the reward function?)... might be
     # complicated.
-    # _f1_scorer = scorers.f1_score_weighted_average()
     return {
         TargetType.BINARY: scorers.roc_auc(),
-        TargetType.MULTICLASS: scorers.roc_auc(),
+        TargetType.MULTICLASS: scorers.accuracy(),
         TargetType.REGRESSION: scorers.mean_squared_error(),
     }
 
