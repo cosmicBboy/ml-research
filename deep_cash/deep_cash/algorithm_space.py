@@ -18,7 +18,6 @@ where there can be n data preprocessors (imputation, scaling, encoding,
 filtering).
 """
 
-import itertools
 import numpy as np
 
 from collections import OrderedDict
