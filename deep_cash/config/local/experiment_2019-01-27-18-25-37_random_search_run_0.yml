@@ -1,0 +1,30 @@
+name: random_search_run_0
+experiment_type: RANDOM_SEARCH
+description: ''
+created_at: 2019-01-27-18-25-37
+git_hash: c36f5aa
+parameters:
+  datasets: null
+  output_fp: /Users/Niels/git/ml-research/deep_cash/deep_cash/../output
+  n_trials: 3
+  n_episodes: 3
+  n_iter: 16
+  env_sources:
+  - SKLEARN
+  # - OPEN_ML
+  - KAGGLE
+  target_types:
+  - BINARY
+  - MULTICLASS
+  test_set_config:
+    SKLEARN:
+      test_size: 0.8
+      random_state: 100
+  error_reward: 0
+  n_samples: 200
+  per_framework_time_limit: 60
+  per_framework_memory_limit: 2000
+  metric_logger: floyd
+  fit_verbose: 1
+  controller_seed: 1000
+  task_environment_seed: 100
