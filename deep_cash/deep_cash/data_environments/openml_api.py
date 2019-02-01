@@ -49,6 +49,7 @@ def openml_to_data_env(
         openml_dataset, target_column, target_type,
         data_source_type, test_size, random_state, target_preprocessor=None,
         include_features_with_na=False):
+    print("fetching openml dataset: %s" % openml_dataset.name)
     if data_source_type not in DATASOURCE_TYPES:
         raise ValueError(
             "expected one of %s, found : %s" % (
@@ -130,8 +131,16 @@ def _get_dataset_metadata(openml_task_metadata, task_type):
          _get_target_type(v.get("NumberOfClasses", 0), task_type))
         for v in openml_task_metadata.values()])
     dataset_ids = [v["source_data"] for v in openml_task_metadata.values()]
-    return openml.datasets.get_datasets(dataset_ids), \
-        target_columns, target_types
+    datasets, target_columns_out, target_types_out = [], [], []
+    for id, tcols, ttypes in zip(dataset_ids, target_columns, target_types):
+        try:
+            datasets.append(openml.datasets.get_dataset(id))
+            target_columns_out.append(tcols)
+            target_types_out.append(ttypes)
+        except OpenMLServerException as e:
+            print("error when fetching openml metadata: %s, skipping dataset"
+                  % e)
+    return datasets, target_columns_out, target_types_out
 
 
 def _create_envs(
@@ -151,6 +160,8 @@ def _create_envs(
 def classification_envs(
         n=N_CLASSIFICATION_ENVS, test_size=None, random_state=None,
         verbose=False):
+    if n is None:
+        n = N_CLASSIFICATION_ENVS
     task_type = OpenMLTaskType.SUPERVISED_CLASSIFICATION
     dataset_metadata = _get_dataset_metadata(
         openml.tasks.list_tasks(task_type_id=task_type.value, size=n),
@@ -162,6 +173,8 @@ def classification_envs(
 
 def regression_envs(
         n=N_REGRESSION_ENVS, test_size=None, random_state=None, verbose=False):
+    if n is None:
+        n = N_CLASSIFICATION_ENVS
     task_type = OpenMLTaskType.SUPERVISED_REGRESSION
     dataset_metadata = _get_dataset_metadata(
         openml.tasks.list_tasks(task_type_id=task_type.value, size=n),
