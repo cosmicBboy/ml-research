@@ -108,11 +108,9 @@ def gather_history(return_dict):
 
 
 def save_best_mlfs(data_path, best_mlfs, procnum):
+    mlf_path = data_path / ("cash_controller_mlfs_trial_%d" % procnum)
+    mlf_path.mkdir(exist_ok=True)
     for i, mlf in enumerate(best_mlfs):
-        mlf_path = data_path / ("cash_controller_mlfs_trial_%d" % procnum)
-        if mlf_path.exists():
-            rmtree(mlf_path)
-        mlf_path.mkdir()
         joblib.dump(mlf, mlf_path / ("best_mlf_episode_%d.pkl" % (i + 1)))
 
 

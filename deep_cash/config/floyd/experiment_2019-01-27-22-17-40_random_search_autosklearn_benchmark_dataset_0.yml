@@ -6,22 +6,18 @@ git_hash: c36f5aa
 parameters:
   datasets: null
   output_fp: /output
-  n_trials: 1
-  n_episodes: 100
+  n_trials: 3
+  n_episodes: 300
   n_iter: 16
   env_sources:
-  - SKLEARN
-  - OPEN_ML
-  - KAGGLE
+  - AUTOSKLEARN_BENCHMARK
   target_types:
   - BINARY
   - MULTICLASS
-  test_set_config:
-    SKLEARN:
-      test_size: 0.8
-      random_state: 100
+  - REGRESSION
+  test_set_config: null
   error_reward: 0
-  n_samples: 5000
+  n_samples: 10000
   per_framework_time_limit: 180
   per_framework_memory_limit: 5000
   metric_logger: floyd
