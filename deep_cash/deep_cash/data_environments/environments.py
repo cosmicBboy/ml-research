@@ -62,8 +62,8 @@ def envs(dataset_names=None, sources=None, target_types=None,
     if sources is None:
         sources = list(ENV_SOURCES.keys())
     for env_source in sources:
-        test_set_size = test_set_config.get(env_source, {})
-        _envs.extend(ENV_SOURCES[env_source](dataset_names, **test_set_size))
+        _envs.extend(ENV_SOURCES[env_source](
+            dataset_names, **test_set_config.get(env_source, {})))
     if target_types:
         _envs = [e for e in _envs if e.target_type in target_types]
     # NOTE: eventually the MLF pipeline should be able to transform
