@@ -11,8 +11,7 @@ from sklearn.externals import joblib
 
 from deep_cash.task_environment import TaskEnvironment
 from deep_cash.algorithm_space import AlgorithmSpace
-from deep_cash.cash_controller import CASHController
-from deep_cash.cash_reinforce import CASHReinforce
+from deep_cash.random_search import CASHRandomSearch
 from deep_cash.components import classifiers
 from deep_cash import utils
 
@@ -53,30 +52,11 @@ a_space = AlgorithmSpace(
     hyperparam_with_start_token=False,
     hyperparam_with_none_token=False)
 
-controller = CASHController(
-    metafeature_size=t_env.metafeature_dim,
-    input_size=a_space.n_components,
-    hidden_size=hidden_size,
-    output_size=output_size,
-    a_space=a_space,
-    dropout_rate=0.2,
-    num_rnn_layers=n_layers)
-
-reinforce = CASHReinforce(
-    controller,
-    t_env,
-    with_baseline=False,
-    metrics_logger=logger)
-
-reinforce.fit(
-    optim=torch.optim.Adam,
-    optim_kwargs={"lr": learning_rate},
-    n_episodes=n_episodes,
-    n_iter=n_iter,
-    verbose=fit_verbose)
+cash_random = CASHRandomSearch(a_space, t_env)
+cash_random.fit(n_episodes=10, n_iter=20)
 
 
-history = pd.DataFrame(reinforce.history)
+history = pd.DataFrame(cash_random.history)
 history.to_csv(
     str(data_path / "rnn_cash_controller_experiment.csv"), index=False)
 
@@ -84,7 +64,7 @@ mlf_path = data_path / "rnn_cash_controller_experiment_mlfs"
 if mlf_path.exists():
     rmtree(mlf_path)
 mlf_path.mkdir()
-for i, mlf in enumerate(reinforce.best_mlfs):
+for i, mlf in enumerate(cash_random.best_mlfs):
     joblib.dump(mlf, mlf_path / ("best_mlf_episode_%d.pkl" % (i + 1)))
 
-controller.save(data_path / "rnn_cash_controller_experiment.pt")
+cash_random.save(data_path / "rnn_cash_controller_experiment.pt")

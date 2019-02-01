@@ -46,7 +46,7 @@ class DataSourceType(Enum):
     SKLEARN = 1
     OPEN_ML = 2
     KAGGLE = 3
-    AUTOSKLEARN_BENCHMARK = 5
+    AUTOSKLEARN_BENCHMARK = 4
 
 
 class CASHComponent(Enum):
@@ -54,3 +54,10 @@ class CASHComponent(Enum):
 
     ALGORITHM = 1
     HYPERPARAMETER = 2
+
+
+class ExperimentType(Enum):
+    """Experiment types."""
+
+    CASH_REINFORCE = 1
+    RANDOM_SEARCH = 2

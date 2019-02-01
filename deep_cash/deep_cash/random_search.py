@@ -15,20 +15,28 @@ class CASHRandomSearch(object):
         self.t_env = t_env
         self._metrics_logger = metrics_logger
 
-    def fit(self, n_episodes: int, n_iter: int):
+    def fit(self, n_episodes: int, n_iter: int, verbose: bool = False,
+            procnum: int = None):
+        print("Running Random search CASH procedure.")
         self.tracker = MetricsTracker()
         for i_episode in range(n_episodes):
             # TODO: not sure if this for loop should be parallelized
             self.t_env.sample_data_env()
-            self.end_episode(i_episode, n_iter, *self.start_episode(n_iter))
+            msg = "episode %d, task: %s" % (
+                i_episode, self.t_env.current_data_env.name)
+            if procnum is not None:
+                msg = "proc num: %d, %s" % (procnum, msg)
+            print("\n" + msg)
+            self.end_episode(
+                i_episode, n_iter, *self.start_episode(n_iter, verbose))
             if self._metrics_logger is not None:
                 self._metrics_logger(self.tracker)
 
-    def start_episode(self, n_iter):
+    def start_episode(self, n_iter, verbose):
         mlf_signature = TARGET_TYPE_TO_MLF_SIGNATURE[
-                self.t_env.current_data_env.target_type]
+            self.t_env.current_data_env.target_type]
         mlfs, rewards, scores = [], [], []
-        for i_iter in range(n_iter):
+        for i in range(n_iter):
             # TODO: this for loop can be parallelized
             self.t_env.sample_task_state()
             mlf = self.a_space.sample_ml_framework(mlf_signature)
@@ -39,6 +47,11 @@ class CASHRandomSearch(object):
                 mlfs.append(mlf)
                 scores.append(score)
             rewards.append(reward)
+            if verbose:
+                print(
+                    "iter %d - n valid mlf: %d/%d" % (
+                        i, len(mlfs), i + 1),
+                    sep=" ", end="\r", flush=True)
         return mlfs, rewards, scores
 
     def end_episode(self, i_episode, n_iter, mlfs, rewards, scores):
@@ -48,9 +61,10 @@ class CASHRandomSearch(object):
             [tuple(mlf.named_steps.keys()) for mlf in mlfs]))
         n_unique_hyperparams = len(set(
             [str(mlf.get_params().items()) for mlf in mlfs]))
-        mlf_diversity = utils._diversity_metric(n_unique_mlfs, n_iter)
+        mlf_diversity = utils._diversity_metric(
+            n_unique_mlfs, n_successful_mlfs)
         hyperparam_diversity = utils._diversity_metric(
-            n_unique_hyperparams, n_iter)
+            n_unique_hyperparams, n_successful_mlfs)
 
         # NOTE that the random search fitter doesn't use rewards but it's
         # collect in order to compare with CASH agent.
@@ -84,5 +98,10 @@ class CASHRandomSearch(object):
         if self._metrics_logger is not None:
             self._metrics_logger(self.tracker)
 
+    @property
     def history(self):
         return self.tracker.history
+
+    @property
+    def best_mlfs(self):
+        return self.tracker.best_mlfs

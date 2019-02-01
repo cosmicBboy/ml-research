@@ -84,7 +84,7 @@ def test_cash_reinforce_fit():
         n_episodes=n_episodes,
         **_fit_kwargs())
 
-    history = pd.DataFrame(reinforce.history())
+    history = pd.DataFrame(reinforce.history)
     assert history.shape[0] == n_episodes
     for metric in [
             "mean_rewards",
@@ -103,8 +103,7 @@ def test_cash_reinforce_fit():
             "n_unique_mlfs",
             "n_unique_hyperparams",
             "mlf_diversity",
-            "hyperparam_diversity",
-            "best_mlfs"]:
+            "hyperparam_diversity"]:
         assert col in history
 
 
@@ -192,7 +191,7 @@ def test_cash_reinforce_regressor():
         reinforce.fit(
             n_episodes=n_episodes,
             **_fit_kwargs())
-        history = pd.DataFrame(reinforce.history())
+        history = pd.DataFrame(reinforce.history)
         assert history.shape[0] == n_episodes
 
 
@@ -235,7 +234,7 @@ def test_cash_kaggle_regression_data():
     reinforce.fit(
         n_episodes=n_episodes,
         **_fit_kwargs())
-    history = pd.DataFrame(reinforce.history())
+    history = pd.DataFrame(reinforce.history)
     assert history.shape[0] == n_episodes
 
 
@@ -259,7 +258,7 @@ def test_cash_kaggle_classification_data():
     reinforce.fit(
         n_episodes=n_episodes,
         **_fit_kwargs())
-    history = pd.DataFrame(reinforce.history())
+    history = pd.DataFrame(reinforce.history)
     assert history.shape[0] == n_episodes
 
 
@@ -352,4 +351,4 @@ def test_random_search():
         _algorithm_space(),
         _task_environment())
     cash_random.fit(n_episodes=10, n_iter=20)
-    assert all([len(x) == 10 for x in cash_random.history().values()])
+    assert all([len(x) == 10 for x in cash_random.history.values()])

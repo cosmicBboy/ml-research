@@ -120,9 +120,10 @@ class CASHReinforce(object):
             n_unique_mlfs = len(set((tuple(s) for s in self._algorithm_sets)))
             n_unique_hyperparams = len(set(
                 [str(d.items()) for d in self._hyperparameter_sets]))
-            mlf_diversity = utils._diversity_metric(n_unique_mlfs, n_iter)
+            mlf_diversity = utils._diversity_metric(
+                n_unique_mlfs, n_successful_mlfs)
             hyperparam_diversity = utils._diversity_metric(
-                n_unique_hyperparams, n_iter)
+                n_unique_hyperparams, n_successful_mlfs)
 
             mean_rewards = np.mean(self.controller.reward_buffer)
             if len(self._validation_scores) > 0:
@@ -155,9 +156,15 @@ class CASHReinforce(object):
                 self._metrics_logger(self.tracker)
         return self
 
+    @property
     def history(self):
-        """Get metadata history."""
+        """Get metrics history per episode."""
         return self.tracker.history
+
+    @property
+    def best_mlfs(self):
+        """Get best mlfs per episode."""
+        return self.tracker.best_mlfs
 
     def start_episode(self, n_iter, verbose):
         """Begin training the controller."""
