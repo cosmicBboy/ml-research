@@ -20,9 +20,14 @@ data.
 
 # Quickstart
 
-add deep_cash project to PYTHONPATH and binary to PATH
+pre-install dependencies:
 ```
-$ . .env
+pip install numpy scipy
+```
+
+install `deep_cash` library:
+```
+pip install -e .
 ```
 
 then you can run an experiment with the `deep-cash` cli.
