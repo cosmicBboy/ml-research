@@ -262,7 +262,7 @@ class CASHReinforce(object):
         # one step of gradient descent
         loss.backward()
         # gradient clipping to prevent exploding gradient
-        nn.utils.clip_grad_norm(self.controller.parameters(), 20)
+        nn.utils.clip_grad_norm_(self.controller.parameters(), 20)
         self.optim.step()
 
         grad_agg = sum([
@@ -274,7 +274,7 @@ class CASHReinforce(object):
         del self.controller.reward_buffer[:]
         del self.controller.entropy_buffer[:]
 
-        return loss.data[0], grad_agg
+        return loss.data.item(), grad_agg
 
     def _update_log_prob_buffer(self, actions):
         self.controller.log_prob_buffer.append(
