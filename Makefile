@@ -1,5 +1,5 @@
 deps:
-	conda install pytorch torchvision -y -c pytorch
+	conda install pytorch==0.3.1 torchvision -y -c pytorch
 	conda install -c conda-forge \
 		click \
 		dash \
@@ -14,7 +14,7 @@ deps:
 		jupyterlab \
 		plotly \
 		seaborn \
-		scikit-learn \
+		scikit-learn==0.19.2 \
 		ipykernel \
 		pytest \
 		floydhub \
