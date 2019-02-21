@@ -26,7 +26,7 @@ n_episodes = 100
 n_iter = 10
 learning_rate = 0.003
 error_reward = 0
-logger = None
+metrics_logger = None
 fit_verbose = True
 
 hidden_size = 30
@@ -66,7 +66,7 @@ reinforce = CASHReinforce(
     controller,
     t_env,
     with_baseline=False,
-    metrics_logger=logger)
+    metrics_logger=metrics_logger)
 
 reinforce.fit(
     optim=torch.optim.Adam,

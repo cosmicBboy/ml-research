@@ -47,6 +47,7 @@ class DataSourceType(Enum):
     OPEN_ML = 2
     KAGGLE = 3
     AUTOSKLEARN_BENCHMARK = 4
+    KIOSK = 5
 
 
 class CASHComponent(Enum):
