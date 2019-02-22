@@ -46,7 +46,8 @@ class TaskEnvironment(object):
             dataset_names=None,
             test_dataset_names=None,
             error_reward=-0.1,
-            n_samples=None):
+            n_samples=None,
+            env_source_map=environments.envs):
         """Initialize task environment.
 
         :param list[str] env_sources: list of data environment source names.
@@ -116,28 +117,25 @@ class TaskEnvironment(object):
         self.enforce_limits = enforce_limits
         self.per_framework_time_limit = per_framework_time_limit
         self.per_framework_memory_limit = per_framework_memory_limit
-        self._dataset_names = dataset_names
-        self._test_dataset_names = test_dataset_names
-        self._env_sources = [DataSourceType[e] for e in env_sources]
-        test_env_sources = [] if test_env_sources is None else test_env_sources
-        self._test_env_sources = [DataSourceType[e] for e in test_env_sources]
-        self._target_types = [TargetType[t] for t in target_types]
 
         test_set_config = {} if test_set_config is None else test_set_config
-        self._test_set_config = {
+        test_set_config = {
             DataSourceType[k]: v for k, v in test_set_config.items()}
+
+        test_env_sources = [] if test_env_sources is None else test_env_sources
+        test_env_sources = [DataSourceType[e] for e in test_env_sources]
 
         # set train and test data environments
         get_envs = partial(
-            environments.envs,
-            target_types=self._target_types,
-            test_set_config=self._test_set_config)
+            env_source_map,
+            target_types=[TargetType[t] for t in target_types],
+            test_set_config=test_set_config)
         self.data_distribution = get_envs(
-            self._dataset_names, self._env_sources)
+            dataset_names, [DataSourceType[e] for e in env_sources])
         self.test_data_distribution = None
-        if self._test_env_sources is not None:
+        if test_env_sources is not None:
             self.test_data_distribution = get_envs(
-                self._test_dataset_names, self._test_env_sources)
+                test_dataset_names, test_env_sources)
 
         # TODO: the metafeature spec should be somehow persisted along with the
         # trained CASHController. Need to create a method in cash_reinforce
