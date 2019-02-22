@@ -44,7 +44,7 @@ ENV_SOURCES = {
 
 def envs(dataset_names=None, sources=None, target_types=None,
          test_set_config=None, env_source_map=ENV_SOURCES):
-    """Get classification environments.
+    """Get environments.
 
     :param list[DataSourceType] sources: only get data envs from these sources.
     :param list[str] dataset_names: only include these datasets in data dist.

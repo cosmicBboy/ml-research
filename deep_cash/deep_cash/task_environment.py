@@ -47,7 +47,7 @@ class TaskEnvironment(object):
             test_dataset_names=None,
             error_reward=-0.1,
             n_samples=None,
-            env_source_map=environments.ENV_SOURCES):
+            env_gen=environments.envs):
         """Initialize task environment.
 
         :param list[str] env_sources: list of data environment source names.
@@ -131,10 +131,9 @@ class TaskEnvironment(object):
 
         # set train and test data environments
         get_envs = partial(
-            environments.envs,
+            env_gen,
             target_types=[TargetType[t] for t in target_types],
-            test_set_config=test_set_config,
-            env_source_map=env_source_map)
+            test_set_config=test_set_config)
         self.data_distribution = get_envs(
             dataset_names, [DataSourceType[e] for e in env_sources])
         self.test_data_distribution = None
@@ -183,7 +182,7 @@ class TaskEnvironment(object):
         :returns: a list of dataset names.
         :rtype: list[str]
         """
-        return [d["dataset_name"] for d in self.data_distribution]
+        return [d.name for d in self.data_distribution]
 
     @property
     def error_reward(self):
