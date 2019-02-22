@@ -43,7 +43,7 @@ ENV_SOURCES = {
 
 
 def envs(dataset_names=None, sources=None, target_types=None,
-         test_set_config=None):
+         test_set_config=None, env_source_map=ENV_SOURCES):
     """Get classification environments.
 
     :param list[DataSourceType] sources: only get data envs from these sources.
@@ -60,9 +60,9 @@ def envs(dataset_names=None, sources=None, target_types=None,
     test_set_config = {} if test_set_config is None else test_set_config
     _envs = []
     if sources is None:
-        sources = list(ENV_SOURCES.keys())
+        sources = list(env_source_map.keys())
     for env_source in sources:
-        _envs.extend(ENV_SOURCES[env_source](
+        _envs.extend(env_source_map[env_source](
             dataset_names, **test_set_config.get(env_source, {})))
     if target_types:
         _envs = [e for e in _envs if e.target_type in target_types]

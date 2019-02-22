@@ -47,7 +47,7 @@ class TaskEnvironment(object):
             test_dataset_names=None,
             error_reward=-0.1,
             n_samples=None,
-            env_source_map=environments.envs):
+            env_source_map=environments.ENV_SOURCES):
         """Initialize task environment.
 
         :param list[str] env_sources: list of data environment source names.
@@ -96,6 +96,10 @@ class TaskEnvironment(object):
         :param int|None n_samples: number of samples to include in the data
             environment. If None, includes all samples. This should mainly be
             used for testing purposes to speed up fitting time.
+        :param dict[DataSourceType, callable] env_source_map: data source type
+            maps to a function with a signature
+
+            (n: int, test_size: float, random_state: int|None, verbose: bool)
         """
         # TODO: need to add an attribute that normalizes the output of the
         # scorer function to support different tasks. Currently, the default
@@ -127,9 +131,10 @@ class TaskEnvironment(object):
 
         # set train and test data environments
         get_envs = partial(
-            env_source_map,
+            environments.envs,
             target_types=[TargetType[t] for t in target_types],
-            test_set_config=test_set_config)
+            test_set_config=test_set_config,
+            env_source_map=env_source_map)
         self.data_distribution = get_envs(
             dataset_names, [DataSourceType[e] for e in env_sources])
         self.test_data_distribution = None
