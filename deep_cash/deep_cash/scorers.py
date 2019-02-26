@@ -70,6 +70,24 @@ def accuracy():
         needs_proba=False)
 
 
+def precision():
+    return Scorer(
+        name="precision",
+        fn=sklearn.metrics.precision_score,
+        reward_transformer=None,
+        comparator=operator.gt,
+        needs_proba=False)
+
+
+def recall():
+    return Scorer(
+        name="recall",
+        fn=sklearn.metrics.recall_score,
+        reward_transformer=None,
+        comparator=operator.gt,
+        needs_proba=False)
+
+
 def f1_score_weighted_average():
     """F1 score weighted average scorer."""
     return Scorer(

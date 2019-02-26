@@ -32,6 +32,8 @@ def test_classification_scorers():
 
     for scorer in [
             scorers.accuracy(),
+            scorers.precision(),
+            scorers.recall(),
             scorers.f1_score_weighted_average(),
             scorers.f1_score_macro(),
             scorers.log_loss(),
