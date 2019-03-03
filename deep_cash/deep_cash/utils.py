@@ -97,6 +97,14 @@ def freeze_model(model):
     return model
 
 
+def models_are_equal(x, y):
+    return x.config == y.config and \
+        len(x.state_dict()) == len(y.state_dict()) and \
+        all((
+            k1 == k2 and (v1 == v2).all() for (k1, v1), (k2, v2) in
+            zip(x.state_dict().items(), y.state_dict().items())))
+
+
 def aux_tensor(prev_reward):
     """Create an auxiliary input tensor for previous reward and action.
 

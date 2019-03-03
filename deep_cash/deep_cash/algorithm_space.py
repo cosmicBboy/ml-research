@@ -246,6 +246,25 @@ class AlgorithmSpace(object):
     def set_random_state(self, random_state):
         np.random.seed(random_state)
 
+    @property
+    def config(self):
+        return {
+            "data_preprocessors": self.data_preprocessors,
+            "feature_preprocessors": self.feature_preprocessors,
+            "classifiers": self.classifiers,
+            "regressors": self.regressors,
+            "with_start_token": self.with_start_token,
+            "with_end_token": self.with_end_token,
+            "with_none_token": self.with_none_token,
+            "hyperparam_with_start_token": self.hyperparam_with_start_token,
+            "hyperparam_with_end_token": self.hyperparam_with_end_token,
+            "hyperparam_with_none_token": self.hyperparam_with_none_token,
+            "random_state": self.random_state,
+        }
+
+    def __eq__(self, other):
+        return self.config == other.config
+
 
 def get_data_preprocessors():
     """Get all data preprocessors in structured algorithm space."""

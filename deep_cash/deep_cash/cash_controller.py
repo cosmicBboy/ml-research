@@ -12,7 +12,7 @@ import dill
 import torch
 import torch.nn as nn
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from pathlib import Path
 from torch.autograd import Variable
 from torch.distributions import Categorical
@@ -282,11 +282,9 @@ class CASHController(nn.Module):
         """Initialize action input state."""
         return Variable(torch.zeros(1, 1, self.input_size))
 
-    def save(self, path):
-        """Save weights and configuration."""
-        path = Path(path)
-        config_fp = path.parent / (path.stem + ".pkl")
-        config = {
+    @property
+    def config(self):
+        return {
             "metafeature_size": self.metafeature_size,
             "input_size": self.input_size,
             "hidden_size": self.hidden_size,
@@ -295,16 +293,21 @@ class CASHController(nn.Module):
             "dropout_rate": self.dropout_rate,
             "num_rnn_layers": self.num_rnn_layers,
         }
-        with config_fp.open("w+b") as fp:
-            dill.dump(config, fp)
-        torch.save(self.state_dict(), path)
+
+    def save(self, path):
+        """Save weights and configuration."""
+        torch.save(
+            OrderedDict({
+                "config": self.config,
+                "weights": self.state_dict(),
+            }),
+            path,
+            pickle_module=dill)
 
     @classmethod
     def load(cls, path):
         """Load saved controller."""
-        path = Path(path)
-        config_fp = path.parent / (path.stem + ".pkl")
-        with config_fp.open("r+b") as fp:
-            rnn = cls(**dill.load(fp))
-        rnn.load_state_dict(torch.load(path))
+        model_config = torch.load(path, pickle_module=dill)
+        rnn = cls(**model_config["config"])
+        rnn.load_state_dict(model_config["weights"])
         return rnn
