@@ -277,12 +277,13 @@ class TaskEnvironment(object):
                 clone(mlf),
                 self._current_task.X_train,
                 self._current_task.y_train)
-            logger.info("MLF FIT RESULT: %s" % result)
+            logger.info(
+                "MLF FIT RESULT: %s" % ", ".join(["%s" % r for r in result]))
         except MemoryError as e:
             # catch memory error that may occur when dumping results from
             # the pynisher multiprocessing job.
             logger.info("ENCOUNTERED MEMORY ERROR: %s, MLF: %s, RESULT: %s" %
-                        (e, mlf_str, result))
+                        (e, mlf_str, ", ".join(["%s" % r for r in result])))
 
         try:
             mlf, fit_error = result
