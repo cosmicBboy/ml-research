@@ -327,10 +327,10 @@ class TaskEnvironment(object):
 
     def score(self, mlf, X, y):
         """Scores an MLF against some data."""
-        logging.info("SCORING MLF: %s" % utils._ml_framework_string(mlf))
         none_return = None, None
         if mlf is None:
             return none_return
+        logging.info("SCORING MLF: %s" % utils._ml_framework_string(mlf))
 
         y_hat = _ml_framework_predict(
             mlf, X, self.current_data_env.target_type, self.scorer.needs_proba)
