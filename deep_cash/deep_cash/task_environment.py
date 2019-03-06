@@ -270,12 +270,14 @@ class TaskEnvironment(object):
             if error was raised by calling `mlf.fit`.
         """
         mlf_str = utils._ml_framework_string(mlf)
+        logger.info("FITTING MLF: %s" % mlf_str)
 
         try:
             result = self.ml_framework_fitter(
                 clone(mlf),
                 self._current_task.X_train,
                 self._current_task.y_train)
+            logger.info("MLF FIT RESULT: %s" % result)
         except MemoryError as e:
             # catch memory error that may occur when dumping results from
             # the pynisher multiprocessing job.
@@ -324,6 +326,7 @@ class TaskEnvironment(object):
 
     def score(self, mlf, X, y):
         """Scores an MLF against some data."""
+        logging.info("SCORING MLF: %s" % utils._ml_framework_string(mlf))
         none_return = None, None
         if mlf is None:
             return none_return
