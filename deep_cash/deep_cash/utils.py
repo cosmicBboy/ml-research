@@ -54,7 +54,7 @@ def get_metafeatures_dim(metafeatures_spec):
     return sum([len(m[2]) if m[1] is str else 1 for m in metafeatures_spec])
 
 
-def init_logging(log_path="/tmp/deep_cash.log"):
+def init_logging(log_path="/tmp/deep_cash.log", log_level=logging.INFO):
     """Initialize logging at the module level.
 
     :param str|None log_path: path to write logs. If None, write to stdout
@@ -68,7 +68,7 @@ def init_logging(log_path="/tmp/deep_cash.log"):
             f.close()
     logging.basicConfig(
         filename=log_path,
-        level=logging.INFO,
+        level=log_level,
         format="%(asctime)s: %(levelname)s: %(name)s: %(message)s")
 
 
