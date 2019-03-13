@@ -21,7 +21,6 @@ from .errors import is_valid_fit_error, is_valid_predict_error, \
 from . import scorers, utils
 
 logger = logging.getLogger(__name__)
-FIT_GRACE_PERIOD = 30
 
 
 PYNISHER_EXCEPTION = TimeoutException, MemorylimitException, \
@@ -44,6 +43,7 @@ class TaskEnvironment(object):
             enforce_limits=True,
             per_framework_time_limit=10,
             per_framework_memory_limit=3072,
+            fit_grace_period=30,
             dataset_names=None,
             test_dataset_names=None,
             error_reward=-0.1,
@@ -88,6 +88,10 @@ class TaskEnvironment(object):
             MLF fitting, the task environment returns an error reward.
             NOTE: this doesn't seem like this works with Mac OSX, see -
             https://stackoverflow.com/questions/3274385/how-to-limit-memory-of-a-os-x-program-ulimit-v-neither-m-are-working  # noqa E53
+        :param int fit_grace_period: grace period in seconds that enables
+            fit process to end properly so that subprocess that fits model
+            can correctly identify cause of error if any. For more details
+            see: https://github.com/sfalkner/pynisher
         :param list[str] dataset_names: names of datasets to include in the
             task environment.
         :param list[str] test_dataset_names: names of datasets to exclude from
@@ -124,6 +128,7 @@ class TaskEnvironment(object):
         self.enforce_limits = enforce_limits
         self.per_framework_time_limit = per_framework_time_limit
         self.per_framework_memory_limit = per_framework_memory_limit
+        self.fit_grace_period = fit_grace_period
 
         test_set_config = {} if test_set_config is None else test_set_config
         test_set_config = {
@@ -172,7 +177,7 @@ class TaskEnvironment(object):
             self.ml_framework_fitter = pynisher.enforce_limits(
                 mem_in_mb=self.per_framework_memory_limit,
                 wall_time_in_s=self.per_framework_time_limit,
-                grace_period_in_s=FIT_GRACE_PERIOD,
+                grace_period_in_s=self.fit_grace_period,
                 logger=logger)(_ml_framework_fitter)
         else:
             self.ml_framework_fitter = _ml_framework_fitter
