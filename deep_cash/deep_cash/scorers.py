@@ -24,6 +24,31 @@ Scorer = namedtuple(
 RegressionScorer = partial(Scorer, needs_proba=False)
 
 
+def multiclass_classification_metrics():
+    return [
+        accuracy(),
+        precision(),
+        recall(),
+        f1_score_weighted_average(),
+        f1_score_macro(),
+        log_loss(),
+    ]
+
+
+def binary_classification_metrics():
+    return multiclass_classification_metrics() + [roc_auc()]
+
+
+def regression_metrics():
+    return [
+        mean_absolute_error(),
+        mean_squared_error(),
+        r2_score(),
+        root_mean_squared_error(),
+        root_mean_squared_log_error(),
+    ]
+
+
 def exponentiated_log(x, gamma=0.1):
     """Bounds functions with a range of >= 0 to range of [0, 1].
 

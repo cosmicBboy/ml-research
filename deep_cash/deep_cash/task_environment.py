@@ -1,5 +1,6 @@
 """A handler for generating tasks and datasets and evaluating ml frameworks."""
 
+import itertools
 import logging
 import numpy as np
 import pynisher
@@ -38,6 +39,7 @@ class TaskEnvironment(object):
             test_set_config=None,
             scorers=None,
             use_target_type_scorers=True,
+            include_scoring_metafeature=False,
             score_transformers=None,
             random_state=None,
             enforce_limits=True,
@@ -75,6 +77,7 @@ class TaskEnvironment(object):
         :param bool use_target_type_scorers: whether or not to use target-type-
             specific scorers specified in the `scorers` argument, or to use
             data-environment-specific scorers when available.
+        :param bool include_scoring_metafeature: whether or not to use the
         :param int|None random_state: random seed determining the order of
             sampled data environments and the composition of the
             training/validation sets.
@@ -124,6 +127,7 @@ class TaskEnvironment(object):
 
         self._scorers = get_default_scorers() if scorers is None else scorers
         self._use_target_type_scorers = use_target_type_scorers
+        self._include_scoring_metafeature = include_scoring_metafeature
         self.random_state = random_state
         self.enforce_limits = enforce_limits
         self.per_framework_time_limit = per_framework_time_limit
@@ -138,9 +142,10 @@ class TaskEnvironment(object):
         test_env_sources = [DataSourceType[e] for e in test_env_sources]
 
         # set train and test data environments
+        self.target_types = [TargetType[t] for t in target_types]
         get_envs = partial(
             env_gen,
-            target_types=[TargetType[t] for t in target_types],
+            target_types=self.target_types,
             test_set_config=test_set_config)
         self.data_distribution = get_envs(
             dataset_names, [DataSourceType[e] for e in env_sources])
@@ -154,8 +159,17 @@ class TaskEnvironment(object):
         # module that saves the data env, and test env training datasets.
         # This is required so that the data_env_name in the metafeature spec
         # is consistent at test time.
+
+        self.target_type_to_scorer_distribution = None
+        if self._include_scoring_metafeature:
+            self.target_type_to_scorer_distribution = \
+                get_scorer_distributions(self.target_types)
+            metafeature_scorer_distribution = list(set(itertools.chain(*[
+                s for s in self.target_type_to_scorer_distribution.values()])))
+        else:
+            metafeature_scorer_distribution = None
         self.metafeature_spec = utils.create_metafeature_spec(
-            self.data_distribution, null_data_env=NULL_DATA_ENV)
+            self.data_distribution, metafeature_scorer_distribution)
         self.metafeature_dim = utils.get_metafeatures_dim(
             self.metafeature_spec)
         self.n_data_envs = len(self.data_distribution)
@@ -163,9 +177,6 @@ class TaskEnvironment(object):
         self._n_samples = n_samples
         self.current_data_env = None
         self._current_task = None
-        self.create_metafeature_tensor = partial(
-            utils._create_metafeature_tensor,
-            metafeature_spec=self.metafeature_spec)
 
         # TODO: check if self.data_distribution is empty, if so raise
         # ValueError
@@ -209,7 +220,18 @@ class TaskEnvironment(object):
         # TODO: probably want to standardize the scorer across tasks of
         # a certain target type, otherwise the reward function will very
         # complex
-        if self._use_target_type_scorers or \
+        if self._include_scoring_metafeature:
+            # randomly select scorer based on target type of current data env
+            if self.target_type_to_scorer_distribution is None:
+                raise ValueError(
+                    "target_type_to_scorer_distribution should be set. "
+                    "Make sure you specify include_scoring_metafeature=True "
+                    "when initializing the task environment")
+            score_distribution = self.target_type_to_scorer_distribution[
+                self.current_data_env.target_type]
+            self.scorer = score_distribution[
+                np.random.randint(len(score_distribution))]
+        elif self._use_target_type_scorers or \
                 self.current_data_env.scorer is None:
             self.scorer = self._scorers[self.current_data_env.target_type]
         else:
@@ -240,7 +262,7 @@ class TaskEnvironment(object):
             name = self.current_data_env.name
         elif data_env_partition == "test":
             name = NULL_DATA_ENV
-        return self.get_task_state(name, self._current_task.X_train)
+        return self.get_task_state(self._current_task.X_train, name)
 
     def get_test_task_state(self, data_env_partition="train"):
         if data_env_partition == "train":
@@ -249,14 +271,17 @@ class TaskEnvironment(object):
             # for test data envs, need to encode the data environment with the
             # null token, since it's a new category.
             name = NULL_DATA_ENV
-        return self.get_task_state(name, self.current_data_env.X_test)
+        return self.get_task_state(self.current_data_env.X_test, name)
 
-    def get_task_state(self, data_env_name, X):
+    def get_task_state(self, X, data_env_name):
         """Get state of task env, used as initial state of MLF proposal."""
-        return self.create_metafeature_tensor(
-            _metafeatures(data_env_name, X),
+        metafeature_args = [X, data_env_name, self.scorer.name] if \
+            self._include_scoring_metafeature else [X, data_env_name]
+        return utils._create_metafeature_tensor(
+            _metafeatures(*metafeature_args),
             # initial state is only a sequence of one item
-            seq=[None])
+            seq=[None],
+            metafeature_spec=self.metafeature_spec)
 
     def evaluate(self, mlf):
         """Evaluate an ML framework by fitting and scoring on data.
@@ -390,14 +415,26 @@ def get_default_scorers():
     }
 
 
-def _metafeatures(data_env_name, X_train):
+def get_scorer_distributions(target_types):
+    return {
+        k: v for k, v in (
+            (TargetType.BINARY, scorers.binary_classification_metrics()),
+            (TargetType.MULTICLASS,
+                scorers.multiclass_classification_metrics()),
+            (TargetType.REGRESSION, scorers.regression_metrics()),
+        ) if k in target_types}
+
+
+def _metafeatures(X_train, data_env_name, scorer_name=None):
     """Create a metafeature vector.
 
     - data env name: categorical, e.g. "load_iris"
     - number of examples: continuous
     - number of features: continuous
     """
-    return np.array([data_env_name, X_train.shape[0], X_train.shape[1]])
+    return np.array(list(filter(
+        None,
+        [X_train.shape[0], X_train.shape[1], data_env_name, scorer_name])))
 
 
 def _ml_framework_fitter(mlf, X, y):

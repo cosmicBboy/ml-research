@@ -11,6 +11,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 
 from .data_types import CASHComponent
+from .data_environments.data_environment import NULL_DATA_ENV
 
 
 def add_metafeatures_hidden_units(controller):
@@ -32,21 +33,22 @@ def add_metafeatures_hidden_units(controller):
     return controller
 
 
-def create_metafeature_spec(data_distribution, null_data_env=None):
+def create_metafeature_spec(data_distribution, scorer_distribution=None):
     """Create a metafeature spec.
 
     NOTE: may need to make this a class if it becomes more complex.
     """
-    # TODO: the data_env_name feature should be a categorical variable with
-    # a NONE token for new datasets that the controller has not seen before.
-    data_dist_names = [data_env.name for data_env in data_distribution]
-    if null_data_env:
-        data_dist_names += [null_data_env]
-    return [
-        ("data_env_name", str, data_dist_names),
+    if scorer_distribution is not None:
+        # does it make sense to have a NULL_SCORER?
+        scorer_distribution = (
+            "scorer_distribution", str, [s.name for s in scorer_distribution])
+    return list(filter(None, [
         ("number_of_examples", int, None),
         ("number_of_features", int, None),
-    ]
+        ("data_env_name", str,
+            [d.name for d in data_distribution] + [NULL_DATA_ENV]),
+        scorer_distribution,
+    ]))
 
 
 def get_metafeatures_dim(metafeatures_spec):
