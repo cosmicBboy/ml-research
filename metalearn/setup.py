@@ -9,6 +9,7 @@ setup(
     version="0.0.2",
     description="MetaRL-based Estimator using Task-encodings for AutoML",
     long_description=long_description,
+    long_description_content_type='text/markdown',
     url="https://github.com/cosmicBboy/ml-research/tree/master/metalearn",
     packages=[
         "metalearn",
