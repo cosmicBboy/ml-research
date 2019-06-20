@@ -6,7 +6,7 @@ with open('README.md') as f:
 
 setup(
     name="metalearn-rl",
-    version="0.0.2",
+    version="0.0.3",
     description="MetaRL-based Estimator using Task-encodings for AutoML",
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -15,6 +15,7 @@ setup(
         "metalearn",
         "metalearn.components",
         "metalearn.data_environments",
+        "metalearn.data_environments.feature_maps",
         "metalearn.inference"],
     install_requires=[
         "click==6.7",
