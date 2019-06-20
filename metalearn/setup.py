@@ -2,7 +2,7 @@ from setuptools import setup
 
 
 setup(
-    name="metalearn",
+    name="metalearn-rl",
     version="0.0.2",
     description="MetaRL-based Estimator using Task-encodings for AutoML",
     url="https://github.com/cosmicBboy/ml-research/tree/master/metalearn",
