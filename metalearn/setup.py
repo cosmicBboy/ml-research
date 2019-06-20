@@ -2,10 +2,9 @@ from setuptools import setup
 
 
 setup(
-    name="deep-cash",
-    version="0.0.1",
-    description="Deep RL approach to Combined Algorithm Search and "
-                "Hyperparameter Optimization",
+    name="metalearn",
+    version="0.0.2",
+    description="MetaRL-based Estimator using Task-encodings for AutoML",
     url="https://github.com/cosmicBboy/ml-research/tree/master/metalearn",
     packages=[
         "metalearn",
@@ -27,5 +26,5 @@ setup(
         "scipy",
         "yamlordereddictloader",
     ],
-    scripts=["bin/deep-cash"],
+    scripts=["bin/metalearn"],
 )
