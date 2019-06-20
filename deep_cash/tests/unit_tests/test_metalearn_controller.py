@@ -1,5 +1,5 @@
 from metalearn.algorithm_space import AlgorithmSpace
-from metalearn.cash_controller import MetaLearnController
+from metalearn.metalearn_controller import MetaLearnController
 from metalearn import components, utils
 
 import io
@@ -18,7 +18,7 @@ def _a_space():
         random_state=100)
 
 
-def _cash_controller(
+def _metalearn_controller(
         a_space,
         metafeature_size=METAFEATURE_SIZE,
         input_size=5,
@@ -39,32 +39,32 @@ def _cash_controller(
 def test_controller_equality():
     """CASH controller equality and non-equality checks."""
     torch.manual_seed(1000)
-    controller = _cash_controller(_a_space())
+    controller = _metalearn_controller(_a_space())
     assert utils.models_are_equal(controller, controller)
 
     torch.manual_seed(1000)
-    assert utils.models_are_equal(controller, _cash_controller(_a_space()))
+    assert utils.models_are_equal(controller, _metalearn_controller(_a_space()))
 
     # changing the random seed will lead to different weights
     torch.manual_seed(1001)
-    assert not utils.models_are_equal(controller, _cash_controller(_a_space()))
+    assert not utils.models_are_equal(controller, _metalearn_controller(_a_space()))
 
     # changing the algorithm space will lead to inequality
     torch.manual_seed(1000)
     diff_a_space = AlgorithmSpace(
         classifiers=[components.classifiers.logistic_regression()])
-    diff_controller = _cash_controller(diff_a_space)
+    diff_controller = _metalearn_controller(diff_a_space)
     assert not utils.models_are_equal(controller, diff_controller)
 
     torch.manual_seed(1000)
     diff_a_space = AlgorithmSpace(
         regressors=[components.regressors.lasso_regression()])
-    diff_controller = _cash_controller(diff_a_space)
+    diff_controller = _metalearn_controller(diff_a_space)
     assert not utils.models_are_equal(controller, diff_controller)
 
     torch.manual_seed(1000)
     diff_a_space = AlgorithmSpace(random_state=101)
-    diff_controller = _cash_controller(diff_a_space)
+    diff_controller = _metalearn_controller(diff_a_space)
     assert not utils.models_are_equal(controller, diff_controller)
 
     # changing the cash config will lead to unequal controllers
@@ -78,13 +78,13 @@ def test_controller_equality():
     }
     for k, v in params.items():
         torch.manual_seed(1000)
-        diff_controller = _cash_controller(a_space, **{k: v})
+        diff_controller = _metalearn_controller(a_space, **{k: v})
         assert not utils.models_are_equal(controller, diff_controller)
 
 
 def test_save_load_tempfile():
     """Cash controller can be saved/loaded onto a file specified as path."""
-    w_controller = _cash_controller(_a_space())
+    w_controller = _metalearn_controller(_a_space())
     with tempfile.TemporaryFile() as f:
         w_controller.save(f)
         f.seek(0)
@@ -94,7 +94,7 @@ def test_save_load_tempfile():
 
 def test_save_load_buffer():
     """Cash controller can be saved/loaded onto a file-like object."""
-    w_controller = _cash_controller(_a_space())
+    w_controller = _metalearn_controller(_a_space())
     fileobj = io.BytesIO()
     w_controller.save(fileobj)
     fileobj.seek(0)

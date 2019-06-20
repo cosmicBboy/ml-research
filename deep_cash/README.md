@@ -234,15 +234,15 @@ the architecture of the system). The ordering is the following:
 The `./analysis` subfolder contains jupyter notebooks that visualize the
 performance of the cash controller over time. Currently there are 5 analyses
 in the project `analysis` subfolder:
-- `rnn_cash_controller_experiment_analysis.ipynb`: analyzing the output of
-  running `examples/example_rnn_cash_controller.py` with static plots.
-- `cash_controller_analysis.ipynb`: a basic interactive analysis
+- `rnn_metalearn_controller_experiment_analysis.ipynb`: analyzing the output of
+  running `examples/example_rnn_metalearn_controller.py` with static plots.
+- `metalearn_controller_analysis.ipynb`: a basic interactive analysis
   of a single job's outputs.
-- `cash_controller_multi_experiment_analysis.ipynb`: analyzes multiple
+- `metalearn_controller_multi_experiment_analysis.ipynb`: analyzes multiple
   job outputs, all assumed to have one trial (training run) per job.
-- `cash_controller_multi_trail_analysis.ipynb`: analyzes the
+- `metalearn_controller_multi_trail_analysis.ipynb`: analyzes the
   output of one job, but that job has multiple trials.
-- `cash_controller_multi_trial_experiment_analysis.ipynb`: analyzes
+- `metalearn_controller_multi_trial_experiment_analysis.ipynb`: analyzes
   the output of multiple jobs, each with multiple trials.
 
 

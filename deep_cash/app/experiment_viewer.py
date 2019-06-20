@@ -44,7 +44,7 @@ def read_results(job_nums, output_root=OUTPUT_ROOT):
         pd.read_csv(
             output_root /
             str(job_num) /
-            "rnn_cash_controller_experiment.csv")
+            "rnn_metalearn_controller_experiment.csv")
         .assign(job_number=job_num)
         .assign(job_trial_id=lambda df: df.job_number.astype(str).str.cat(
                 df.trial_number.astype(str), sep="-"))
@@ -69,7 +69,7 @@ def read_best_mlfs(job_nums, output_root=OUTPUT_ROOT):
     best_mlfs = []
     for job_num in job_nums:
         job_output_fp = OUTPUT_ROOT / str(job_num)
-        for fp in job_output_fp.glob("cash_controller_mlfs_trial_*/*.pkl"):
+        for fp in job_output_fp.glob("metalearn_controller_mlfs_trial_*/*.pkl"):
             mlf = joblib.load(fp)
             episode = int(
                 re.match("best_mlf_episode_(\d+).pkl", fp.name).group(1))

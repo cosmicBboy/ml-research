@@ -58,13 +58,13 @@ cash_random.fit(n_episodes=10, n_iter=20)
 
 history = pd.DataFrame(cash_random.history)
 history.to_csv(
-    str(data_path / "rnn_cash_controller_experiment.csv"), index=False)
+    str(data_path / "rnn_metalearn_controller_experiment.csv"), index=False)
 
-mlf_path = data_path / "rnn_cash_controller_experiment_mlfs"
+mlf_path = data_path / "rnn_metalearn_controller_experiment_mlfs"
 if mlf_path.exists():
     rmtree(mlf_path)
 mlf_path.mkdir()
 for i, mlf in enumerate(cash_random.best_mlfs):
     joblib.dump(mlf, mlf_path / ("best_mlf_episode_%d.pkl" % (i + 1)))
 
-cash_random.save(data_path / "rnn_cash_controller_experiment.pt")
+cash_random.save(data_path / "rnn_metalearn_controller_experiment.pt")

@@ -19,8 +19,8 @@ from sklearn.externals import joblib
 
 from .algorithm_space import AlgorithmSpace
 from .task_environment import TaskEnvironment
-from .cash_controller import MetaLearnController
-from .cash_reinforce import MetaLearnReinforce
+from .metalearn_controller import MetaLearnController
+from .metalearn_reinforce import MetaLearnReinforce
 from .data_environments.environments import envs
 from .data_types import ExperimentType
 from .loggers import get_loggers, empty_logger
@@ -108,7 +108,7 @@ def gather_history(return_dict):
 
 
 def save_best_mlfs(data_path, best_mlfs, procnum):
-    mlf_path = data_path / ("cash_controller_mlfs_trial_%d" % procnum)
+    mlf_path = data_path / ("metalearn_controller_mlfs_trial_%d" % procnum)
     mlf_path.mkdir(exist_ok=True)
     for i, mlf in enumerate(best_mlfs):
         joblib.dump(mlf, mlf_path / ("best_mlf_episode_%d.pkl" % (i + 1)))
@@ -231,7 +231,7 @@ def run_experiment(
 
     save_experiment(
         gather_history(return_dict),
-        data_path, "rnn_cash_controller_experiment.csv")
+        data_path, "rnn_metalearn_controller_experiment.csv")
 
 
 def run_random_search(

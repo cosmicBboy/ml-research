@@ -155,7 +155,7 @@ class TaskEnvironment(object):
                 test_dataset_names, test_env_sources)
 
         # TODO: the metafeature spec should be somehow persisted along with the
-        # trained MetaLearnController. Need to create a method in cash_reinforce
+        # trained MetaLearnController. Need to create a method in metalearn_reinforce
         # module that saves the data env, and test env training datasets.
         # This is required so that the data_env_name in the metafeature spec
         # is consistent at test time.
@@ -243,7 +243,7 @@ class TaskEnvironment(object):
         Currently the only hyperparameter that dictionary would apply to is
         the OneHotEncoder component.
 
-        This method is called in `cash_reinforce` to make sure that the
+        This method is called in `metalearn_reinforce` to make sure that the
         pipeline one-hot-encodes categorical features. Should make a test for
         this.
         """

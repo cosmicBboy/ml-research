@@ -11,8 +11,8 @@ from metalearn import components
 from metalearn.algorithm_space import AlgorithmSpace, \
     CLASSIFIER_MLF_SIGNATURE, REGRESSOR_MLF_SIGNATURE
 from metalearn.task_environment import TaskEnvironment
-from metalearn.cash_controller import MetaLearnController
-from metalearn.cash_reinforce import MetaLearnReinforce
+from metalearn.metalearn_controller import MetaLearnController
+from metalearn.metalearn_reinforce import MetaLearnReinforce
 from metalearn.random_search import CASHRandomSearch
 from metalearn import utils
 
@@ -44,7 +44,7 @@ def _algorithm_space(classifiers=None, regressors=None):
         hyperparam_with_none_token=False)
 
 
-def _cash_controller(a_space, t_env):
+def _metalearn_controller(a_space, t_env):
     return MetaLearnController(
         metafeature_size=t_env.metafeature_dim,
         input_size=5,
@@ -55,7 +55,7 @@ def _cash_controller(a_space, t_env):
         num_rnn_layers=3)
 
 
-def _cash_reinforce(controller, task_env, **kwargs):
+def _metalearn_reinforce(controller, task_env, **kwargs):
     return MetaLearnReinforce(
         controller,
         task_env,
@@ -73,13 +73,13 @@ def _fit_kwargs():
     }
 
 
-def test_cash_reinforce_fit():
+def test_metalearn_reinforce_fit():
     """Ensure DeepCASH training routine executes."""
     n_episodes = 20
     t_env = _task_environment()
     a_space = _algorithm_space()
-    controller = _cash_controller(a_space, t_env)
-    reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
+    controller = _metalearn_controller(a_space, t_env)
+    reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
     reinforce.fit(
         n_episodes=n_episodes,
         **_fit_kwargs())
@@ -107,13 +107,13 @@ def test_cash_reinforce_fit():
         assert col in history
 
 
-def test_cash_reinforce_fit_multi_baseline():
+def test_metalearn_reinforce_fit_multi_baseline():
     """Make sure that baseline function maintains buffers per data env."""
     n_episodes = 20
     t_env = _task_environment()
     a_space = _algorithm_space()
-    controller = _cash_controller(a_space, t_env)
-    reinforce = _cash_reinforce(
+    controller = _metalearn_controller(a_space, t_env)
+    reinforce = _metalearn_reinforce(
         controller, t_env, with_baseline=True, single_baseline=False)
     reinforce.fit(
         n_episodes=n_episodes,
@@ -128,10 +128,10 @@ def test_cash_zero_gradient():
     n_episodes = 10
     t_env = _task_environment()
     a_space = _algorithm_space()
-    controller = _cash_controller(a_space, t_env)
+    controller = _metalearn_controller(a_space, t_env)
     # don't train with baseline since this will modify the reward signal when
     # computing the `advantage = reward - baseline`.
-    reinforce = _cash_reinforce(controller, t_env, with_baseline=False)
+    reinforce = _metalearn_reinforce(controller, t_env, with_baseline=False)
     fit_kwargs = _fit_kwargs()
     fit_kwargs.update({"n_iter": 1})
     reinforce.fit(
@@ -164,8 +164,8 @@ def test_cash_entropy_regularizer():
         n_episodes = 3
         t_env = _task_environment()
         a_space = _algorithm_space()
-        controller = _cash_controller(a_space, t_env)
-        reinforce = _cash_reinforce(controller, t_env, **kwargs)
+        controller = _metalearn_controller(a_space, t_env)
+        reinforce = _metalearn_reinforce(controller, t_env, **kwargs)
         fit_kwargs = _fit_kwargs()
         fit_kwargs.update({"n_iter": 4})
         reinforce.fit(
@@ -177,7 +177,7 @@ def test_cash_entropy_regularizer():
         np.array(losses["baseline"])).all()
 
 
-def test_cash_reinforce_regressor():
+def test_metalearn_reinforce_regressor():
     """Test cash reinforce regression data environments."""
     n_episodes = 4
     for dataset in ["sklearn.boston", "sklearn.diabetes", "sklearn.linnerud"]:
@@ -186,8 +186,8 @@ def test_cash_reinforce_regressor():
             target_types=["REGRESSION"],
             dataset_names=[dataset])
         a_space = _algorithm_space()
-        controller = _cash_controller(a_space, t_env)
-        reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
+        controller = _metalearn_controller(a_space, t_env)
+        reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
         reinforce.fit(
             n_episodes=n_episodes,
             **_fit_kwargs())
@@ -229,8 +229,8 @@ def test_cash_kaggle_regression_data():
             "kaggle.house_prices_advanced_regression_techniques",
         ],
         n_samples=30)
-    controller = _cash_controller(a_space, t_env)
-    reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
+    controller = _metalearn_controller(a_space, t_env)
+    reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
     reinforce.fit(
         n_episodes=n_episodes,
         **_fit_kwargs())
@@ -253,8 +253,8 @@ def test_cash_kaggle_classification_data():
             "kaggle.costa_rican_household_poverty_prediction",
         ],
         n_samples=30)
-    controller = _cash_controller(a_space, t_env)
-    reinforce = _cash_reinforce(controller, t_env, with_baseline=True)
+    controller = _metalearn_controller(a_space, t_env)
+    reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
     reinforce.fit(
         n_episodes=n_episodes,
         **_fit_kwargs())
@@ -272,7 +272,7 @@ def _exclusion_mask_test_harness(n_episodes, a_space_kwargs, t_env_kwargs):
         **a_space_kwargs)
     t_env = _task_environment(
         env_sources=["SKLEARN"], n_samples=20, **t_env_kwargs)
-    controller = _cash_controller(a_space, t_env)
+    controller = _metalearn_controller(a_space, t_env)
     prev_reward, prev_action = 0, controller.init_action()
     # NOTE: this is a pared down version of how the reinforce fitter implements
     # the fit method

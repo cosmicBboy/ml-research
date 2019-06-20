@@ -11,8 +11,8 @@ from sklearn.externals import joblib
 
 from metalearn.task_environment import TaskEnvironment
 from metalearn.algorithm_space import AlgorithmSpace
-from metalearn.cash_controller import MetaLearnController
-from metalearn.cash_reinforce import MetaLearnReinforce
+from metalearn.metalearn_controller import MetaLearnController
+from metalearn.metalearn_reinforce import MetaLearnReinforce
 from metalearn.components import classifiers
 from metalearn import utils
 
@@ -78,13 +78,13 @@ reinforce.fit(
 
 history = pd.DataFrame(reinforce.history)
 history.to_csv(
-    str(data_path / "rnn_cash_controller_experiment.csv"), index=False)
+    str(data_path / "rnn_metalearn_controller_experiment.csv"), index=False)
 
-mlf_path = data_path / "rnn_cash_controller_experiment_mlfs"
+mlf_path = data_path / "rnn_metalearn_controller_experiment_mlfs"
 if mlf_path.exists():
     rmtree(mlf_path)
 mlf_path.mkdir()
 for i, mlf in enumerate(reinforce.best_mlfs):
     joblib.dump(mlf, mlf_path / ("best_mlf_episode_%d.pkl" % (i + 1)))
 
-controller.save(data_path / "rnn_cash_controller_experiment.pt")
+controller.save(data_path / "rnn_metalearn_controller_experiment.pt")

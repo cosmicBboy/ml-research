@@ -10,7 +10,7 @@ from collections import OrderedDict
 from pathlib import Path
 from sklearn.externals import joblib
 
-from metalearn.cash_controller import MetaLearnController
+from metalearn.metalearn_controller import MetaLearnController
 from metalearn.inference.inference_engine import CASHInference
 from metalearn.task_environment import TaskEnvironment
 from metalearn.data_environments import sklearn_classification
@@ -20,13 +20,13 @@ build_path = Path(os.path.dirname(__file__)) / ".." / "floyd_outputs" / "225"
 
 controller = MetaLearnController.load(build_path / "controller_trial_0.pt")
 experiment_results = pd.read_csv(
-    build_path / "rnn_cash_controller_experiment.csv")
-base_mlf_path = build_path / "cash_controller_mlfs_trial_0"
+    build_path / "rnn_metalearn_controller_experiment.csv")
+base_mlf_path = build_path / "metalearn_controller_mlfs_trial_0"
 
 # will need to make this part more elegant. But for now assume that we know
 # each dataset's corresponding scorer. Ideally, which scorer was used for a
 # particular episode would just be metadata in the
-# rnn_cash_controller_experiment.csv file.
+# rnn_metalearn_controller_experiment.csv file.
 sklearn_dataenvs = sklearn_classification.envs()
 
 # get top 10 best mlfs for each data env across all episodes.
