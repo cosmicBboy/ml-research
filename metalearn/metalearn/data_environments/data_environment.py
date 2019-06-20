@@ -77,6 +77,11 @@ def preprocess_features(features, feature_types):
     :param numpy.array features: rows are training instances and columns are
         features.
     :param list[FeatureType] feature_types: specifies feature types per column.
+
+    TODO: need to let the ML pipeline handle one-hot encoding of categorical
+        features so that the state can properly maintained in the test and
+        validation sets. Therefore, all this function should do is replace
+        the NA with a special "<NONE_CATEGORY>" token
     """
     clean_features = []
     for i, ftype in enumerate(feature_types):
