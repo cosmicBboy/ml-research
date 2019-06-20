@@ -12,7 +12,7 @@ from metalearn.algorithm_space import AlgorithmSpace, \
     CLASSIFIER_MLF_SIGNATURE, REGRESSOR_MLF_SIGNATURE
 from metalearn.task_environment import TaskEnvironment
 from metalearn.cash_controller import MetaLearnController
-from metalearn.cash_reinforce import CASHReinforce
+from metalearn.cash_reinforce import MetaLearnReinforce
 from metalearn.random_search import CASHRandomSearch
 from metalearn import utils
 
@@ -56,7 +56,7 @@ def _cash_controller(a_space, t_env):
 
 
 def _cash_reinforce(controller, task_env, **kwargs):
-    return CASHReinforce(
+    return MetaLearnReinforce(
         controller,
         task_env,
         beta=0.9,

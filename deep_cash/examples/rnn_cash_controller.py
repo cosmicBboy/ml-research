@@ -12,7 +12,7 @@ from sklearn.externals import joblib
 from metalearn.task_environment import TaskEnvironment
 from metalearn.algorithm_space import AlgorithmSpace
 from metalearn.cash_controller import MetaLearnController
-from metalearn.cash_reinforce import CASHReinforce
+from metalearn.cash_reinforce import MetaLearnReinforce
 from metalearn.components import classifiers
 from metalearn import utils
 
@@ -62,7 +62,7 @@ controller = MetaLearnController(
     dropout_rate=0.2,
     num_rnn_layers=n_layers)
 
-reinforce = CASHReinforce(
+reinforce = MetaLearnReinforce(
     controller,
     t_env,
     with_baseline=False,

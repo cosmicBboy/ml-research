@@ -8,7 +8,7 @@ from metalearn import experiment
 from metalearn.data_types import ExperimentType
 
 
-DEFAULT_CASH_REINFORCE = experiment.get_default_parameters("CASH_REINFORCE")
+DEFAULT = experiment.get_default_parameters("METALEARN_REINFORCE")
 
 
 @click.group()
@@ -23,49 +23,49 @@ def run():
 
 @run.command("experiment")
 @click.argument("datasets", nargs=-1)
-@click.option("--output_fp", default=DEFAULT_CASH_REINFORCE["output_fp"])
-@click.option("--n_trials", default=DEFAULT_CASH_REINFORCE["n_trials"])
-@click.option("--input_size", default=DEFAULT_CASH_REINFORCE["input_size"])
-@click.option("--hidden_size", default=DEFAULT_CASH_REINFORCE["hidden_size"])
-@click.option("--output_size", default=DEFAULT_CASH_REINFORCE["output_size"])
-@click.option("--n_layers", default=DEFAULT_CASH_REINFORCE["n_layers"])
-@click.option("--dropout_rate", default=DEFAULT_CASH_REINFORCE["dropout_rate"])
-@click.option("--beta", default=DEFAULT_CASH_REINFORCE["beta"], type=float)
-@click.option("--entropy_coef", default=DEFAULT_CASH_REINFORCE["entropy_coef"],
+@click.option("--output_fp", default=DEFAULT["output_fp"])
+@click.option("--n_trials", default=DEFAULT["n_trials"])
+@click.option("--input_size", default=DEFAULT["input_size"])
+@click.option("--hidden_size", default=DEFAULT["hidden_size"])
+@click.option("--output_size", default=DEFAULT["output_size"])
+@click.option("--n_layers", default=DEFAULT["n_layers"])
+@click.option("--dropout_rate", default=DEFAULT["dropout_rate"])
+@click.option("--beta", default=DEFAULT["beta"], type=float)
+@click.option("--entropy_coef", default=DEFAULT["entropy_coef"],
               type=float)
 @click.option("--with_baseline/--without_baseline",
-              default=DEFAULT_CASH_REINFORCE["with_baseline"])
+              default=DEFAULT["with_baseline"])
 @click.option("--single_baseline/--multi_baseline",
-              default=DEFAULT_CASH_REINFORCE["single_baseline"])
+              default=DEFAULT["single_baseline"])
 @click.option("--normalize_reward",
-              default=DEFAULT_CASH_REINFORCE["normalize_reward"],
+              default=DEFAULT["normalize_reward"],
               is_flag=True)
-@click.option("--n_episodes", default=DEFAULT_CASH_REINFORCE["n_episodes"])
-@click.option("--n_iter", default=DEFAULT_CASH_REINFORCE["n_iter"])
+@click.option("--n_episodes", default=DEFAULT["n_episodes"])
+@click.option("--n_iter", default=DEFAULT["n_iter"])
 @click.option("--learning_rate",
-              default=DEFAULT_CASH_REINFORCE["learning_rate"],
+              default=DEFAULT["learning_rate"],
               type=float)
 @click.option("--env_sources", "-e",
-              default=DEFAULT_CASH_REINFORCE["env_sources"],
+              default=DEFAULT["env_sources"],
               type=click.Choice(["SKLEARN", "OPEN_ML", "KAGGLE"]),
               multiple=True)
 @click.option("--target_types", "-t",
-              default=DEFAULT_CASH_REINFORCE["target_types"],
+              default=DEFAULT["target_types"],
               type=click.Choice(["BINARY", "MULTICLASS", "REGRESSION"]),
               multiple=True)
-@click.option("--error_reward", default=DEFAULT_CASH_REINFORCE["error_reward"],
+@click.option("--error_reward", default=DEFAULT["error_reward"],
               type=float)
 @click.option("--per_framework_time_limit",
-              default=DEFAULT_CASH_REINFORCE["per_framework_time_limit"])
+              default=DEFAULT["per_framework_time_limit"])
 @click.option("--per_framework_memory_limit",
-              default=DEFAULT_CASH_REINFORCE["per_framework_memory_limit"])
+              default=DEFAULT["per_framework_memory_limit"])
 @click.option("--metric_logger",
-              default=DEFAULT_CASH_REINFORCE["metric_logger"])
-@click.option("--fit_verbose", default=DEFAULT_CASH_REINFORCE["fit_verbose"])
+              default=DEFAULT["metric_logger"])
+@click.option("--fit_verbose", default=DEFAULT["fit_verbose"])
 @click.option("--controller_seed",
-              default=DEFAULT_CASH_REINFORCE["controller_seed"])
+              default=DEFAULT["controller_seed"])
 @click.option("--task_environment_seed",
-              default=DEFAULT_CASH_REINFORCE["task_environment_seed"])
+              default=DEFAULT["task_environment_seed"])
 def run_experiment(*args, **kwargs):
     """Run deep cash experiment with single configuration."""
     # TODO: use the following SO solution to implement list option
@@ -75,31 +75,31 @@ def run_experiment(*args, **kwargs):
 
 @run.command("random-search")
 @click.argument("datasets", nargs=-1)
-@click.option("--output_fp", default=DEFAULT_CASH_REINFORCE["output_fp"])
-@click.option("--n_trials", default=DEFAULT_CASH_REINFORCE["n_trials"])
-@click.option("--n_episodes", default=DEFAULT_CASH_REINFORCE["n_episodes"])
-@click.option("--n_iter", default=DEFAULT_CASH_REINFORCE["n_iter"])
+@click.option("--output_fp", default=DEFAULT["output_fp"])
+@click.option("--n_trials", default=DEFAULT["n_trials"])
+@click.option("--n_episodes", default=DEFAULT["n_episodes"])
+@click.option("--n_iter", default=DEFAULT["n_iter"])
 @click.option("--env_sources", "-e",
-              default=DEFAULT_CASH_REINFORCE["env_sources"],
+              default=DEFAULT["env_sources"],
               type=click.Choice(["SKLEARN", "OPEN_ML", "KAGGLE"]),
               multiple=True)
 @click.option("--target_types", "-t",
-              default=DEFAULT_CASH_REINFORCE["target_types"],
+              default=DEFAULT["target_types"],
               type=click.Choice(["BINARY", "MULTICLASS", "REGRESSION"]),
               multiple=True)
-@click.option("--error_reward", default=DEFAULT_CASH_REINFORCE["error_reward"],
+@click.option("--error_reward", default=DEFAULT["error_reward"],
               type=float)
 @click.option("--per_framework_time_limit",
-              default=DEFAULT_CASH_REINFORCE["per_framework_time_limit"])
+              default=DEFAULT["per_framework_time_limit"])
 @click.option("--per_framework_memory_limit",
-              default=DEFAULT_CASH_REINFORCE["per_framework_memory_limit"])
+              default=DEFAULT["per_framework_memory_limit"])
 @click.option("--metric_logger",
-              default=DEFAULT_CASH_REINFORCE["metric_logger"])
-@click.option("--fit_verbose", default=DEFAULT_CASH_REINFORCE["fit_verbose"])
+              default=DEFAULT["metric_logger"])
+@click.option("--fit_verbose", default=DEFAULT["fit_verbose"])
 @click.option("--controller_seed",
-              default=DEFAULT_CASH_REINFORCE["controller_seed"])
+              default=DEFAULT["controller_seed"])
 @click.option("--task_environment_seed",
-              default=DEFAULT_CASH_REINFORCE["task_environment_seed"])
+              default=DEFAULT["task_environment_seed"])
 def random_search_baseline():
     experiment.run_random_search()
 
@@ -114,9 +114,9 @@ def from_config(config_fp):
         print("\t%s: %s" % (k, v))
     if "experiment_type" not in config:
         print("experiment_type not specified in config. Assuming experiment "
-              "type is CASH_REINFORCE.")
+              "type is METALEARN_REINFORCE.")
     experiment_fn = experiment.get_experiment_fn(
-        config.get("experiment_type", "CASH_REINFORCE"))
+        config.get("experiment_type", "METALEARN_REINFORCE"))
     experiment_fn(**config["parameters"])
 
 

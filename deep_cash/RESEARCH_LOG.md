@@ -105,7 +105,7 @@ architecture is a GRU recurrent neural network that has a special decoder
 that has access to the `AlgorithmSpace` from which to choose
 estimators/transformers and their corresponding hyperparameters (actions).
 
-The `CASHReinforce` module, implements the REINFORCE policy gradient algorithm,
+The `MetaLearnReinforce` module, implements the REINFORCE policy gradient algorithm,
 which learns the actions that maximize the expected reward based on the
 observed rewards obtained from a batch of proposed MLFs. A baseline function
 is used for the purposes of regularization in order to reduce the variance of

@@ -14,7 +14,7 @@ SINGLE_BASELINE = "all_data_envs"
 EPSILON = np.finfo(np.float32).eps.item()
 
 
-class CASHReinforce(object):
+class MetaLearnReinforce(object):
     """Reinforce component of deep-cash algorithm."""
 
     def __init__(

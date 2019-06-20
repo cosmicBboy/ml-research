@@ -20,7 +20,7 @@ from sklearn.externals import joblib
 from .algorithm_space import AlgorithmSpace
 from .task_environment import TaskEnvironment
 from .cash_controller import MetaLearnController
-from .cash_reinforce import CASHReinforce
+from .cash_reinforce import MetaLearnReinforce
 from .data_environments.environments import envs
 from .data_types import ExperimentType
 from .loggers import get_loggers, empty_logger
@@ -50,7 +50,7 @@ def _env_names():
 
 def get_experiment_fn(experiment_type):
     return {
-        ExperimentType.CASH_REINFORCE: run_experiment,
+        ExperimentType.METALEARN_REINFORCE: run_experiment,
         ExperimentType.RANDOM_SEARCH: run_random_search,
     }[ExperimentType[experiment_type]]
 
@@ -213,7 +213,7 @@ def run_experiment(
             dropout_rate=dropout_rate,
             num_rnn_layers=n_layers)
 
-        reinforce = CASHReinforce(
+        reinforce = MetaLearnReinforce(
             controller, t_env,
             beta=beta,
             entropy_coef=entropy_coef,

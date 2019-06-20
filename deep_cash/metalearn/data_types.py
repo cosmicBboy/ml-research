@@ -60,5 +60,5 @@ class CASHComponent(Enum):
 class ExperimentType(Enum):
     """Experiment types."""
 
-    CASH_REINFORCE = 1
+    METALEARN_REINFORCE = 1
     RANDOM_SEARCH = 2
