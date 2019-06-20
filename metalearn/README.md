@@ -29,12 +29,12 @@ pre-install dependencies:
 pip install numpy scipy
 ```
 
-install `meta-learn` library:
+install `metalearn` library:
 ```
 pip install -e .
 ```
 
-then you can run an experiment with the `metal` cli.
+then you can run an experiment with the `metalearn` cli.
 ```
 # run an experiment with default values
 $ metal run experiment

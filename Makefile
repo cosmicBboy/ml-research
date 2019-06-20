@@ -1,12 +1,12 @@
 deps:
-	conda install pytorch==1.0.0 torchvision -y -c pytorch
+	conda install pytorch==1.1.0 torchvision -y -c pytorch
 	conda install -c conda-forge \
 		click \
 		dash \
 		dash-core-components \
 		dash-html-components \
 		dill \
-		pandas==0.23.4 \
+		pandas==0.24.2 \
 		numpy \
 		matplotlib \
 		ipython \

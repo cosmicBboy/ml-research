@@ -6,7 +6,7 @@ with open('README.md') as f:
 
 setup(
     name="metalearn-rl",
-    version="0.0.3",
+    version="0.0.4",
     description="MetaRL-based Estimator using Task-encodings for AutoML",
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -25,9 +25,9 @@ setup(
         "matplotlib",
         "numpy",
         "openml==0.7.0",
-        "pandas==0.23.4",
+        "pandas==0.24.2",
         "pynisher",
-        "torch==0.4.1",
+        "torch==1.1.0",
         "scikit-learn==0.19.2",
         "scipy",
         "yamlordereddictloader",
