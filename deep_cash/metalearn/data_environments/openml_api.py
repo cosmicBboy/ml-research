@@ -27,7 +27,7 @@ N_REGRESSION_ENVS = 20
 SPARSE_DATA_FORMAT = "Sparse_ARFF"
 
 
-# Map OpenML feature data types to deep_cash feature data types
+# Map OpenML feature data types to metalearn feature data types
 FEATURE_TYPE_MAP = {
     "nominal": FeatureType.CATEGORICAL,
     "numeric": FeatureType.CONTINUOUS,
@@ -121,7 +121,7 @@ def _get_target_type(num_classes, task_type):
             return TargetType.BINARY
     else:
         raise ValueError(
-            "task_type %s is currently not recognized by deep_cash." %
+            "task_type %s is currently not recognized by metalearn." %
             task_type)
 
 

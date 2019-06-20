@@ -6,8 +6,8 @@ import warnings
 
 from sklearn.exceptions import ConvergenceWarning
 
-from deep_cash.components import classifiers
-from deep_cash import errors
+from metalearn.components import classifiers
+from metalearn import errors
 
 
 def _fit_mlf(mlf, X, y, raise_unknown_error=False):

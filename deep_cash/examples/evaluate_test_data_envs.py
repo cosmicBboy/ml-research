@@ -6,15 +6,15 @@ import torch
 from pathlib import Path
 from sklearn.externals import joblib
 
-from deep_cash.cash_controller import CASHController
-from deep_cash.inference.inference_engine import CASHInference
-from deep_cash.task_environment import TaskEnvironment
-from deep_cash.data_environments import openml_api, sklearn_classification
+from metalearn.cash_controller import MetaLearnController
+from metalearn.inference.inference_engine import CASHInference
+from metalearn.task_environment import TaskEnvironment
+from metalearn.data_environments import openml_api, sklearn_classification
 
 
 build_path = Path(os.path.dirname(__file__)) / ".." / "floyd_outputs" / "225"
 
-controller = CASHController.load(build_path / "controller_trial_0.pt")
+controller = MetaLearnController.load(build_path / "controller_trial_0.pt")
 experiment_results = pd.read_csv(
     build_path / "rnn_cash_controller_experiment.csv")
 base_mlf_path = build_path / "cash_controller_mlfs_trial_0"

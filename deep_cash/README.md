@@ -147,12 +147,12 @@ and how to interpret the output of the Controller so as to fit a model, but
 the advantage is that the Controller mainly has to learn a function that
 generates performant algorithm and hyperparameter combinations.
 
-In the META Learn project, a `CashController` represents the policy approximator,
-which selects actions based on a tree-structured set of softmax classifiers,
-each one representing some part of the algorithm and hyperparameter space.
-The controller selects estimators/transformers and hyperparameters in a
-pre-defined manner (interpreted as embedding priors into the architecture
-of the system). The ordering is the following:
+In the META Learn project, a `MetaLearnController` represents the policy
+approximator, which selects actions based on a tree-structured set of softmax
+classifiers, each one representing some part of the algorithm and
+hyperparameter space. The controller selects estimators/transformers and
+hyperparameters in a pre-defined manner (interpreted as embedding priors into
+the architecture of the system). The ordering is the following:
 
 - one hot encoding
 - one hot encoder hyperparameters
@@ -171,12 +171,12 @@ of the system). The ordering is the following:
 - [X] implementation of the naive (unstructured) `AlgorithmRNN`/
   `HyperparameterRNN` that seperately predict the estimators/transformers and
   hyperparameters of the ML Framework.
-- [X] basic implementation of the structured `CashController` architecture
-- [X] refine `CashController` with baseline function prior such that each data
+- [X] basic implementation of the structured `MetaLearnController` architecture
+- [X] refine `MetaLearnController` with baseline function prior such that each data
   environment maps to its own value function (in this case, the exponential
   mean of rewards per episode).
 - [X] implement basic meta-RL algorithm as described here in this
-  [paper][meta-rl] in particular, feed `CashController` auxiliary inputs:
+  [paper][meta-rl] in particular, feed `MetaLearnController` auxiliary inputs:
   - previous reward
   - previous actions
 - [X] normalize `reward - baseline` (equivalent of advantage in this system)

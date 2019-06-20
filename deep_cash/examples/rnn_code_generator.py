@@ -5,8 +5,8 @@ import pandas as pd
 import time
 import torch
 
-from deep_cash.algorithm_env import create_algorithm_env
-from deep_cash.rnn_code_generator import (
+from metalearn.algorithm_env import create_algorithm_env
+from metalearn.rnn_code_generator import (
     CodeGeneratorRNN, create_training_data, random_training_example,
     generate_samples, train, time_since, n_metafeatures, n_characters,
     dropout_rate, n_rnn_layers, n_hidden, learning_rate)

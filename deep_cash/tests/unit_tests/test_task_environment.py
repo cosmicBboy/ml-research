@@ -2,7 +2,7 @@
 
 import torch
 
-from deep_cash.task_environment import TaskEnvironment
+from metalearn.task_environment import TaskEnvironment
 
 
 def test_task_env_datasampling():

@@ -5,7 +5,7 @@ created_at: 2019-01-27-18-25-37
 git_hash: c36f5aa
 parameters:
   datasets: null
-  output_fp: /Users/Niels/git/ml-research/deep_cash/deep_cash/../output
+  output_fp: /Users/Niels/git/ml-research/metalearn/metalearn/../output
   n_trials: 3
   n_episodes: 3
   n_iter: 16

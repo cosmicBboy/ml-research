@@ -58,7 +58,7 @@ class AlgorithmComponent(object):
             Hyperparameter objects, which specify algorithms' hyperparameter
             space.
 
-            The CASHController interprets `hyperparameters` as a DAG where
+            The MetaLearnController interprets `hyperparameters` as a DAG where
             at each node represents a hyperparameter in algorithm space.
             At each node, the agent selects a hyperparameter value (currently
             these can only be a discrete set of values). The agent then

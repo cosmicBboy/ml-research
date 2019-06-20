@@ -2,8 +2,8 @@ import pytest
 
 from collections import OrderedDict
 from itertools import product
-from deep_cash.components.algorithm_component import AlgorithmComponent
-from deep_cash.components.constants import CLASSIFIER
+from metalearn.components.algorithm_component import AlgorithmComponent
+from metalearn.components.constants import CLASSIFIER
 
 
 class MockEstimator(object):

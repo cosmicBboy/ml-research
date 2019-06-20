@@ -4,8 +4,8 @@
 
 import click
 
-from deep_cash import experiment
-from deep_cash.data_types import ExperimentType
+from metalearn import experiment
+from metalearn.data_types import ExperimentType
 
 
 DEFAULT_CASH_REINFORCE = experiment.get_default_parameters("CASH_REINFORCE")

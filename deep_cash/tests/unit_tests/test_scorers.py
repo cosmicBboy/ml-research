@@ -2,7 +2,7 @@
 
 import pytest
 
-from deep_cash import scorers
+from metalearn import scorers
 
 
 def test_exponentiated_log():

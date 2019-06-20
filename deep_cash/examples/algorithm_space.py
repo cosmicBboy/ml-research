@@ -6,7 +6,7 @@ from sklearn.datasets import make_classification
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 
-from deep_cash import algorithm_space
+from metalearn import algorithm_space
 
 # create dataset to evaluate
 X, y = make_classification(

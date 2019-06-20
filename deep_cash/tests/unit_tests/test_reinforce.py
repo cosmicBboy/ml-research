@@ -2,7 +2,7 @@
 
 import torch
 
-from deep_cash import cash_reinforce
+from metalearn import cash_reinforce
 
 
 def test_normalize_reward_happy_path():

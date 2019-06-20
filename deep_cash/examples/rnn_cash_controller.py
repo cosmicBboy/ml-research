@@ -9,12 +9,12 @@ import torch
 from shutil import rmtree
 from sklearn.externals import joblib
 
-from deep_cash.task_environment import TaskEnvironment
-from deep_cash.algorithm_space import AlgorithmSpace
-from deep_cash.cash_controller import CASHController
-from deep_cash.cash_reinforce import CASHReinforce
-from deep_cash.components import classifiers
-from deep_cash import utils
+from metalearn.task_environment import TaskEnvironment
+from metalearn.algorithm_space import AlgorithmSpace
+from metalearn.cash_controller import MetaLearnController
+from metalearn.cash_reinforce import CASHReinforce
+from metalearn.components import classifiers
+from metalearn import utils
 
 utils.init_logging(None)
 
@@ -53,7 +53,7 @@ a_space = AlgorithmSpace(
     hyperparam_with_start_token=False,
     hyperparam_with_none_token=False)
 
-controller = CASHController(
+controller = MetaLearnController(
     metafeature_size=t_env.metafeature_dim,
     input_size=a_space.n_components,
     hidden_size=hidden_size,

@@ -19,7 +19,7 @@ from sklearn.externals import joblib
 
 from .algorithm_space import AlgorithmSpace
 from .task_environment import TaskEnvironment
-from .cash_controller import CASHController
+from .cash_controller import MetaLearnController
 from .cash_reinforce import CASHReinforce
 from .data_environments.environments import envs
 from .data_types import ExperimentType
@@ -204,7 +204,7 @@ def run_experiment(
             hyperparam_with_start_token=False,
             hyperparam_with_none_token=False)
 
-        controller = CASHController(
+        controller = MetaLearnController(
             metafeature_size=t_env.metafeature_dim,
             input_size=input_size,
             hidden_size=hidden_size,

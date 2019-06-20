@@ -6,15 +6,15 @@ import torch
 
 from torch.autograd import Variable
 
-from deep_cash import components
+from metalearn import components
 
-from deep_cash.algorithm_space import AlgorithmSpace, \
+from metalearn.algorithm_space import AlgorithmSpace, \
     CLASSIFIER_MLF_SIGNATURE, REGRESSOR_MLF_SIGNATURE
-from deep_cash.task_environment import TaskEnvironment
-from deep_cash.cash_controller import CASHController
-from deep_cash.cash_reinforce import CASHReinforce
-from deep_cash.random_search import CASHRandomSearch
-from deep_cash import utils
+from metalearn.task_environment import TaskEnvironment
+from metalearn.cash_controller import MetaLearnController
+from metalearn.cash_reinforce import CASHReinforce
+from metalearn.random_search import CASHRandomSearch
+from metalearn import utils
 
 
 def _task_environment(
@@ -45,7 +45,7 @@ def _algorithm_space(classifiers=None, regressors=None):
 
 
 def _cash_controller(a_space, t_env):
-    return CASHController(
+    return MetaLearnController(
         metafeature_size=t_env.metafeature_dim,
         input_size=5,
         hidden_size=5,

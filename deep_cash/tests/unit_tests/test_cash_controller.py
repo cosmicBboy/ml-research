@@ -1,6 +1,6 @@
-from deep_cash.algorithm_space import AlgorithmSpace
-from deep_cash.cash_controller import CASHController
-from deep_cash import components, utils
+from metalearn.algorithm_space import AlgorithmSpace
+from metalearn.cash_controller import MetaLearnController
+from metalearn import components, utils
 
 import io
 import tempfile
@@ -26,7 +26,7 @@ def _cash_controller(
         output_size=5,
         dropout_rate=0.2,
         num_rnn_layers=3):
-    return CASHController(
+    return MetaLearnController(
         metafeature_size=METAFEATURE_SIZE,
         input_size=input_size,
         hidden_size=hidden_size,
@@ -88,7 +88,7 @@ def test_save_load_tempfile():
     with tempfile.TemporaryFile() as f:
         w_controller.save(f)
         f.seek(0)
-        r_controller = CASHController.load(f)
+        r_controller = MetaLearnController.load(f)
     assert utils.models_are_equal(r_controller, w_controller)
 
 
@@ -98,5 +98,5 @@ def test_save_load_buffer():
     fileobj = io.BytesIO()
     w_controller.save(fileobj)
     fileobj.seek(0)
-    r_controller = CASHController.load(fileobj)
+    r_controller = MetaLearnController.load(fileobj)
     assert utils.models_are_equal(r_controller, w_controller)

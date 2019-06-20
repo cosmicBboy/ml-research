@@ -1,6 +1,6 @@
 from sklearn.pipeline import Pipeline
 
-from deep_cash.algorithm_space import AlgorithmSpace, \
+from metalearn.algorithm_space import AlgorithmSpace, \
     CLASSIFIER_MLF_SIGNATURE, REGRESSOR_MLF_SIGNATURE
 
 

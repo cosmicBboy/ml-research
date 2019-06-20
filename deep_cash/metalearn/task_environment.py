@@ -155,7 +155,7 @@ class TaskEnvironment(object):
                 test_dataset_names, test_env_sources)
 
         # TODO: the metafeature spec should be somehow persisted along with the
-        # trained CASHController. Need to create a method in cash_reinforce
+        # trained MetaLearnController. Need to create a method in cash_reinforce
         # module that saves the data env, and test env training datasets.
         # This is required so that the data_env_name in the metafeature spec
         # is consistent at test time.

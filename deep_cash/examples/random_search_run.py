@@ -9,11 +9,11 @@ import torch
 from shutil import rmtree
 from sklearn.externals import joblib
 
-from deep_cash.task_environment import TaskEnvironment
-from deep_cash.algorithm_space import AlgorithmSpace
-from deep_cash.random_search import CASHRandomSearch
-from deep_cash.components import classifiers
-from deep_cash import utils
+from metalearn.task_environment import TaskEnvironment
+from metalearn.algorithm_space import AlgorithmSpace
+from metalearn.random_search import CASHRandomSearch
+from metalearn.components import classifiers
+from metalearn import utils
 
 utils.init_logging(None)
 

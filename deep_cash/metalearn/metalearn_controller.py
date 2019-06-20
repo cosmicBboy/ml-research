@@ -21,7 +21,7 @@ from .data_types import CASHComponent
 from .components.algorithm_component import EXCLUDE_ALL
 
 
-class CASHController(nn.Module):
+class MetaLearnController(nn.Module):
     """RNN module to generate joint algorithm and hyperparameter controller."""
 
     def __init__(
@@ -51,7 +51,7 @@ class CASHController(nn.Module):
         :ivar list[float] log_prob_buffer:
         :ivar list[float] reward buffer:
         """
-        super(CASHController, self).__init__()
+        super(MetaLearnController, self).__init__()
         self.a_space = a_space
         self.dropout_rate = dropout_rate
         self.num_rnn_layers = num_rnn_layers

@@ -1,7 +1,7 @@
 """Unit tests for Kaggle API."""
 
-from deep_cash.data_types import TargetType, DataSourceType
-from deep_cash.data_environments import kaggle_regression, \
+from metalearn.data_types import TargetType, DataSourceType
+from metalearn.data_environments import kaggle_regression, \
     kaggle_classification
 
 

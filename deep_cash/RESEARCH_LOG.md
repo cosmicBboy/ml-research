@@ -98,7 +98,7 @@ a complete re-implementation of the controller agent. The new architecture
 is a more faithful adaptation of the
 [neural architecture search paper](https://arxiv.org/pdf/1611.01578.pdf).
 
-The `deep_cash` library now implements a `CASHController`, which specifies an
+The `metalearn` library now implements a `MetaLearnController`, which specifies an
 end-to-end architecture that proposes both the estimators/transformers and
 hyperparameters that compose together to form an ML framework (MLF). This
 architecture is a GRU recurrent neural network that has a special decoder
@@ -185,7 +185,7 @@ embedding layer (to standardize the dimensions of the hyperparameter
 prediction) and be fed into the RNN as input in the next time step.
 
 It might make sense then to create an entirely different architecture for
-deep_cash, such that the hyperparameter controller sequence is indexed such
+metalearn, such that the hyperparameter controller sequence is indexed such
 that a different softmax classifier predicts the state-space for a particular
 hyperparameter setting, and a corresponding embedding layer is used to
 standardize the dimensionality so that the softmax output can be fed into

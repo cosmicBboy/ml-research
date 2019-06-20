@@ -2,7 +2,7 @@
 
 import sklearn
 
-from deep_cash.components import classifiers
+from metalearn.components import classifiers
 from sklearn.base import BaseEstimator
 
 

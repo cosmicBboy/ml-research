@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from deep_cash import data_types
-from deep_cash.data_environments import environments, data_environment
+from metalearn import data_types
+from metalearn.data_environments import environments, data_environment
 
 
 def test_envs():

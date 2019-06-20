@@ -3,7 +3,7 @@
 import numpy as np
 import sklearn
 
-from deep_cash.components import hyperparameter
+from metalearn.components import hyperparameter
 
 
 def test_float_hyperparameter():

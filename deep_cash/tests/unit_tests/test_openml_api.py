@@ -1,7 +1,7 @@
 """Unit and integration tests for Openml API."""
 
-from deep_cash.data_types import TargetType
-from deep_cash.data_environments import openml_api
+from metalearn.data_types import TargetType
+from metalearn.data_environments import openml_api
 
 
 def test_classification_envs():

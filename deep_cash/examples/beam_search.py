@@ -3,8 +3,8 @@
 from pathlib import Path
 from os.path import dirname
 
-from deep_cash.beam_search import BeamSearchDecoder
-from deep_cash.rnn_code_generator import load_model
+from metalearn.beam_search import BeamSearchDecoder
+from metalearn.rnn_code_generator import load_model
 
 
 artifact_path = Path(dirname(__file__)) / "artifacts"
