@@ -1,21 +1,25 @@
-# DeepCASH
+# META Learn
 
-**Using a Sequence Models to Propose Machine Learning Frameworks for AutoML**
+**M**etaRL-based **E**stimator using **T**ask-encodings for **A**utomated machine **Learn**ing
 
-DeepCASH is an artificial neural net architecture for parameterizing the API
-of machine learning software, in this case the [sklearn API][sklearn], in
-order to select a complete machine learning pipeline in an end-to-end fashion,
-from raw data representation, imputation, normalizing, feature representation,
-and classification/regression.
+**META Learn** is a deep learning approach to that parameterizes the API
+of machine learning software as a sequence of actions to select the
+hyperparameters of a machine learning estimator in an end-to-end fashion, from
+raw data representation, imputation, normalizing, feature representation, and
+classification/regression. Currently the [sklearn API][sklearn] is the only
+supported ML framework.
 
 
 # Why?
 
-As the diversity of data and machine learning use cases increases, we also need
+As the diversity of data and machine learning use cases increases, we need
 to accelerate and scale the process of training performant machine learning
-systems. We'll need tools that are adaptable to the problem domain, and the
-nature of the dataset, such as structured, unstructured, or semi-structured
-data.
+systems. We'll need tools that are adaptable to specific problem domains,
+the nature of the dataset, and the (sometimes non-differentiable) performance
+metric we're trying to optimize. Supervised learning of classification and
+regression tasks given a task distribution of small to medium datasets provides
+an promising jumping off platform for programmatically generating a
+reinforcement learning environment for automated machine learning (AutoML).
 
 
 # Quickstart
@@ -25,15 +29,15 @@ pre-install dependencies:
 pip install numpy scipy
 ```
 
-install `deep_cash` library:
+install `meta-learn` library:
 ```
 pip install -e .
 ```
 
-then you can run an experiment with the `deep-cash` cli.
+then you can run an experiment with the `metal` cli.
 ```
 # run an experiment with default values
-$ deep-cash run experiment
+$ metal run experiment
 ```
 
 ## Running an experiment with a configuration file
@@ -43,7 +47,7 @@ your experiment.
 
 ```
 # create experiment config file
-$ deep-cash create config my_experiment config/local --description "my experiment"
+$ metal create config my_experiment config/local --description "my experiment"
 
 # output:
 # wrote experiment config file to config/local/experiment_2018-37-25-21:37:11_my_experiment.yml
@@ -54,7 +58,7 @@ edit the config file `parameters` section to the set of parameters
 that you want to train on, then run the experiment with
 
 ```
-$ deep-cash run from-config config/local/experiment_2018-37-25-21:37:11_my_experiment.yml
+$ metal run from-config config/local/experiment_2018-37-25-21:37:11_my_experiment.yml
 ```
 
 
@@ -93,7 +97,7 @@ the best architecture proposal policy.
 
 # Contributions
 
-The contributions of the DeepCASH project are two-fold: it builds on the neural
+The contributions of the META Learn project are two-fold: it builds on the neural
 architecture search paradigm by formalating the output space of the Controller
 as a sequence of tokens conditioned on the space of possible executable
 `frameworks`. The scope of this project is to define a `framework`, expressed
@@ -101,7 +105,7 @@ as a piece of Python code, which evaluates to an instantiated sklearn
 [`Pipeline`][sklearn-pipeline] and can be fitted on a training set and
 evaluated on a validation set of a particular dataset `D`.
 
-Following the Neural Architecture scheme, DeepCASH uses the REINFORCE algorithm
+Following the Neural Architecture scheme, META Learn uses the REINFORCE algorithm
 to compute the policy gradient used to update the Controller in order to learn a
 policy for proposing good `frameworks` that are able to achieve high validation
 set performance.
@@ -143,7 +147,7 @@ and how to interpret the output of the Controller so as to fit a model, but
 the advantage is that the Controller mainly has to learn a function that
 generates performant algorithm and hyperparameter combinations.
 
-In the DeepCash project, a `CashController` represents the policy approximator,
+In the META Learn project, a `CashController` represents the policy approximator,
 which selects actions based on a tree-structured set of softmax classifiers,
 each one representing some part of the algorithm and hyperparameter space.
 The controller selects estimators/transformers and hyperparameters in a
