@@ -5,7 +5,7 @@ with open('README.md') as f:
 
 
 setup(
-    name="meta-mlearn",
+    name="meta-ml",
     version="0.0.4",
     description="MetaRL-based Estimator using Task-encodings for AutoML",
     long_description=long_description,
