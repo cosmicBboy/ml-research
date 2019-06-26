@@ -255,6 +255,17 @@ class TaskEnvironment(object):
                 if f == FeatureType.CATEGORICAL]
         }
 
+    def get_current_feature_type_indices(self):
+        return {
+            feature_type: [
+                i for f, i in zip(
+                    self.current_data_env.feature_types,
+                    self.current_data_env.feature_indices)
+                if f == feature_type]
+            for feature_type in [
+                FeatureType.CONTINUOUS, FeatureType.CATEGORICAL]
+        }
+
     def sample_task_state(self, data_env_partition="train"):
         """Sample the current data_env for features and targets."""
         self._current_task = self.current_data_env.sample(self._n_samples)

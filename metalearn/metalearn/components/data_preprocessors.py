@@ -1,34 +1,95 @@
 """Data Preprocessor components."""
 
+from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import (
-    QuantileTransformer, OneHotEncoder, Imputer, MinMaxScaler, StandardScaler,
-    RobustScaler, Normalizer)
+    QuantileTransformer, OneHotEncoder, MinMaxScaler,
+    StandardScaler, RobustScaler, Normalizer)
+from sklearn.impute import SimpleImputer
 
 from .algorithm_component import AlgorithmComponent
 from . import constants
 from .hyperparameter import (
     CategoricalHyperparameter, UniformIntHyperparameter,
-    UniformFloatHyperparameter, TuplePairHyperparameter)
+    UniformFloatHyperparameter, TuplePairHyperparameter,
+    BaseEstimatorHyperparameter, EmbeddedEstimatorHyperparameter)
 
 
-def impute_numeric():
+def simple_impute_numeric():
     """Create an imputer component.
 
-    TODO: when this project gets to processing datasets with missing values,
-    need to create another imputer function the explicitly handles numerical
-    and categorical data. This will involve also modifying the
-    ML_FRAMEWORK_SIGNATURE in algorithm_space.py such that there are two types
-    of imputers. Will also probably need to position the OneHotEncoder
-    component after the imputers.
+    TODO: create a ML pipeline signature for imputing numeric and categorical
+          features using the ColumnTransformer transformer.
     """
     return AlgorithmComponent(
         name="NumericImputer",
-        component_class=Imputer,
+        component_class=SimpleImputer,
         component_type=constants.IMPUTER,
         hyperparameters=[
             CategoricalHyperparameter(
-                "strategy", ["mean", "median"], default="mean"),
+                "strategy",
+                ["mean", "median", "most_frequent", "constant"],
+                default="mean"),
+            CategoricalHyperparameter(
+                "add_indicator", [True, False], default=True),
         ])
+
+
+def simple_impute_categorical():
+    """Create an imputer component.
+
+    TODO: create a ML pipeline signature for imputing numeric and categorical
+          features using the ColumnTransformer transformer.
+    """
+    return AlgorithmComponent(
+        name="CategoricalImputer",
+        component_class=SimpleImputer,
+        component_type=constants.IMPUTER,
+        hyperparameters=[
+            CategoricalHyperparameter(
+                "strategy",
+                ["most_frequent"],
+                default="most_frequent"),
+            CategoricalHyperparameter(
+                "add_indicator", [True, False], default=True),
+        ])
+
+
+def simple_imputer():
+    """Create a categorical and numeric imputer."""
+    # this is a placeholder index for which columns should be transformed is
+    # task environment specific.
+    PLACEHOLDER_INDEX = "<PLACEHOLDER_INDEX>"
+    return AlgorithmComponent(
+        name="Imputer",
+        component_class=ColumnTransformer,
+        component_type=constants.IMPUTER,
+        hyperparameters=[
+            EmbeddedEstimatorHyperparameter(
+                "numeric_imputer",
+                "strategy",
+                ["mean", "median", "most_frequent", "constant"],
+                default="mean"),
+            EmbeddedEstimatorHyperparameter(
+                "numeric_imputer",
+                "add_indicator",
+                [True, False], default=True),
+            EmbeddedEstimatorHyperparameter(
+                "categorical_imputer",
+                "strategy",
+                ["most_frequent", "constant"],
+                default="mean"),
+            EmbeddedEstimatorHyperparameter(
+                "categorical_imputer",
+                "add_indicator",
+                [True, False], default=True),
+        ],
+        constant_hyperparameters={
+            "remainder": "passthrough",
+            "transformers": [
+                ("numeric_imputer", SimpleImputer(), PLACEHOLDER_INDEX),
+                ("categorical_imputer", SimpleImputer(), PLACEHOLDER_INDEX)
+            ]}
+        )
 
 
 def one_hot_encoder():

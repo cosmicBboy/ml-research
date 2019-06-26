@@ -28,15 +28,12 @@ class HyperparameterBase(object):
     def __repr__(self):
         return "<%s: \"%s\">" % (type(self).__name__, self.hname)
 
-    def _default_in_state_space(self):
-        return self.default in self._state_space
-
     def get_state_space(self, with_none_token=False):
         """
         :returns: list of tokens representing hyperparameter space
         :rtype: list[int|float|str]
         """
-        if self._default_in_state_space():
+        if self.default in self._state_space:
             state_space = self._state_space
         else:
             state_space = self._state_space + [self.default]
@@ -162,10 +159,23 @@ class BaseEstimatorHyperparameter(HyperparameterBase):
         expanded_state_space = []
         for h in self.hyperparameters:
             expanded_state_space.append([
-                (h.hname, v)for v in h.get_state_space()])
+                (h.hname, v) for v in h.get_state_space()])
         return [
             self.base_estimator(**dict(hsetting)) for hsetting in
             list(itertools.product(*expanded_state_space))]
+
+
+class EmbeddedEstimatorHyperparameter(HyperparameterBase):
+    """Sets the hyperparameter value of an embedded estimator.
+
+    For example, in the ColumnTransformer ``transformer`` argument.
+    """
+
+    def __init__(self, estimator_name, hname, state_space, default):
+        self.hname_leaf = hname
+        self.estimator_name = estimator_name
+        super().__init__(
+            f"{self.estimator_name}__{self.hname_leaf}", state_space, default)
 
 
 class MultiBaseEstimatorHyperparameter(HyperparameterBase):

@@ -216,7 +216,7 @@ class AlgorithmSpace(object):
 
     def create_ml_framework(
             self, components, memory=None, hyperparameters=None,
-            env_dep_hyperparameters=None):
+            env_dep_hyperparameters=None, feature_type_indices=None):
         """Create ML framework, in this context an sklearn pipeline object.
 
         :param list[AlgorithmComponent] components: A list of algorithm
@@ -229,9 +229,10 @@ class AlgorithmSpace(object):
         hyperparameters = {} if hyperparameters is None else hyperparameters
         if env_dep_hyperparameters:
             hyperparameters.update(env_dep_hyperparameters)
-        for a in components:
-            steps.append((a.name, a()))
-            hyperparameters.update(a.env_dep_hyperparameter_name_space())
+        for component in components:
+            steps.append((component.name, component()))
+            hyperparameters.update(
+                component.env_dep_hyperparameter_name_space())
         ml_framework = Pipeline(memory=memory, steps=steps)
         ml_framework.set_params(**hyperparameters)
         return ml_framework
@@ -269,7 +270,7 @@ class AlgorithmSpace(object):
 def get_data_preprocessors():
     """Get all data preprocessors in structured algorithm space."""
     return [
-        components.data_preprocessors.impute_numeric(),
+        components.data_preprocessors.simple_imputer(),
         components.data_preprocessors.one_hot_encoder(),
         components.data_preprocessors.minmax_scaler(),
         components.data_preprocessors.standard_scaler(),

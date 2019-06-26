@@ -38,7 +38,7 @@ def _check_hyperparameters(
 
 
 class AlgorithmComponent(object):
-    """A component of a machine learning framework F."""
+    """A component of a machine learning framework."""
 
     def __init__(
             self,
