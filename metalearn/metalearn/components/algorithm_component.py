@@ -1,11 +1,12 @@
 """Define algorithm component."""
 
-from collections import OrderedDict
-from typing import List, Tuple, Any, Union
+import itertools
 
 import numpy as np
 
-import itertools
+from collections import OrderedDict
+from sklearn.compose import ColumnTransformer
+from typing import List, Tuple, Any, Union
 
 from . import constants
 
@@ -45,15 +46,26 @@ class AlgorithmComponent(object):
             name,
             component_class,
             component_type=None,
+            initialize_component=None,
             hyperparameters=None,
             constant_hyperparameters=None,
-            env_dep_hyperparameters=None,
             exclusion_conditions=None):
         """Initialize an AlgorithmComponent.
 
         :param str name: name of component.
         :param object component_class: of type sklearn.BaseEstimator
         :param str component_type: type of algorithm.
+        :param callable|None initialize_component: a function invoked in the
+            __call__ method that's responsible for instantiating the
+            component_class, with the following signature:
+
+            (component_class: EstimatorClass,
+             categorical_features: List[int],
+             continuous_features: List[int]) -> EstimatorObject
+
+            This function is called in the __call__ method. If None, then
+            component_class is initialized with all of its defaults.
+
         :param list[Hyperparameters]|None hyperparameters: list of
             Hyperparameter objects, which specify algorithms' hyperparameter
             space.
@@ -66,10 +78,6 @@ class AlgorithmComponent(object):
             been selected.
         :param dict constant_hyperparameters: a set of hyperparameters that
             shouldn't be picked by the controller
-        :param dict env_dep_hyperparameters: a set of hyperparameters in the
-            algorithm component that are dependent on the data environment.
-            For now these hyperparameters are set by the data environment and
-            are not tuned by the controller. This may change in the future.
         :param dict[str -> dict[str -> list]] exclusion_conditions: a
             dictionary specifying the which of the subsequent hyperparameters
             should be excluded conditioned on picking a particular
@@ -105,24 +113,31 @@ class AlgorithmComponent(object):
                 component_type, constants.ALGORITHM_TYPES))
         self.name = name
         self.component_class = component_class
+        self.initialize_component = initialize_component
         self.component_type = component_type
         self.hyperparameters = hyperparameters
         self.constant_hyperparameters = {} if \
             constant_hyperparameters is None else constant_hyperparameters
-        self.env_dep_hyperparameters = {} if env_dep_hyperparameters is None \
-            else env_dep_hyperparameters
         # TODO: consider making a class for exclusion conditions
         self.exclusion_conditions = exclusion_conditions
 
-    def __call__(self):
-        """Instantiate the algorithm object."""
-        return self.component_class(**self.constant_hyperparameters)
+    def __call__(self, categorical_features=None, continuous_features=None):
+        """Instantiate the algorithm object.
 
-    def env_dep_hyperparameter_name_space(self):
+        :param dict kwargs: keyword arguments to pass into initialize_component
+        """
+        if self.initialize_component is None:
+            return self.component_class()
+        return self.initialize_component(
+            self.component_class,
+            [] if categorical_features is None else categorical_features,
+            [] if continuous_features is None else continuous_features)
+
+    def get_constant_hyperparameters(self):
         """Get environment-dependent hyperparameters."""
         return {
             "%s__%s" % (self.name, h): value
-            for h, value in self.env_dep_hyperparameters.items()
+            for h, value in self.constant_hyperparameters.items()
         }
 
     def hyperparameter_name_space(self):

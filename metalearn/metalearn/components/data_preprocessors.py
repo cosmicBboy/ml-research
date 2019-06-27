@@ -14,7 +14,7 @@ from .hyperparameter import (
     BaseEstimatorHyperparameter, EmbeddedEstimatorHyperparameter)
 
 
-def simple_impute_numeric():
+def simple_numeric_imputer():
     """Create an imputer component.
 
     TODO: create a ML pipeline signature for imputing numeric and categorical
@@ -34,7 +34,7 @@ def simple_impute_numeric():
         ])
 
 
-def simple_impute_categorical():
+def simple_categorical_imputer():
     """Create an imputer component.
 
     TODO: create a ML pipeline signature for imputing numeric and categorical
@@ -58,37 +58,42 @@ def simple_imputer():
     """Create a categorical and numeric imputer."""
     # this is a placeholder index for which columns should be transformed is
     # task environment specific.
-    PLACEHOLDER_INDEX = "<PLACEHOLDER_INDEX>"
+
+    def init_simple_imputer(
+            component_class, categorical_features, numeric_features):
+
+        return component_class(transformers=[
+            ("categorical_imputer", SimpleImputer(), categorical_features),
+            ("continuous_imputer", SimpleImputer(), numeric_features)
+        ])
+
     return AlgorithmComponent(
-        name="Imputer",
+        name="SimpleImputer",
         component_class=ColumnTransformer,
         component_type=constants.IMPUTER,
+        initialize_component=init_simple_imputer,
         hyperparameters=[
             EmbeddedEstimatorHyperparameter(
-                "numeric_imputer",
-                "strategy",
-                ["mean", "median", "most_frequent", "constant"],
-                default="mean"),
+                "continuous_imputer",
+                CategoricalHyperparameter(
+                    "strategy",
+                    ["mean", "median", "most_frequent", "constant"],
+                    default="mean")),
             EmbeddedEstimatorHyperparameter(
-                "numeric_imputer",
-                "add_indicator",
-                [True, False], default=True),
-            EmbeddedEstimatorHyperparameter(
-                "categorical_imputer",
-                "strategy",
-                ["most_frequent", "constant"],
-                default="mean"),
+                "continuous_imputer",
+                CategoricalHyperparameter(
+                    "add_indicator", [True, False], default=True)),
             EmbeddedEstimatorHyperparameter(
                 "categorical_imputer",
-                "add_indicator",
-                [True, False], default=True),
+                CategoricalHyperparameter(
+                    "strategy", ["most_frequent", "constant"],
+                    default="mean")),
+            EmbeddedEstimatorHyperparameter(
+                "categorical_imputer",
+                CategoricalHyperparameter(
+                    "add_indicator", [True, False], default=True)),
         ],
-        constant_hyperparameters={
-            "remainder": "passthrough",
-            "transformers": [
-                ("numeric_imputer", SimpleImputer(), PLACEHOLDER_INDEX),
-                ("categorical_imputer", SimpleImputer(), PLACEHOLDER_INDEX)
-            ]}
+        constant_hyperparameters={"remainder": "passthrough"}
         )
 
 
@@ -109,15 +114,29 @@ def one_hot_encoder():
     For more details, see:
     http://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.OneHotEncoder.html
     """
+
+    def init_one_hot_encoder(
+            component_class, categorical_features, numeric_features):
+        return component_class(transformers=[
+            ("one_hot_encoder", OneHotEncoder(), categorical_features),
+        ])
+
     return AlgorithmComponent(
         name="OneHotEncoder",
-        component_class=OneHotEncoder,
+        component_class=ColumnTransformer,
         component_type=constants.ONE_HOT_ENCODER,
+        initialize_component=init_one_hot_encoder,
         hyperparameters=[
-            CategoricalHyperparameter("sparse", [True, False], default=True)],
-        env_dep_hyperparameters={
-            "categorical_features": [],
-            "sparse": False})
+            EmbeddedEstimatorHyperparameter(
+                "one_hot_encoder",
+                CategoricalHyperparameter(
+                    "drop", ["first", None], default=None))
+        ],
+        constant_hyperparameters={
+            "remainder": "passthrough",
+            "one_hot_encoder__sparse": False,
+            "one_hot_encoder__categories": "auto",
+        })
 
 
 def minmax_scaler():

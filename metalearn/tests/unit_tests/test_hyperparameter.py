@@ -83,3 +83,7 @@ def test_base_estimator_hyperparameter():
 
     for i, base_est in enumerate(base_est_hp.get_state_space()):
         assert base_est.get_params() == expected[i].get_params()
+
+
+def test_embedded_estimator_hyperparameter():
+    pass

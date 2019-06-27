@@ -28,12 +28,15 @@ class HyperparameterBase(object):
     def __repr__(self):
         return "<%s: \"%s\">" % (type(self).__name__, self.hname)
 
+    def default_in_state_space(self):
+        return self.default in self._state_space or self.default is None
+
     def get_state_space(self, with_none_token=False):
         """
         :returns: list of tokens representing hyperparameter space
         :rtype: list[int|float|str]
         """
-        if self.default in self._state_space:
+        if self.default_in_state_space():
             state_space = self._state_space
         else:
             state_space = self._state_space + [self.default]
@@ -146,7 +149,7 @@ class BaseEstimatorHyperparameter(HyperparameterBase):
         super().__init__(hname, self._init_state_space(), default,
                          exclude_conditions)
 
-    def _default_in_state_space(self):
+    def default_in_state_space(self):
         for base_est in self._state_space:
             if self.default.get_params() == base_est.get_params():
                 return True
@@ -171,11 +174,15 @@ class EmbeddedEstimatorHyperparameter(HyperparameterBase):
     For example, in the ColumnTransformer ``transformer`` argument.
     """
 
-    def __init__(self, estimator_name, hname, state_space, default):
-        self.hname_leaf = hname
+    def __init__(self, estimator_name, hyperparameter,
+                 exclude_conditions=None):
+        self.hyperparameter = hyperparameter
         self.estimator_name = estimator_name
         super().__init__(
-            f"{self.estimator_name}__{self.hname_leaf}", state_space, default)
+            f"{self.estimator_name}__{self.hyperparameter.hname}",
+            hyperparameter.get_state_space(),
+            hyperparameter.default,
+            exclude_conditions)
 
 
 class MultiBaseEstimatorHyperparameter(HyperparameterBase):

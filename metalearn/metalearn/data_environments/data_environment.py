@@ -143,6 +143,8 @@ class DataEnvironment(object):
         :param transformer target_preprocessor: an sklearn-compliant target
             preprocessor that has a fit/transform/fit_transform method. This
             is applied to the target
+
+        TODO: add `is_sparse` indicator attribute
         """
         self.name = name
         self.source = source
