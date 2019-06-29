@@ -37,7 +37,7 @@ pip install -e .
 then you can run an experiment with the `metalearn` cli.
 ```
 # run an experiment with default values
-$ metal run experiment
+$ metalearn run experiment
 ```
 
 ## Running an experiment with a configuration file
@@ -47,7 +47,7 @@ your experiment.
 
 ```
 # create experiment config file
-$ metal create config my_experiment config/local --description "my experiment"
+$ metalearn create config my_experiment config/local --description "my experiment"
 
 # output:
 # wrote experiment config file to config/local/experiment_2018-37-25-21:37:11_my_experiment.yml
@@ -58,7 +58,7 @@ edit the config file `parameters` section to the set of parameters
 that you want to train on, then run the experiment with
 
 ```
-$ metal run from-config config/local/experiment_2018-37-25-21:37:11_my_experiment.yml
+$ metalearn run from-config config/local/experiment_2018-37-25-21:37:11_my_experiment.yml
 ```
 
 
