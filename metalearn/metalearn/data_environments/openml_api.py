@@ -88,12 +88,15 @@ def openml_to_data_env(
         return None
 
     def _fetch_training_data():
-        data = openml_dataset.get_data(
-            include_row_id=True, include_ignore_attributes=True)
+        # see https://openml.github.io/openml-python/develop/generated/openml.OpenMLDataset.html#openml.OpenMLDataset  # noqa E53
+        # for more details
+        data, *_ = openml_dataset.get_data(
+            include_row_id=True, include_ignore_attributes=True,
+            dataset_format="array")
         if openml_dataset.format == SPARSE_DATA_FORMAT:
             # TODO: currently the controller can't handle sparse matrices.
-            data = np.array(data.todense())
-        return data[:,  feature_indices], data[:, target_index].ravel()
+            data = data.todense()
+        return data[:, feature_indices], data[:, target_index].ravel()
 
     return DataEnvironment(
         name="openml.%s" % openml_dataset.name.lower(),
