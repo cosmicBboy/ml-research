@@ -14,46 +14,6 @@ from .hyperparameter import (
     BaseEstimatorHyperparameter, EmbeddedEstimatorHyperparameter)
 
 
-def simple_numeric_imputer():
-    """Create an imputer component.
-
-    TODO: create a ML pipeline signature for imputing numeric and categorical
-          features using the ColumnTransformer transformer.
-    """
-    return AlgorithmComponent(
-        name="NumericImputer",
-        component_class=SimpleImputer,
-        component_type=constants.IMPUTER,
-        hyperparameters=[
-            CategoricalHyperparameter(
-                "strategy",
-                ["mean", "median", "most_frequent", "constant"],
-                default="mean"),
-            CategoricalHyperparameter(
-                "add_indicator", [True, False], default=True),
-        ])
-
-
-def simple_categorical_imputer():
-    """Create an imputer component.
-
-    TODO: create a ML pipeline signature for imputing numeric and categorical
-          features using the ColumnTransformer transformer.
-    """
-    return AlgorithmComponent(
-        name="CategoricalImputer",
-        component_class=SimpleImputer,
-        component_type=constants.IMPUTER,
-        hyperparameters=[
-            CategoricalHyperparameter(
-                "strategy",
-                ["most_frequent"],
-                default="most_frequent"),
-            CategoricalHyperparameter(
-                "add_indicator", [True, False], default=True),
-        ])
-
-
 def simple_imputer():
     """Create a categorical and numeric imputer."""
     # this is a placeholder index for which columns should be transformed is

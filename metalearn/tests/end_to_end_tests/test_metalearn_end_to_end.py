@@ -266,7 +266,7 @@ def test_cash_kaggle_classification_data():
 def _exclusion_mask_test_harness(n_episodes, a_space_kwargs, t_env_kwargs):
     a_space = AlgorithmSpace(
         data_preprocessors=[
-            components.data_preprocessors.simple_numeric_imputer(),
+            components.data_preprocessors.simple_imputer(),
             components.data_preprocessors.one_hot_encoder(),
             components.data_preprocessors.standard_scaler(),
         ],

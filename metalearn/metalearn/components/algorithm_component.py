@@ -120,6 +120,9 @@ class AlgorithmComponent(object):
             constant_hyperparameters is None else constant_hyperparameters
         # TODO: consider making a class for exclusion conditions
         self.exclusion_conditions = exclusion_conditions
+        # TODO: implement checker for initialize_component function. Make
+        #       sure that the estimator portion of the `transformer` arg
+        #       is an Estimator
 
     def __call__(self, categorical_features=None, continuous_features=None):
         """Instantiate the algorithm object.
