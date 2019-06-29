@@ -4,13 +4,17 @@ from collections import OrderedDict
 from itertools import product
 from metalearn.components.algorithm_component import AlgorithmComponent
 from metalearn.components.constants import CLASSIFIER
+from sklearn.base import BaseEstimator
 
 
-class MockEstimator(object):
+class MockEstimator(BaseEstimator):
 
-    def __init__(self, hyperparameter1=1, hyperparameter2="a"):
+    def __init__(self, hyperparameter1=1, hyperparameter2="a",
+                 categorical_features=None, continuous_features=None):
         self.hyperparameter1 = hyperparameter1
         self.hyperparameter2 = hyperparameter1
+        self.categorical_features = categorical_features
+        self.continuous_features = continuous_features
 
 
 class MockHyperparameter(object):
@@ -31,12 +35,14 @@ MOCK_HYPERPARAMS = [
 
 def _algorithm_component(
         component_type=CLASSIFIER,
+        initialize_component=None,
         hyperparameters=None,
         exclusion_conditions=None):
     return AlgorithmComponent(
         name="TestComponent",
         component_class=MockEstimator,
         component_type=component_type,
+        initialize_component=initialize_component,
         hyperparameters=hyperparameters,
         exclusion_conditions=exclusion_conditions)
 
@@ -98,7 +104,7 @@ def test_hyperparameter_iterator():
 
 
 def test_hyperparameter_exclusion_conditions():
-    """Test that exclusion conditions ."""
+    """Test that exclusion conditions correctly render exclusion mask."""
     algorithm_component = _algorithm_component(
         hyperparameters=MOCK_HYPERPARAMS,
         # if `1` is chosen on hyperparameter1, then exclude values "b", and "c"
@@ -111,3 +117,86 @@ def test_hyperparameter_exclusion_conditions():
     ])
     assert algorithm_component.hyperparameter_exclusion_conditions() == \
         expected
+
+
+def test_initialize_component():
+    """Test that initialize component creates estimator with task metadata."""
+
+    def init_component(
+            component_class, categorical_features, continuous_features):
+        return component_class(
+            categorical_features=categorical_features,
+            continuous_features=continuous_features)
+
+    algorithm_component = _algorithm_component(
+        initialize_component=init_component,
+        hyperparameters=MOCK_HYPERPARAMS)
+
+    for cat_feat, cont_feat in [
+            ([1, 2, 3], [10, 11, 12]),
+            ([1, 2, 3], [10, 11, 12]),
+            ]:
+        estimator = algorithm_component(
+            categorical_features=[1, 2, 3],
+            continuous_features=[10, 11, 12])
+        assert estimator.categorical_features == [1, 2, 3]
+        assert estimator.continuous_features == [10, 11, 12]
+
+    # case where init_component is None
+    algorithm_component = _algorithm_component(
+        initialize_component=None,
+        hyperparameters=MOCK_HYPERPARAMS)
+
+    estimator = algorithm_component(
+        categorical_features=[1, 2, 3],
+        continuous_features=[10, 11, 12])
+    assert estimator.categorical_features is None
+    assert estimator.continuous_features is None
+
+
+def test_initialize_component_exceptions():
+    """Test function signature exceptions of init_component."""
+
+    algorithm_component = _algorithm_component(
+        initialize_component=lambda: None)
+
+    # function signature needs to be:
+    # (component: Estimator|Transformer,
+    #  categorical_features: List[int],
+    #  categorical_features: List[int]) -> Estimator
+    for fn in [
+            lambda: None,
+            lambda x: None,
+            lambda x, y: None,
+            lambda x, y, z, _: None,
+            ]:
+        with pytest.raises(TypeError):
+            algorithm_component = _algorithm_component(
+                initialize_component=fn)
+            algorithm_component()
+
+    # Test estimator is returned
+    for fn in [
+            lambda component_class, cat_feats, cont_feats: component_class(
+                categorical_features=cat_feats,
+                continuous_features=cont_feats),
+            lambda component_class, *args: component_class()
+            ]:
+
+        algorithm_component = _algorithm_component(
+            initialize_component=fn)
+        assert isinstance(algorithm_component(), BaseEstimator)
+
+    # when algorithm component output is not an estimator
+    for fn in [
+            lambda x, y, z: None,
+            lambda x, y, z: "foobar",
+            lambda x, y, z: 1,
+            lambda x, y, z: 0.0511235,
+            lambda x, y, z: [],
+            lambda x, y, z: {},
+            ]:
+        with pytest.raises(TypeError):
+            algorithm_component = _algorithm_component(
+                initialize_component=fn)
+            algorithm_component()

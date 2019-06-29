@@ -5,6 +5,7 @@ import itertools
 import numpy as np
 
 from collections import OrderedDict
+from sklearn.base import BaseEstimator
 from sklearn.compose import ColumnTransformer
 from typing import List, Tuple, Any, Union
 
@@ -64,7 +65,7 @@ class AlgorithmComponent(object):
              continuous_features: List[int]) -> EstimatorObject
 
             This function is called in the __call__ method. If None, then
-            component_class is initialized with all of its defaults.
+            component_class Estimator is initialized with all of its defaults.
 
         :param list[Hyperparameters]|None hyperparameters: list of
             Hyperparameter objects, which specify algorithms' hyperparameter
@@ -131,10 +132,16 @@ class AlgorithmComponent(object):
         """
         if self.initialize_component is None:
             return self.component_class()
-        return self.initialize_component(
+
+        estimator = self.initialize_component(
             self.component_class,
             [] if categorical_features is None else categorical_features,
             [] if continuous_features is None else continuous_features)
+        if not isinstance(estimator, BaseEstimator):
+            raise TypeError(
+                "expected output of `initialize_component` to be a "
+                f"BaseEstimator, found {type(estimator)}")
+        return estimator
 
     def get_constant_hyperparameters(self):
         """Get environment-dependent hyperparameters."""

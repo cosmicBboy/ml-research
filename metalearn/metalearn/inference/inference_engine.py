@@ -157,7 +157,7 @@ class CASHInference(object):
         algorithms, hyperparameters = utils.get_mlf_components(actions)
         mlf = self.controller.a_space.create_ml_framework(
             algorithms, hyperparameters=hyperparameters,
-            env_dep_hyperparameters=self.t_env.env_dep_hyperparameters())
+            task_metadata=self.t_env.get_current_task_metadata())
         return mlf, action_activation.data
 
     def evaluate_mlf(self, mlf):
