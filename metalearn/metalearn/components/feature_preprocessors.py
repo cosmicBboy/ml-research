@@ -248,7 +248,7 @@ def random_trees_embedding():
             CategoricalHyperparameter(
                 "sparse_output", [True, False], default=False)
         ],
-        env_dep_hyperparameters={"sparse_output": False})
+        constant_hyperparameters={"sparse_output": False})
 
 
 def select_percentile_classification():

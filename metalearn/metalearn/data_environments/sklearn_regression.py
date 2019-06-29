@@ -31,7 +31,7 @@ def envs(n=5, test_size=None, random_state=None, verbose=False):
                 FeatureType.CONTINUOUS,  # B
                 FeatureType.CONTINUOUS,  # LSTAT
             ],
-            feature_indices=range(14),
+            feature_indices=range(13),
             fetch_training_data=partial(
                 sklearn.datasets.load_boston, return_X_y=True),
             fetch_test_data=None,

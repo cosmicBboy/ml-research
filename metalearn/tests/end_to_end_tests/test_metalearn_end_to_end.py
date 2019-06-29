@@ -208,8 +208,9 @@ def test_cash_missing_data():
     ])
     for mlf_sig in [CLASSIFIER_MLF_SIGNATURE, REGRESSOR_MLF_SIGNATURE]:
         for i in range(20):
-            mlf = a_space.sample_ml_framework(mlf_sig)
-            imputer = mlf.named_steps["NumericImputer"]
+            mlf = a_space.sample_ml_framework(
+                mlf_sig, task_metadata={"continuous_features": [0, 1, 2]})
+            imputer = mlf.named_steps["SimpleImputer"]
             X_impute = imputer.fit_transform(X)
             assert (~np.isnan(X_impute)).all()
 
@@ -265,7 +266,7 @@ def test_cash_kaggle_classification_data():
 def _exclusion_mask_test_harness(n_episodes, a_space_kwargs, t_env_kwargs):
     a_space = AlgorithmSpace(
         data_preprocessors=[
-            components.data_preprocessors.impute_numeric(),
+            components.data_preprocessors.simple_imputer(),
             components.data_preprocessors.one_hot_encoder(),
             components.data_preprocessors.standard_scaler(),
         ],

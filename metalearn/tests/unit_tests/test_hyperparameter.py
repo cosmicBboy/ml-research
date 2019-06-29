@@ -83,3 +83,13 @@ def test_base_estimator_hyperparameter():
 
     for i, base_est in enumerate(base_est_hp.get_state_space()):
         assert base_est.get_params() == expected[i].get_params()
+
+
+def test_embedded_estimator_hyperparameter():
+    embedded_est_hp = hyperparameter.EmbeddedEstimatorHyperparameter(
+        "embedded_estimator_hyperparam",
+        hyperparameter.CategoricalHyperparameter(
+            "hyperparam", ["a", "b", "c"], default=None))
+
+    assert embedded_est_hp.get_state_space() == ["a", "b", "c"]
+    assert embedded_est_hp.hname == "embedded_estimator_hyperparam__hyperparam"

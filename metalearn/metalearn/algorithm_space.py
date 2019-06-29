@@ -198,13 +198,15 @@ class AlgorithmSpace(object):
         return [self.sample_component(component_type)
                 for component_type in signature]
 
-    def sample_ml_framework(self, signature):
+    def sample_ml_framework(self, signature, task_metadata=None):
         """Sample a random ML framework from the algorithm space.
 
         :param list[str] signature: ML framework signature indicating the
             ordering of algorithm components to form a sklearn Pipeline.
         :param int|None random_state: provide random state, which determines
             the ML framework sampled.
+        :param dict[str, any] task_metadata: constraints imposed by the
+            environment on the hyperparameter space.
         """
         components = self.sample_components_from_signature(signature)
         framework_hyperparameters = {}
@@ -212,11 +214,12 @@ class AlgorithmSpace(object):
             framework_hyperparameters.update(
                 a.sample_hyperparameter_state_space())
         return self.create_ml_framework(
-            components, hyperparameters=framework_hyperparameters)
+            components, hyperparameters=framework_hyperparameters,
+            task_metadata=task_metadata)
 
     def create_ml_framework(
             self, components, memory=None, hyperparameters=None,
-            env_dep_hyperparameters=None):
+            task_metadata=None):
         """Create ML framework, in this context an sklearn pipeline object.
 
         :param list[AlgorithmComponent] components: A list of algorithm
@@ -224,14 +227,23 @@ class AlgorithmSpace(object):
         :param str|None memory: path to caching directory in which to store
             fitten transformers of the sklearn.Pipeline. If None, no caching
             is done
+        :param dict[str, str] hyperparameters: picked by the automl system.
+        :param dict[str, any] task_metadata: constraints imposed by the
+            environment on the hyperparameter space.
         """
         steps = []
         hyperparameters = {} if hyperparameters is None else hyperparameters
-        if env_dep_hyperparameters:
-            hyperparameters.update(env_dep_hyperparameters)
-        for a in components:
-            steps.append((a.name, a()))
-            hyperparameters.update(a.env_dep_hyperparameter_name_space())
+        task_metadata = {} if task_metadata is None else task_metadata
+        for component in components:
+            steps.append(
+                (component.name, component(
+                    categorical_features=task_metadata.get(
+                        "categorical_features", None),
+                    continuous_features=task_metadata.get(
+                        "continuous_features", None)
+                    ))
+            )
+            hyperparameters.update(component.get_constant_hyperparameters())
         ml_framework = Pipeline(memory=memory, steps=steps)
         ml_framework.set_params(**hyperparameters)
         return ml_framework
@@ -269,7 +281,7 @@ class AlgorithmSpace(object):
 def get_data_preprocessors():
     """Get all data preprocessors in structured algorithm space."""
     return [
-        components.data_preprocessors.impute_numeric(),
+        components.data_preprocessors.simple_imputer(),
         components.data_preprocessors.one_hot_encoder(),
         components.data_preprocessors.minmax_scaler(),
         components.data_preprocessors.standard_scaler(),

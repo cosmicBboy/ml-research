@@ -237,22 +237,28 @@ class TaskEnvironment(object):
         else:
             self.scorer = self.current_data_env.scorer
 
-    def env_dep_hyperparameters(self):
-        """Get data environment-dependent hyperparameters.
+    def get_current_task_metadata(self):
+        """Get feature metadata associated with current task.
 
-        Currently the only hyperparameter that dictionary would apply to is
-        the OneHotEncoder component.
+        This method emits metadata about the current task needed as
+        task-dependent hyperparameters to the MLF pipeline.
 
-        This method is called in `metalearn_reinforce` to make sure that the
-        pipeline one-hot-encodes categorical features. Should make a test for
-        this.
+        :returns: a mapping of feature metadata. Current keys are
+            "categorical_features" and "continuous_features", indicating
+            indices in the input matrix that are of each datatype.
+        :rtype: dict[str, list[int]]
         """
         return {
-            "OneHotEncoder__categorical_features": [
+            "categorical_features": [
                 index for f, index in
                 zip(self.current_data_env.feature_types,
                     self.current_data_env.feature_indices)
-                if f == FeatureType.CATEGORICAL]
+                if f == FeatureType.CATEGORICAL],
+            "continuous_features": [
+                index for f, index in
+                zip(self.current_data_env.feature_types,
+                    self.current_data_env.feature_indices)
+                if f == FeatureType.CONTINUOUS]
         }
 
     def sample_task_state(self, data_env_partition="train"):

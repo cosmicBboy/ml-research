@@ -205,7 +205,7 @@ class MetaLearnReinforce(object):
         algorithms, hyperparameters = utils.get_mlf_components(actions)
         mlf = self.controller.a_space.create_ml_framework(
             algorithms, hyperparameters=hyperparameters,
-            env_dep_hyperparameters=self.t_env.env_dep_hyperparameters())
+            task_metadata=self.t_env.get_current_task_metadata())
         mlf, reward, score = self.t_env.evaluate(mlf)
         self._action_buffer.append(action_activation)
         self._algorithm_sets.append(algorithms)

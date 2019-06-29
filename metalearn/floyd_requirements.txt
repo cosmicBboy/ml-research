@@ -5,7 +5,7 @@ pandas
 matplotlib
 nose
 numpy
-openml==0.7.0
+openml==0.9.0
 pynisher
-scikit-learn==0.19.2
+scikit-learn==0.21.2
 yamlordereddictloader

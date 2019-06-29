@@ -17,3 +17,6 @@ upload-pypi:
 	python setup.py sdist bdist_wheel && \
 		twine upload dist/* && \
 		rm -rf dist
+
+clean-pyc:
+	find . -name '*.pyc' -exec rm {} \;

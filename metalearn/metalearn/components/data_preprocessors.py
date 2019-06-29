@@ -1,34 +1,60 @@
 """Data Preprocessor components."""
 
+from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import (
-    QuantileTransformer, OneHotEncoder, Imputer, MinMaxScaler, StandardScaler,
-    RobustScaler, Normalizer)
+    QuantileTransformer, OneHotEncoder, MinMaxScaler,
+    StandardScaler, RobustScaler, Normalizer)
+from sklearn.impute import SimpleImputer
 
 from .algorithm_component import AlgorithmComponent
 from . import constants
 from .hyperparameter import (
     CategoricalHyperparameter, UniformIntHyperparameter,
-    UniformFloatHyperparameter, TuplePairHyperparameter)
+    UniformFloatHyperparameter, TuplePairHyperparameter,
+    BaseEstimatorHyperparameter, EmbeddedEstimatorHyperparameter)
 
 
-def impute_numeric():
-    """Create an imputer component.
+def simple_imputer():
+    """Create a categorical and numeric imputer."""
+    # this is a placeholder index for which columns should be transformed is
+    # task environment specific.
 
-    TODO: when this project gets to processing datasets with missing values,
-    need to create another imputer function the explicitly handles numerical
-    and categorical data. This will involve also modifying the
-    ML_FRAMEWORK_SIGNATURE in algorithm_space.py such that there are two types
-    of imputers. Will also probably need to position the OneHotEncoder
-    component after the imputers.
-    """
-    return AlgorithmComponent(
-        name="NumericImputer",
-        component_class=Imputer,
-        component_type=constants.IMPUTER,
-        hyperparameters=[
-            CategoricalHyperparameter(
-                "strategy", ["mean", "median"], default="mean"),
+    def init_simple_imputer(
+            component_class, categorical_features, numeric_features):
+
+        return component_class(transformers=[
+            ("categorical_imputer", SimpleImputer(), categorical_features),
+            ("continuous_imputer", SimpleImputer(), numeric_features)
         ])
+
+    return AlgorithmComponent(
+        name="SimpleImputer",
+        component_class=ColumnTransformer,
+        component_type=constants.IMPUTER,
+        initialize_component=init_simple_imputer,
+        hyperparameters=[
+            EmbeddedEstimatorHyperparameter(
+                "continuous_imputer",
+                CategoricalHyperparameter(
+                    "strategy",
+                    ["mean", "median", "most_frequent", "constant"],
+                    default="mean")),
+            EmbeddedEstimatorHyperparameter(
+                "continuous_imputer",
+                CategoricalHyperparameter(
+                    "add_indicator", [True, False], default=True)),
+            EmbeddedEstimatorHyperparameter(
+                "categorical_imputer",
+                CategoricalHyperparameter(
+                    "strategy", ["most_frequent", "constant"],
+                    default="mean")),
+            EmbeddedEstimatorHyperparameter(
+                "categorical_imputer",
+                CategoricalHyperparameter(
+                    "add_indicator", [True, False], default=True)),
+        ],
+        constant_hyperparameters={"remainder": "passthrough"}
+        )
 
 
 def one_hot_encoder():
@@ -48,15 +74,29 @@ def one_hot_encoder():
     For more details, see:
     http://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.OneHotEncoder.html
     """
+
+    def init_one_hot_encoder(
+            component_class, categorical_features, numeric_features):
+        return component_class(transformers=[
+            ("one_hot_encoder", OneHotEncoder(), categorical_features),
+        ])
+
     return AlgorithmComponent(
         name="OneHotEncoder",
-        component_class=OneHotEncoder,
+        component_class=ColumnTransformer,
         component_type=constants.ONE_HOT_ENCODER,
+        initialize_component=init_one_hot_encoder,
         hyperparameters=[
-            CategoricalHyperparameter("sparse", [True, False], default=True)],
-        env_dep_hyperparameters={
-            "categorical_features": [],
-            "sparse": False})
+            EmbeddedEstimatorHyperparameter(
+                "one_hot_encoder",
+                CategoricalHyperparameter(
+                    "drop", ["first", None], default=None))
+        ],
+        constant_hyperparameters={
+            "remainder": "passthrough",
+            "one_hot_encoder__sparse": False,
+            "one_hot_encoder__categories": "auto",
+        })
 
 
 def minmax_scaler():

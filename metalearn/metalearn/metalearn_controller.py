@@ -132,7 +132,7 @@ class MetaLearnController(nn.Module):
         for choice, exclude_conditions in exclude.items():
             for hname, exclude_values in exclude_conditions.items():
                 if exclude_values == EXCLUDE_ALL:
-                    mask = [1 for i in h_state_space[hname]]
+                    mask = [1 for _ in h_state_space[hname]]
                 else:
                     mask = [i in exclude_values for i in h_state_space[hname]]
                 exclude_masks[choice].update({hname: torch.ByteTensor(mask)})
