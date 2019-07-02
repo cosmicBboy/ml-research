@@ -40,7 +40,7 @@ def generate_table(dataframe, max_rows=10):
 
 
 def read_results(job_nums, output_root=OUTPUT_ROOT):
-    results = pd.concat([
+    results = [
         pd.read_csv(
             output_root /
             str(job_num) /
@@ -50,8 +50,10 @@ def read_results(job_nums, output_root=OUTPUT_ROOT):
                 df.trial_number.astype(str), sep="-"))
         .sort_values("episode")
         for job_num in job_nums
-    ])
-    return results
+    ]
+    if not results:
+        return pd.DataFrame()
+    return pd.concat(results)
 
 
 def preprocess_results(results):
@@ -69,7 +71,8 @@ def read_best_mlfs(job_nums, output_root=OUTPUT_ROOT):
     best_mlfs = []
     for job_num in job_nums:
         job_output_fp = OUTPUT_ROOT / str(job_num)
-        for fp in job_output_fp.glob("metalearn_controller_mlfs_trial_*/*.pkl"):
+        for fp in job_output_fp.glob(
+                "metalearn_controller_mlfs_trial_*/*.pkl"):
             mlf = joblib.load(fp)
             episode = int(
                 re.match("best_mlf_episode_(\d+).pkl", fp.name).group(1))
@@ -96,7 +99,7 @@ app.layout = html.Div(children=[
         id="job-choices",
         options=get_all_jobs(),
         multi=True,
-        value="219"),
+        value="249"),
 
     html.H2(children="Run History"),
     dcc.Graph(id="graph-run-history"),
@@ -123,6 +126,8 @@ app.layout = html.Div(children=[
 def preprocess_results_callback(job_choice):
     job_nums = _parse_job_choice(job_choice)
     results = read_results(job_nums)
+    if results.empty:
+        return ""
     return results.to_json(date_format="iso", orient="split")
 
 
@@ -131,8 +136,10 @@ def preprocess_results_callback(job_choice):
 def plot_run_history_callback(data_store):
     if data_store == "":
         return {}
-    return plotting_helpers.plot_run_history(
-        pd.read_json(data_store, orient="split"))
+    data_store = pd.read_json(data_store, orient="split")
+    if data_store.empty:
+        return {}
+    return plotting_helpers.plot_run_history(data_store)
 
 
 @app.callback(
@@ -142,8 +149,11 @@ def plot_run_history_callback(data_store):
 def plot_run_history_by_dataenv_callback(data_store, performance_metric):
     if data_store == "":
         return {}
+    data_store = pd.read_json(data_store, orient="split")
+    if data_store.empty:
+        return {}
     return plotting_helpers.plot_run_history_by_dataenv(
-        pd.read_json(data_store, orient="split"), metric=performance_metric)
+        data_store, metric=performance_metric)
 
 
 @app.callback(
@@ -151,6 +161,8 @@ def plot_run_history_by_dataenv_callback(data_store, performance_metric):
 def plot_best_mlfs(job_choice):
     job_nums = _parse_job_choice(job_choice)
     best_mlfs = read_best_mlfs(job_nums)
+    if best_mlfs.empty:
+        return {}
     return plotting_helpers.plot_best_mlfs(best_mlfs)
 
 

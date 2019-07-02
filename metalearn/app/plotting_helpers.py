@@ -99,7 +99,7 @@ def plot_run_history(results):
     return fig
 
 
-def plot_run_history_by_dataenv(results, metric="mean_rewards"):
+def plot_run_history_by_dataenv(results, metric="mean_rewards", ncols=3):
 
     colormap = {
         g: PALETTE[i] for i, g in
@@ -137,12 +137,13 @@ def plot_run_history_by_dataenv(results, metric="mean_rewards"):
     for (data_env, job_num), trace in _time_series_data.items():
         time_series_data[data_env][job_num] = trace
 
-    coords = subplot_coords(time_series_data, 3)
+    coords = subplot_coords(time_series_data, ncols)
+    nrows = math.ceil(len(time_series_data) / ncols)
     fig = tools.make_subplots(
         rows=coords["nrows"],
         cols=coords["ncols"],
         subplot_titles=list(time_series_data.keys()),
-        vertical_spacing=0.1,
+        vertical_spacing=0.05,
         print_grid=False)
 
     for i, (data_env, traces) in enumerate(time_series_data.items()):
@@ -155,7 +156,7 @@ def plot_run_history_by_dataenv(results, metric="mean_rewards"):
                 fig.layout[xax].update({"title": "episode"})
 
     fig.layout.update({
-        "height": 600,
+        "height": 1000,
     })
 
     for annotation in fig.layout.annotations:
