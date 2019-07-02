@@ -18,7 +18,11 @@ setup(
         "metalearn.data_environments.feature_maps",
         "metalearn.inference"],
     install_requires=[
+        "colorlover",
         "click==6.7",
+        "dash",
+        "dash-core-components",
+        "dash-html-components",
         "dill",
         "floyd-cli",
         "kaggle",
