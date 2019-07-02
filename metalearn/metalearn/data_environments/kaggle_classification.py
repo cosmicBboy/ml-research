@@ -84,6 +84,7 @@ def bnp_paribas_cardif_claims_management():
             [108, 109, 111],
             range(114, 125),
             range(126, 132))]
+
     return KaggleCompetition(
         competition_id="bnp-paribas-cardif-claims-management",
         features=OrderedDict(

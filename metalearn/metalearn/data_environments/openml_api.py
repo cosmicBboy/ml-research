@@ -45,6 +45,11 @@ def _map_feature(feature):
     return feature_dtype
 
 
+def _normalize_feature_indices(feature_indices):
+    min_index = min(feature_indices)
+    return [i - min_index for i in feature_indices]
+
+
 def openml_to_data_env(
         openml_dataset, target_column, target_type,
         data_source_type, test_size, random_state, target_preprocessor=None,
@@ -78,6 +83,7 @@ def openml_to_data_env(
         else:
             feature_indices.append(key)
             feature_types.append(_map_feature(feature))
+
     if target_index is None:
         print("target column %s not found for dataset %s, skipping." %
               (target_column, openml_dataset.name))
@@ -96,14 +102,25 @@ def openml_to_data_env(
         if openml_dataset.format == SPARSE_DATA_FORMAT:
             # TODO: currently the controller can't handle sparse matrices.
             data = data.todense()
-        return data[:, feature_indices], data[:, target_index].ravel()
+
+        # remove rows with null targets. Only case we'll need that is if
+        # metalearn supports semi-supervised learning.
+        X = data[:, feature_indices]
+        y = data[:, target_index].ravel()
+        y_not_nan = ~np.isnan(y)
+        return X[y_not_nan, :], y[y_not_nan]
+
+    # normalize feature indices so that index is aligned with
+    # _fetch_training_data
+    min_index = min(feature_indices)
+    normalized_feature_indices = [i - min_index for i in feature_indices]
 
     return DataEnvironment(
         name="openml.%s" % openml_dataset.name.lower(),
         source=data_source_type,
         target_type=target_type,
         feature_types=feature_types,
-        feature_indices=feature_indices,
+        feature_indices=normalized_feature_indices,
         # include row id ensures that indices are correctly aligned
         fetch_training_data=_fetch_training_data,
         fetch_test_data=None,
