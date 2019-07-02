@@ -70,10 +70,11 @@ def fast_ica():
             CategoricalHyperparameter(
                 "algorithm", ["parallel", "deflation"], default="parallel"),
             CategoricalHyperparameter(
-                "whiten", [True, False], default=True),
-            CategoricalHyperparameter(
                 "fun", ["logcosh", "exp", "cube"], default="logcosh"),
-        ])
+        ],
+        constant_hyperparameters={
+            "whiten": True
+        })
 
 
 def feature_agglomeration():
