@@ -32,26 +32,18 @@ FIT_ERROR_MESSAGES = [
     (ValueError,
         "The condensed distance matrix must contain only finite values"),
     (ValueError, "n_components must be < n_features"),
-    (ValueError, "max_features must be in \(0, n_features\]"),
+    (ValueError, r"max_features must be in \(0, n_features\]"),
     (ValueError,
-        "Input contains NaN, infinity or a value too large for "
-        "dtype\('float64'\)"),
-    (FloatingPointError, "overflow encountered in exp"),
-    (FloatingPointError, "overflow encountered in power"),
-    (FloatingPointError, "overflow encountered in multiply"),
-    (FloatingPointError, "underflow encountered in multiply"),
-    (FloatingPointError, "underflow encountered in square"),
-    (FloatingPointError, "underflow encountered in power"),
-    (FloatingPointError, "divide by zero encountered in true_divide"),
-    (FloatingPointError, "divide by zero encountered in double_scalars"),
-    (FloatingPointError, "invalid value encountered in true_divide"),
-    (FloatingPointError, "underflow encountered in true_divide"),
-    (FloatingPointError, "invalid value encountered in sqrt"),
-    (FloatingPointError, "invalid value encountered in reduce"),
-    (FloatingPointError, "overflow encountered in reduce"),
-    (FloatingPointError, "underflow encountered in exp"),
-    (FloatingPointError, "underflow encountered in reciprocal"),
+        r"Input contains NaN, infinity or a value too large for "
+        r"dtype\('float64'\)"),
+    (ValueError, "Input X must be non-negative"),
+    (FloatingPointError, "^overflow encountered in"),
+    (FloatingPointError, "^underflow encountered in"),
+    (FloatingPointError, "^divide by zero encountered in"),
+    (FloatingPointError, "^invalid value encountered in"),
+    (FloatingPointError, "^underflow encountered in"),
     (TypeError, "'str' object is not callable"),
+    (TypeError, "'numpy.float64' object cannot be interpreted as an integer"),
     (ZeroDivisionError,
         "Current sag implementation does not handle the case step_size"),
 ]
@@ -107,6 +99,13 @@ PREDICT_ERROR_MESSAGES = [
     (FloatingPointError, "underflow encountered in reciprocal"),
     (FloatingPointError, "underflow encountered in exp"),
     (FloatingPointError, "underflow encountered in multiply"),
+    # SimpleImputer algorithm component
+    (ValueError,
+        r"The features \[.+\] have missing values in transform "
+        "but have no missing values in fit"),
+    # KNearestNeighbors algorithm component
+    (ValueError,
+        r"^Expected n_neighbors <= n_samples,")
 ]
 
 PREDICT_ERROR_TYPES = tuple(set([i for i, _ in PREDICT_ERROR_MESSAGES]))
