@@ -37,7 +37,7 @@ def simple_imputer():
                 "continuous_imputer",
                 CategoricalHyperparameter(
                     "strategy",
-                    ["mean", "median", "most_frequent", "constant"],
+                    ["mean", "median", "most_frequent"],
                     default="mean")),
             EmbeddedEstimatorHyperparameter(
                 "continuous_imputer",
@@ -46,7 +46,7 @@ def simple_imputer():
             EmbeddedEstimatorHyperparameter(
                 "categorical_imputer",
                 CategoricalHyperparameter(
-                    "strategy", ["most_frequent", "constant"],
+                    "strategy", ["most_frequent"],
                     default="mean")),
             EmbeddedEstimatorHyperparameter(
                 "categorical_imputer",
@@ -86,14 +86,10 @@ def one_hot_encoder():
         component_class=ColumnTransformer,
         component_type=constants.ONE_HOT_ENCODER,
         initialize_component=init_one_hot_encoder,
-        hyperparameters=[
-            EmbeddedEstimatorHyperparameter(
-                "one_hot_encoder",
-                CategoricalHyperparameter(
-                    "drop", ["first", None], default=None))
-        ],
         constant_hyperparameters={
             "remainder": "passthrough",
+            "one_hot_encoder__drop": None,
+            "one_hot_encoder__handle_unknown": "ignore",
             "one_hot_encoder__sparse": False,
             "one_hot_encoder__categories": "auto",
         })
