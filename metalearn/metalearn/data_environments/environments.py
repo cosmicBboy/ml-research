@@ -66,7 +66,4 @@ def envs(dataset_names=None, sources=None, target_types=None,
             dataset_names, **test_set_config.get(env_source, {})))
     if target_types:
         _envs = [e for e in _envs if e.target_type in target_types]
-    # NOTE: eventually the MLF pipeline should be able to transform
-    # numerical and categorical features selectively, as shown in this example
-    # http://scikit-learn.org/stable/auto_examples/compose/plot_column_transformer_mixed_types.html
     return _envs
