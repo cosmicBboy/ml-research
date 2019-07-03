@@ -160,6 +160,8 @@ def support_vector_classifier_linear():
             CategoricalHyperparameter("penalty", ["l1", "l2"], default="l2"),
             CategoricalHyperparameter(
                 "loss", ["hinge", "squared_hinge"], default="squared_hinge"),
+            UniformIntHyperparameter(
+                "max_iter", 1000, 3000, default=1000),
             UniformFloatHyperparameter(
                 "tol", 1e-5, 1e-1, default=1e-4, log=True),
             UniformFloatHyperparameter(
