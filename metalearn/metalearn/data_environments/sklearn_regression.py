@@ -55,7 +55,7 @@ def envs(n=5, test_size=None, random_state=None, verbose=False):
         ("sklearn.linnerud", DataEnvironment(
             name="sklearn.linnerud",
             source=DataSourceType.SKLEARN,
-            target_type=TargetType.REGRESSION,
+            target_type=TargetType.MULTIREGRESSION,
             feature_types=[FeatureType.CONTINUOUS for _ in range(3)],
             feature_indices=range(3),
             fetch_training_data=partial(

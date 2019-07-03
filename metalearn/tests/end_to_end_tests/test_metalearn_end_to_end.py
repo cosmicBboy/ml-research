@@ -1,6 +1,7 @@
 """End to end tests for fitting a cash controllers."""
 
 import numpy as np
+import openml
 import pandas as pd
 import torch
 
@@ -10,6 +11,7 @@ from metalearn import components
 
 from metalearn.algorithm_space import AlgorithmSpace, \
     CLASSIFIER_MLF_SIGNATURE, REGRESSOR_MLF_SIGNATURE
+from metalearn.data_environments import openml_api
 from metalearn.task_environment import TaskEnvironment
 from metalearn.metalearn_controller import MetaLearnController
 from metalearn.metalearn_reinforce import MetaLearnReinforce
@@ -148,7 +150,7 @@ def test_cash_zero_gradient():
             assert g != 0
 
 
-def test_cash_entropy_regularizer():
+def test_metalearn_entropy_regularizer():
     """Test that losses w/ entropy regularization are lower than baseline."""
     losses = {}
     for model, kwargs in [
@@ -179,11 +181,11 @@ def test_cash_entropy_regularizer():
 
 def test_metalearn_reinforce_regressor():
     """Test cash reinforce regression data environments."""
-    n_episodes = 4
+    n_episodes = 50
     for dataset in ["sklearn.boston", "sklearn.diabetes", "sklearn.linnerud"]:
         a_space = _algorithm_space()
         t_env = _task_environment(
-            target_types=["REGRESSION"],
+            target_types=["REGRESSION", "MULTIREGRESSION"],
             dataset_names=[dataset])
         a_space = _algorithm_space()
         controller = _metalearn_controller(a_space, t_env)
@@ -215,52 +217,98 @@ def test_cash_missing_data():
             assert (~np.isnan(X_impute)).all()
 
 
-def test_cash_kaggle_regression_data():
+def test_kaggle_regression_data():
     """Test regression dataset from kaggle."""
-    n_episodes = 2
+    n_episodes = 10
     a_space = _algorithm_space()
-    t_env = _task_environment(
-        env_sources=["KAGGLE"],
-        target_types=["REGRESSION"],
-        dataset_names=[
-            "kaggle.restaurant_revenue_prediction",
-            "kaggle.nyc_taxi_trip_duration",
-            "kaggle.mercedes_benz_greener_manufacturing",
-            "kaggle.allstate_claims_severity",
-            "kaggle.house_prices_advanced_regression_techniques",
-        ],
-        n_samples=30)
-    controller = _metalearn_controller(a_space, t_env)
-    reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
-    reinforce.fit(
-        n_episodes=n_episodes,
-        **_fit_kwargs())
-    history = pd.DataFrame(reinforce.history)
-    assert history.shape[0] == n_episodes
+    for dataset_name in [
+                "kaggle.restaurant_revenue_prediction",
+                "kaggle.nyc_taxi_trip_duration",
+                "kaggle.mercedes_benz_greener_manufacturing",
+                "kaggle.allstate_claims_severity",
+                "kaggle.house_prices_advanced_regression_techniques",
+            ]:
+        t_env = _task_environment(
+            env_sources=["KAGGLE"],
+            target_types=["REGRESSION"],
+            dataset_names=[dataset_name],
+            n_samples=50)
+        controller = _metalearn_controller(a_space, t_env)
+        reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
+        reinforce.fit(
+            n_episodes=n_episodes,
+            **_fit_kwargs())
+        history = pd.DataFrame(reinforce.history)
+        assert history.shape[0] == n_episodes
+        assert history["n_successful_mlfs"].sum() > 0
 
 
-def test_cash_kaggle_classification_data():
+def test_kaggle_classification_data():
     """Test classification dataset from kaggle."""
-    n_episodes = 2
+    n_episodes = 10
     a_space = _algorithm_space()
-    t_env = _task_environment(
-        env_sources=["KAGGLE"],
-        target_types=["BINARY", "MULTICLASS"],
-        dataset_names=[
-            "kaggle.homesite_quote_conversion",
-            "kaggle.santander_customer_satisfaction",
-            "kaggle.bnp_paribas_cardif_claims_management",
-            "kaggle.poker_rule_induction",
-            "kaggle.costa_rican_household_poverty_prediction",
-        ],
-        n_samples=30)
-    controller = _metalearn_controller(a_space, t_env)
-    reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
-    reinforce.fit(
-        n_episodes=n_episodes,
-        **_fit_kwargs())
-    history = pd.DataFrame(reinforce.history)
-    assert history.shape[0] == n_episodes
+    for dataset_name in [
+                "kaggle.homesite_quote_conversion",
+                "kaggle.santander_customer_satisfaction",
+                "kaggle.bnp_paribas_cardif_claims_management",
+                "kaggle.poker_rule_induction",
+                "kaggle.costa_rican_household_poverty_prediction",
+            ]:
+        t_env = _task_environment(
+            env_sources=["KAGGLE"],
+            target_types=["BINARY", "MULTICLASS"],
+            dataset_names=[dataset_name],
+            n_samples=50)
+        controller = _metalearn_controller(a_space, t_env)
+        reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
+        reinforce.fit(
+            n_episodes=n_episodes,
+            **_fit_kwargs())
+        history = pd.DataFrame(reinforce.history)
+        assert history.shape[0] == n_episodes
+        assert history["n_successful_mlfs"].sum() > 0
+
+
+def test_openml_regression_data():
+    n_episodes = 10
+    a_space = _algorithm_space()
+    datasets = openml_api.regression_envs(
+        n=openml_api.N_REGRESSION_ENVS)
+    for dataset_name in datasets.keys():
+        t_env = _task_environment(
+            env_sources=["OPEN_ML"],
+            target_types=["REGRESSION"],
+            dataset_names=[dataset_name],
+            n_samples=50)
+        controller = _metalearn_controller(a_space, t_env)
+        reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
+        reinforce.fit(
+            n_episodes=n_episodes,
+            **_fit_kwargs())
+        history = pd.DataFrame(reinforce.history)
+        assert history.shape[0] == n_episodes
+        assert history["n_successful_mlfs"].sum() > 0
+
+
+def test_openml_classification_data():
+    n_episodes = 10
+    a_space = _algorithm_space()
+    datasets = openml_api.classification_envs(
+        n=openml_api.N_CLASSIFICATION_ENVS)
+    for dataset_name in datasets.keys():
+        t_env = _task_environment(
+            env_sources=["OPEN_ML"],
+            target_types=["BINARY", "MULTICLASS"],
+            dataset_names=[dataset_name],
+            n_samples=50)
+        controller = _metalearn_controller(a_space, t_env)
+        reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
+        reinforce.fit(
+            n_episodes=n_episodes,
+            **_fit_kwargs())
+        history = pd.DataFrame(reinforce.history)
+        assert history.shape[0] == n_episodes
+        assert history["n_successful_mlfs"].sum() > 0
 
 
 def _exclusion_mask_test_harness(n_episodes, a_space_kwargs, t_env_kwargs):

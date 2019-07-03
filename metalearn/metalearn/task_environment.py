@@ -155,10 +155,10 @@ class TaskEnvironment(object):
                 test_dataset_names, test_env_sources)
 
         # TODO: the metafeature spec should be somehow persisted along with the
-        # trained MetaLearnController. Need to create a method in metalearn_reinforce
-        # module that saves the data env, and test env training datasets.
-        # This is required so that the data_env_name in the metafeature spec
-        # is consistent at test time.
+        # trained MetaLearnController. Need to create a method in
+        # metalearn_reinforce module that saves the data env, and test env
+        # training datasets. This is required so that the data_env_name in the
+        # metafeature spec is consistent at test time.
 
         self.target_type_to_scorer_distribution = None
         if self._include_scoring_metafeature:
@@ -418,6 +418,7 @@ def get_default_scorers():
         TargetType.BINARY: scorers.roc_auc(),
         TargetType.MULTICLASS: scorers.accuracy(),
         TargetType.REGRESSION: scorers.mean_squared_error(),
+        TargetType.MULTIREGRESSION: scorers.mean_squared_error(),
     }
 
 
@@ -428,6 +429,7 @@ def get_scorer_distributions(target_types):
             (TargetType.MULTICLASS,
                 scorers.multiclass_classification_metrics()),
             (TargetType.REGRESSION, scorers.regression_metrics()),
+            (TargetType.MULTIREGRESSION, scorers.regression_metrics()),
         ) if k in target_types}
 
 

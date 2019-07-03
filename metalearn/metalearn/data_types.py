@@ -21,6 +21,7 @@ class TargetType(Enum):
     BINARY = 1
     MULTICLASS = 2
     REGRESSION = 3
+    MULTIREGRESSION = 4
 
 
 class OpenMLTaskType(Enum):
