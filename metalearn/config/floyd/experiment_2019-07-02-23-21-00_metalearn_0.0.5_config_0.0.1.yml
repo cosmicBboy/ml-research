@@ -5,6 +5,7 @@ description: |
   * double the capacity network depth- and breadth-wise.
   * Increase dropout rate to 0.3
   * Introduce 0.1 entropy_coef (increasing encourages exploration)
+  * Remove multiregression
 created_at: 2019-07-02-23-21-00
 git_hash: b570f88
 parameters:
@@ -31,7 +32,6 @@ parameters:
   target_types:
   - BINARY
   - MULTICLASS
-  - MULTIREGRESSION
   test_set_config:
     SKLEARN:
       test_size: 0.8
