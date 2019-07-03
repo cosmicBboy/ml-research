@@ -1,4 +1,4 @@
-name: metalearn_0.0.5_config_0.0.1
+name: metalearn_0.0.5_config_0.0.1b
 experiment_type: METALEARN_REINFORCE
 description: |
   metalearn-0.0.5 tuning experiment:
