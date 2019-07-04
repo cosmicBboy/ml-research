@@ -1,4 +1,4 @@
-name: metalearn_0.0.5_config_0.0.1b
+name: metalearn_0.0.5_config_0.0.1c
 experiment_type: METALEARN_REINFORCE
 description: |
   metalearn-0.0.5 tuning experiment:
@@ -6,6 +6,7 @@ description: |
   * Increase dropout rate to 0.3
   * Introduce 0.1 entropy_coef (increasing encourages exploration)
   * Remove multiregression
+  * Reduce entropy_coef
 created_at: 2019-07-02-23-21-00
 git_hash: b570f88
 parameters:
@@ -18,7 +19,7 @@ parameters:
   n_layers: 6
   dropout_rate: 0.3
   beta: 0.9
-  entropy_coef: 0.1
+  entropy_coef: 0.01
   with_baseline: true
   single_baseline: true
   normalize_reward: false
