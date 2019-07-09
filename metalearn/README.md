@@ -1,6 +1,7 @@
 # META Learn
 
-**M**etaRL-based **E**stimator using **T**ask-encodings for **A**utomated machine **Learn**ing
+**M**etaRL-based **E**stimator using **T**ask-encodings for
+**A**utomated machine **Learn**ing
 
 **META Learn** is a deep learning approach to automated machine learning that
 parameterizes the API of machine learning software as a sequence of actions to
@@ -15,19 +16,14 @@ representation, and classification/regression. Currently the
 As the diversity of data and machine learning use cases increases, we need
 to accelerate and scale the process of training performant machine learning
 systems. We'll need tools that are adaptable to specific problem domains,
-the nature of the dataset, and the (sometimes non-differentiable) performance
-metric we're trying to optimize. Supervised learning of classification and
-regression tasks given a task distribution of small to medium datasets provides
-an promising jumping off platform for programmatically generating a
-reinforcement learning environment for automated machine learning (AutoML).
+datasets, and the (sometimes non-differentiable) performance metrics that we're
+trying to optimize. Supervised learning of classification and regression tasks
+given a task distribution of small to medium datasets provides an promising
+jumping off platform for programmatically generating a reinforcement learning
+environment for automated machine learning (AutoML).
 
 
-# Quickstart
-
-pre-install dependencies:
-```
-pip install numpy scipy
-```
+# Installation
 
 install `metalearn` library:
 ```
@@ -35,6 +31,7 @@ pip install -e .
 ```
 
 then you can run an experiment with the `metalearn` cli.
+
 ```
 # run an experiment with default values
 $ metalearn run experiment
@@ -72,13 +69,7 @@ which often deals with small (< 10 gb) to medium size (10 - 100 gb) data.
 CASH is the problem of searching through the space of all ML frameworks,
 defined as an Algorithm `A` and a set of relevant hyperparameters `lambda`
 and proposing a set of models that will perform well given a dataset and
-a task e.g.
-
-```
-.----------.    .--------------.    .-----.    .---------------------.
-| Raw Data | -> | Handle Nulls | -> | PCA | -> | Logistic Regression |
-.----------.    .--------------.    .-----.    .---------------------.
-```
+a task.
 
 In order to solve this problem, previous work like [autosklearn][autosklearn]
 uses a Bayesian Optimization techniques [SMAC][smac] with an offline meta-
@@ -101,9 +92,10 @@ The contributions of the META Learn project are two-fold: it builds on the neura
 architecture search paradigm by formalating the output space of the Controller
 as a sequence of tokens conditioned on the space of possible executable
 `frameworks`. The scope of this project is to define a `framework`, expressed
-as a piece of Python code, which evaluates to an instantiated sklearn
-[`Pipeline`][sklearn-pipeline] and can be fitted on a training set and
-evaluated on a validation set of a particular dataset `D`.
+as a set of hyperparameters, that can be evaluated by a machine learning
+framework, like sklearn, which evaluates to an instantiated sklearn
+[`Pipeline`][sklearn-pipeline]. Once defined, it can be fitted on a training
+set and evaluated on a validation set of a particular dataset `D`.
 
 Following the Neural Architecture scheme, META Learn uses the REINFORCE algorithm
 to compute the policy gradient used to update the Controller in order to learn a
@@ -119,114 +111,47 @@ we can condition the output of the `decoder` network metadata on `D` to propose
 customized `frameworks`.
 
 
-# High-level Approach
+# Training Algorithm
 
-There are two general approaches to take, with substantial tradeoffs to
-consider:
+The environment is a distribution of `k` supervised learning tasks, consisting
+of a pair `(X, y)` of features and targets, respectively. At the beginning of
+an episode, the environment samples one task and for `i` iterations produces
+sample splits `(X_train, y_train, X_validation, y_validation)` drawn from the
+task dataset.
 
-## Approach 1: Character-level Controller
+The `MetaLearnController` receives the current task state `s` via metafeatures
+associated the task, e.g. _# of training samples_, _# of features_,
+_target type_, _#of continuous features_, _#of categorical features_, etc.
 
-Generate an ML `frameworks` at the character level, such that the goal is to
-output Python code using a softmax over the space of valid characters, e.g.
-`A-Z`, `a-z`, `0-9`, `()[]=`, etc.
+Given the task state, the controller generates ML `frameworks` over a state
+space of algorithms and hyperparameter values. The controller can be viewed as a
+policy approximator, which selects actions based on some pre-defined
+`AlgorithmSpace`, representated as a direct acyclic graph where each node
+contains a set of hyperparameter values to choose from. The controller traverses
+this graph via a sequential decoder by selecting hyperparameters via softmax
+classifiers, where certain actions may remove certain edges from the graph.
+This enforces incompatible hyperparameter configurations.
 
-This approach requires building in fewer assumptions into the AutoML system,
-however the function that the Controller needs to learn would be much more
-complex: it needs to (a) generate valid sklearn code character-by-character,
-and (b) generate performant algorithm and hyperparameter combinations over the
-distribution of datasets and tasks.
+For example, the algorithm space for a possible `sklearn` pipeline would
+consist of the following components:
 
-## Approach 2: Domain-specific Controller
-
-Generate ML `frameworks` over a state space of algorithms and hyperparameter
-values, in this case, over the estimators/transformers of the `sklearn` API.
-
-This approach requires building in more assumptions into the AutoML system,
-e.g. expicitly specifying the algorithm/hyperparamater space to search over
-and how to interpret the output of the Controller so as to fit a model, but
-the advantage is that the Controller mainly has to learn a function that
-generates performant algorithm and hyperparameter combinations.
-
-In the META Learn project, a `MetaLearnController` represents the policy
-approximator, which selects actions based on a tree-structured set of softmax
-classifiers, each one representing some part of the algorithm and
-hyperparameter space. The controller selects estimators/transformers and
-hyperparameters in a pre-defined manner (interpreted as embedding priors into
-the architecture of the system). The ordering is the following:
-
-- one hot encoding
-- one hot encoder hyperparameters
-- imputation (e.g. mean, median, mode)
+- categorical encoder (e.g. OneHotEncoder)
+- categorical encoder hyperparameters
+- imputer (e.g. SimpleImputer)
 - imputer hyperparameters
-- rescaling (e.g. min-max, mean-variance)
+- rescaler (e.g. StandardScaler)
 - rescaler hyperparameters
-- feature preprocessing (e.g. PCA)
+- feature processor (e.g. PCA)
 - feature processor hyperparameters
-- classification/regression
+- classifier/regressor (e.g. LogisticRegression, LinearRegression)
 - classifier/regressor hyperparameters
 
-
-# Roadmap: Milestones
-
-- [X] implementation of the naive (unstructured) `AlgorithmRNN`/
-  `HyperparameterRNN` that seperately predict the estimators/transformers and
-  hyperparameters of the ML Framework.
-- [X] basic implementation of the structured `MetaLearnController` architecture
-- [X] refine `MetaLearnController` with baseline function prior such that each data
-  environment maps to its own value function (in this case, the exponential
-  mean of rewards per episode).
-- [X] implement basic meta-RL algorithm as described here in this
-  [paper][meta-rl] in particular, feed `MetaLearnController` auxiliary inputs:
-  - previous reward
-  - previous actions
-- [X] normalize `reward - baseline` (equivalent of advantage in this system)
-  by mean-centering and standard-deviation-rescaling.
-- [X] extend meta-RL algorithm by implementing memory as a lookup table that
-  maps data environments to the most recent hidden state from the same data
-  environment.
-- [X] extend deep cash to support regression problems.
-- [X] increase coverage of regression estimators (add ~5-6 more)
-- [X] handle missing-valued data with imputer
-- [ ] test controller on kaggle classification and regression datasets (5 each)
-  - [ ] train on kaggle classification datasets
-  - [ ] train on kaggle regression datasets
-  - [ ] train on openml/sklearn classification datasets, test on kaggle
-    classification datasets
-  - [ ] train on openml/sklearn regression datasets, test on kaggle
-    classification datasets
-- [ ] test controller on auto-sklearn paper classification datasets.
-- [ ] add support for automated ensembling. TBD: should this be implemented as
-  part of the CASH controller, or should there be a separate module altogether
-  that ensembles cached pipelines?
-- [ ] add support for random grid search with the AlgorithmSpace API. One big
-  design question: how should fit/predict errors be handled? Add logic to
-  hyperparameter sampling that prevents error-raising hyperparameter
-  configurations in the first place, or just catch error during the fitting/
-  scoring process? (possibly cache as some kind of hash to speed things up).
-- [ ] add support for test and train dataset environment partitions, i.e.
-  at task env initialization, set aside `n`% of the data as test datasets,
-  use `1 - n`% as training datasets. Evaluate rewards and validation
-  performance over train and test datasets to assess degree of overfitting.
-- [ ] 100% coverage of sklearn classification estimators
-- [ ] 100% coverage of sklearn regression estimators
-- [ ] 100% coverage of sklearn data preprocessors
-- [ ] 100% coverage of sklearn feature preprocessors
-- [ ] support for [XGBoost][xgboost]
-- [ ] support for [apricot submodular selection][apricot]
-- [ ] support using [GANS for imputation][gan-imputation]
-- [ ] test transfer-learning ability of controller
-- [ ] test meta-learning ability of controller
-
-
-# Tooling Enhancements
-
-- [ ] support tuning experiments in the `experiments.py` API. Extend the
-  experiment configuration so that user can specify more than one setting
-  for a particular hyperparameter.
-- [ ] create experiment viewer, either as a static report rendered via
-  jupyter notebook or Dash app. Inputs should be floyd job numbers
-- [ ] stream-line the dataset mounting process for floyd. This includes
-  the openml and kaggle datasets.
+When the controller reaches a terminal node in algorithm space, the environment
+evalutes the selected ML `framework` and produces a validation score that the
+controller uses as a reward signal. Validation performance is calibrated such
+that a better score produces higher rewards. Using the REINFORCE policy
+gradient method, the controller tries to find the optimal policy that
+maximizes validation performance over the task distribution.
 
 
 # Analyses
@@ -244,21 +169,6 @@ in the project `analysis` subfolder:
   output of one job, but that job has multiple trials.
 - `metalearn_controller_multi_trial_experiment_analysis.ipynb`: analyzes
   the output of multiple jobs, each with multiple trials.
-
-
-# Extensions
-
-## Metadata Encoder
-
-An extension to the `encoder` would be to generalize the metadata feature
-representation from hand-crafted features (e.g. mean of means of numerical
-features) and instead formulate `encoder` as a sequence model, where the input
-is a sequence of sequences. The first sequence contains data points or
-`instances` of the dataset, the second sequence contains minimally preprocessed
-`features` of that particular `instance` (note that the challenge here is how
-to represent categorical features across difference datasets). The weights in
-the `encoder` are trained jointly as part of the gradient computed using the
-REINFORCE algorithm.
 
 
 [neuralarchsearch]: https://arxiv.org/abs/1611.01578
