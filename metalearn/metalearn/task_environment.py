@@ -381,11 +381,18 @@ class TaskEnvironment(object):
         if self.scorer.needs_proba and \
                 self.current_data_env.target_type is TargetType.MULTICLASS:
             y = label_binarize(y, self.current_data_env.classes)
-            # is y_hat is a one-dimensional array, assume that y_hat consists
+            # if y_hat is a one-dimensional array, assume that y_hat consists
             # of prediction labels that are reshaped to a binary array
             # representation.
             if len(y_hat.shape) == 1:
                 y_hat = label_binarize(y_hat, self.current_data_env.classes)
+        elif self.scorer.needs_proba and \
+                self.current_data_env.target_type is TargetType.BINARY and \
+                len(y_hat.shape) == 2:
+            # in binary classification case, y_hat can either by 1-dim array
+            # of labels or n_samples x 2-dim array of probabilities where
+            # 0th column is negative probs and 1st column is positive probs.
+            y_hat = y_hat[:, 1]
 
         with warnings.catch_warnings() as warning:
             # raise exception for warnings not explicitly in SCORE_WARNINGS
@@ -400,6 +407,7 @@ class TaskEnvironment(object):
                 logger.info("SCORE WARNING: %s" % warning)
             try:
                 score = self.scorer.fn(y, y_hat)
+                logger.info("SCORE: %s=%0.02f" % (self.scorer.name, score))
             except SCORE_ERRORS:
                 return none_return
             if self.scorer.reward_transformer is None:
@@ -487,13 +495,14 @@ def _ml_framework_predict(mlf, X, target_type, needs_proba):
                     pred = mlf.predict(X)
                 return pred
             except Exception as error:
-                mlf_str = utils._ml_framework_string(mlf)
                 if is_valid_predict_error(error):
                     logger.info(
                         "VALID PREDICT ERROR: %s, no pipeline returned by "
-                        "mlf framework %s" % (error, mlf_str))
+                        "mlf framework %s" %
+                        (error, utils._ml_framework_string(mlf)))
                 else:
                     logger.exception(
                         "INVALID PREDICT ERROR: ml framework pipeline: [%s], "
-                        "error: \"%s\"" % (mlf_str, error))
+                        "error: \"%s\"" %
+                        (utils._ml_framework_string(mlf), error))
                 return None

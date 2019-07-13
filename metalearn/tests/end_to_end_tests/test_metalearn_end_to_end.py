@@ -20,7 +20,10 @@ from metalearn import utils
 
 
 def _task_environment(
-        target_types=["BINARY", "MULTICLASS"],
+        target_types=[
+            "BINARY",
+            "MULTICLASS"
+        ],
         dataset_names=["sklearn.iris", "sklearn.breast_cancer"],
         env_sources=["SKLEARN"],
         enforce_limits=True,
