@@ -1,0 +1,41 @@
+name: metalearn_0.0.8_config_0.0.1
+experiment_type: METALEARN_REINFORCE
+description: metalearn 0.0.8 baseline
+created_at: 2019-07-16-22-19-11
+git_hash: 6e84132
+parameters:
+  datasets: null
+  output_fp: /output
+  n_trials: 1
+  input_size: 30
+  hidden_size: 30
+  output_size: 30
+  n_layers: 3
+  dropout_rate: 0.2
+  beta: 0.9
+  entropy_coef: 0.001
+  with_baseline: true
+  single_baseline: true
+  normalize_reward: false
+  n_episodes: 100
+  n_iter: 16
+  learning_rate: 0.005
+  env_sources:
+  - SKLEARN
+  - OPEN_ML
+  - KAGGLE
+  target_types:
+  - BINARY
+  - MULTICLASS
+  test_set_config:
+    SKLEARN:
+      test_size: 0.8
+      random_state: 100
+  error_reward: 0
+  n_samples: 5000
+  per_framework_time_limit: 180
+  per_framework_memory_limit: 5000
+  metric_logger: floyd
+  fit_verbose: 0
+  controller_seed: 1000
+  task_environment_seed: 100
