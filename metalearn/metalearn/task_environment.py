@@ -388,10 +388,10 @@ class TaskEnvironment(object):
                 y_hat = label_binarize(y_hat, self.current_data_env.classes)
         elif self.scorer.needs_proba and \
                 self.current_data_env.target_type is TargetType.BINARY and \
-                len(y_hat.shape) == 2:
-            # in binary classification case, y_hat can either by 1-dim array
-            # of labels or n_samples x 2-dim array of probabilities where
-            # 0th column is negative probs and 1st column is positive probs.
+                len(y_hat.shape) == 2 and \
+                y_hat.shape[1] == 2:
+            # in binary classification case where predicted probability is
+            # produced, select positive class probabilities.
             y_hat = y_hat[:, 1]
 
         with warnings.catch_warnings() as warning:

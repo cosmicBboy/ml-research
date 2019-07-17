@@ -3,10 +3,12 @@
 import numpy as np
 import pandas as pd
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from sklearn.model_selection import train_test_split
 
 from ..data_types import FeatureType, TargetType
+
+from typing import List, Tuple
 
 NULL_DATA_ENV = "<NULL_DATA_ENV>"
 
@@ -20,37 +22,6 @@ DataEnvSample = namedtuple(
     ])
 
 
-def handle_missing_categorical(x):
-    """Handle missing data in categorical variables.
-
-    The current implementation will treat categorical missing values as a
-    valid "None" category.
-    """
-    vmap = {}
-
-    try:
-        x = x.astype(float)
-    except ValueError as e:
-        if not e.args[0].startswith("could not convert string to float"):
-            raise e
-        pass
-
-    x_vals = x[~pd.isnull(x)]
-    for i, v in enumerate(np.unique(x_vals)):
-        vmap[v] = i
-
-    # null values assume the last category
-    if pd.isnull(x).any():
-        vmap[None] = len(x_vals)
-
-    # convert values to normalized categories
-    x_cat = np.zeros_like(x)
-    for i in range(x.shape[0]):
-        x_cat[i] = vmap.get(
-            None if (isinstance(x[i], float) and np.isnan(x[i])) else x[i])
-    return x_cat
-
-
 def create_simple_date_features(x):
     """Create of simple date features.
 
@@ -62,42 +33,62 @@ def create_simple_date_features(x):
     - day-of-week
     """
     x_dates = pd.to_datetime(x)
-    return np.hstack([
+    return [
         x_dates.year.values.reshape(-1, 1),
         x_dates.month.values.reshape(-1, 1),
         x_dates.dayofyear.values.reshape(-1, 1),
         x_dates.day.values.reshape(-1, 1),  # month
         x_dates.dayofweek.values.reshape(-1, 1),
-    ]).astype(float)
+    ]
 
 
-def preprocess_features(features, feature_types):
+def _stack_features(
+        clean_features: List[np.ndarray],
+        feature_types: List[FeatureType]
+        ) -> Tuple[np.ndarray, List[FeatureType], List[int]]:
+    """Stack continuous features before categorical features."""
+    feature_groups = defaultdict(list)
+    for ftype, x in zip(feature_types, clean_features):
+        # all feature types should reduce to categorical and continuous
+        feature_groups[ftype].append(x)
+    feature_types, X = zip(*(
+        (ftype, i)
+        for ftype in [FeatureType.CONTINUOUS, FeatureType.CATEGORICAL]
+        for i in feature_groups[ftype]))
+    return np.hstack(X), list(feature_types), list(range(len(feature_types)))
+
+
+def preprocess_features(
+        features: np.ndarray, feature_types: List[FeatureType]
+        ) -> Tuple[np.ndarray, List[FeatureType], List[int]]:
     """Prepare data environment for use by task environment.
 
     :param numpy.array features: rows are training instances and columns are
         features.
     :param list[FeatureType] feature_types: specifies feature types per column.
-
-    TODO: need to let the ML pipeline handle one-hot encoding of categorical
-        features so that the state can properly maintained in the test and
-        validation sets. Therefore, all this function should do is replace
-        the NA with a special "<NONE_CATEGORY>" token
     """
     clean_features = []
+    clean_feature_types = []
+
     for i, ftype in enumerate(feature_types):
         x_i = features[:, i]
         if ftype == FeatureType.CATEGORICAL:
-            clean_x = handle_missing_categorical(x_i)
+            clean_x = [x_i]
+            clean_feature_types.append(FeatureType.CATEGORICAL)
         elif ftype == FeatureType.DATE:
             clean_x = create_simple_date_features(x_i)
-        else:
-            clean_x = x_i.astype(float)
+            clean_feature_types.extend(
+                [FeatureType.CONTINUOUS for _ in range(len(clean_x))])
+        elif ftype == FeatureType.CONTINUOUS:
+            clean_x = [x_i.astype(float)]
+            clean_feature_types.append(FeatureType.CONTINUOUS)
 
-        if len(clean_x.shape) == 1:
-            clean_x = clean_x.reshape(-1, 1)
-        clean_features.append(clean_x)
-    clean_features = np.hstack(clean_features)
-    return clean_features
+        if len(clean_x) == 1 and len(clean_x[0].shape) == 1:
+            clean_x = [clean_x[0].reshape(-1, 1)]
+        clean_features.extend(clean_x)
+
+    assert len(clean_features) == len(clean_feature_types)
+    return _stack_features(clean_features, clean_feature_types)
 
 
 def _create_data_partition_fns(fetch_training_data, test_size, random_state):
@@ -149,8 +140,8 @@ class DataEnvironment(object):
         self.name = name
         self.source = source
         self.target_type = target_type
-        self.feature_types = feature_types
-        self.feature_indices = feature_indices
+        self.raw_feature_types = feature_types
+        self.raw_feature_indices = feature_indices
         if test_size and not 0 < test_size < 1:
             raise ValueError(
                 "test_size must be a float between 0 and 1, found: %0.02f"
@@ -165,6 +156,10 @@ class DataEnvironment(object):
         self.target_preprocessor = target_preprocessor
         self._scorer = scorer
         self._data_cache = {}
+
+        # set by cache_fetch_data
+        self.feature_types = None
+        self.feature_indices = None
 
     @property
     def training_data(self):
@@ -213,9 +208,17 @@ class DataEnvironment(object):
             _features, _target = fetch_data_fn()
             if self.target_preprocessor is not None:
                 _target = self.target_preprocessor().fit_transform(_target)
-            _features = preprocess_features(_features, self.feature_types)
+            _features, feature_types, feature_indices = preprocess_features(
+                _features, self.raw_feature_types)
+
+            # cache features and target
             self._data_cache[feature_key] = _features
             self._data_cache[target_key] = _target
+
+            # set feature types and indices based on the training partition
+            if partition == "train":
+                self.feature_types = feature_types
+                self.feature_indices = feature_indices
         return self._data_cache[feature_key], self._data_cache[target_key]
 
     def sample(self, n=None):

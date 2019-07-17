@@ -23,8 +23,8 @@ def simple_imputer():
             component_class, categorical_features, numeric_features):
 
         return component_class(transformers=[
+            ("continuous_imputer", SimpleImputer(), numeric_features),
             ("categorical_imputer", SimpleImputer(), categorical_features),
-            ("continuous_imputer", SimpleImputer(), numeric_features)
         ])
 
     return AlgorithmComponent(
@@ -47,7 +47,7 @@ def simple_imputer():
                 "categorical_imputer",
                 CategoricalHyperparameter(
                     "strategy", ["most_frequent"],
-                    default="mean")),
+                    default="most_frequent")),
             EmbeddedEstimatorHyperparameter(
                 "categorical_imputer",
                 CategoricalHyperparameter(
@@ -78,6 +78,7 @@ def one_hot_encoder():
     def init_one_hot_encoder(
             component_class, categorical_features, numeric_features):
         return component_class(transformers=[
+            ("numeric_features", "passthrough", numeric_features),
             ("one_hot_encoder", OneHotEncoder(), categorical_features),
         ])
 
