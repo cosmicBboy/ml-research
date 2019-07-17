@@ -1,6 +1,10 @@
-name: metalearn_0.0.8_config_0.0.1
+name: metalearn_0.0.8_config_0.0.2
 experiment_type: METALEARN_REINFORCE
-description: metalearn 0.0.8 baseline
+description: |
+  metalearn 0.0.8 baseline
+  * increase number of episodes to 500
+  * increase n_iter per episode to 32
+  * increate dropout to 0.3
 created_at: 2019-07-16-22-19-11
 git_hash: 6e84132
 parameters:
@@ -11,14 +15,14 @@ parameters:
   hidden_size: 30
   output_size: 30
   n_layers: 3
-  dropout_rate: 0.2
+  dropout_rate: 0.3
   beta: 0.9
   entropy_coef: 0.001
   with_baseline: true
   single_baseline: true
   normalize_reward: false
-  n_episodes: 100
-  n_iter: 16
+  n_episodes: 500
+  n_iter: 32
   learning_rate: 0.005
   env_sources:
   - SKLEARN
