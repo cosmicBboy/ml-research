@@ -195,7 +195,14 @@ class MetaLearnController(nn.Module):
         # conditional masks
         self._exclude_masks = {}
         # for each algorithm component type, select an algorithm
-        for atype in self.a_space.component_dict_from_target_type(target_type):
+        if self._mlf_signature is None:
+            algorithm_components = \
+                self.a_space.component_dict_from_target_type(target_type)
+        else:
+            algorithm_components = \
+                self.a_space.component_dict_from_target_type(
+                    self._mlf_signature)
+        for atype in algorithm_components:
             action, input_tensor, hidden = self._decode_action(
                 input_tensor, aux, metafeatures, hidden, self.atype_map[atype])
             actions.append(action)
