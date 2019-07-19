@@ -9,7 +9,7 @@ from sklearn.base import BaseEstimator
 from sklearn.compose import ColumnTransformer
 from typing import List, Tuple, Any, Union
 
-from . import constants
+from ..data_types import AlgorithmType
 
 
 Hyperparameters = List[List[Tuple[str, Any]]]
@@ -109,9 +109,9 @@ class AlgorithmComponent(object):
             knows is an invalid combination of hyperparameters.
 
         """
-        if component_type not in constants.ALGORITHM_TYPES:
+        if component_type not in AlgorithmType:
             raise ValueError("%s is not a valid algorithm type: choose %s" % (
-                component_type, constants.ALGORITHM_TYPES))
+                component_type, list(AlgorithmType)))
         self.name = name
         self.component_class = component_class
         self.initialize_component = initialize_component

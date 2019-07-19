@@ -13,7 +13,7 @@ from .algorithm_component import AlgorithmComponent, EXCLUDE_ALL
 from .hyperparameter import (
     CategoricalHyperparameter, UniformIntHyperparameter,
     UniformFloatHyperparameter, BaseEstimatorHyperparameter)
-from . import constants
+from ..data_types import AlgorithmType
 
 # TODO: add sgd classifier, xgboost classifier
 
@@ -27,7 +27,7 @@ def gaussian_naive_bayes():
     return AlgorithmComponent(
         name="GaussianNaiveBayes",
         component_class=GaussianNB,
-        component_type=constants.CLASSIFIER)
+        component_type=AlgorithmType.CLASSIFIER)
 
 
 def multinomial_naive_bayes():
@@ -35,7 +35,7 @@ def multinomial_naive_bayes():
     return AlgorithmComponent(
         name="MultinomialNB",
         component_class=MultinomialNB,
-        component_type=constants.CLASSIFIER,
+        component_type=AlgorithmType.CLASSIFIER,
         hyperparameters=[
             UniformFloatHyperparameter(
                 "alpha", 1e-2, 100, default=1, log=True),
@@ -53,7 +53,7 @@ def rbf_gaussian_process_classifier():
     return AlgorithmComponent(
         name="GaussianProcessClassifier",
         component_class=GaussianProcessClassifier,
-        component_type=constants.CLASSIFIER,
+        component_type=AlgorithmType.CLASSIFIER,
         hyperparameters=[
             UniformFloatHyperparameter(
                 "max_iter_predict", 100, 500, default=100)
@@ -81,7 +81,7 @@ def logistic_regression():
     return AlgorithmComponent(
         name="LogisticRegression",
         component_class=LogisticRegression,
-        component_type=constants.CLASSIFIER,
+        component_type=AlgorithmType.CLASSIFIER,
         hyperparameters=[
             CategoricalHyperparameter("penalty", ["l1", "l2"], default="l2"),
             CategoricalHyperparameter(
@@ -127,7 +127,7 @@ def k_nearest_neighbors():
     return AlgorithmComponent(
         name="KNearestNeighorsClassifier",
         component_class=KNeighborsClassifier,
-        component_type=constants.CLASSIFIER,
+        component_type=AlgorithmType.CLASSIFIER,
         hyperparameters=[
             UniformIntHyperparameter(
                 "n_neighbors", 1, 100, log=True, default=1),
@@ -155,7 +155,7 @@ def support_vector_classifier_linear():
     return AlgorithmComponent(
         name="LinearSVC",
         component_class=LinearSVC,
-        component_type=constants.CLASSIFIER,
+        component_type=AlgorithmType.CLASSIFIER,
         hyperparameters=[
             CategoricalHyperparameter("penalty", ["l1", "l2"], default="l2"),
             CategoricalHyperparameter(
@@ -184,7 +184,7 @@ def support_vector_classifier_nonlinear():
     return AlgorithmComponent(
         name="NonlinearSVC",
         component_class=SVC,
-        component_type=constants.CLASSIFIER,
+        component_type=AlgorithmType.CLASSIFIER,
         hyperparameters=[
             UniformFloatHyperparameter(
                 "C", 0.03125, 32768, default=1.0, log=True),
@@ -233,7 +233,7 @@ def decision_tree():
     return AlgorithmComponent(
         name="DecisionTreeClassifier",
         component_class=DecisionTreeClassifier,
-        component_type=constants.CLASSIFIER,
+        component_type=AlgorithmType.CLASSIFIER,
         hyperparameters=[
             CategoricalHyperparameter(
                 "criterion", ["gini", "entropy"], default="gini"),
@@ -267,7 +267,7 @@ def adaboost():
     return AlgorithmComponent(
         name="AdaBoostClassifier",
         component_class=AdaBoostClassifier,
-        component_type=constants.CLASSIFIER,
+        component_type=AlgorithmType.CLASSIFIER,
         hyperparameters=[
             BaseEstimatorHyperparameter(
                 hname="base_estimator",
@@ -295,7 +295,7 @@ def extra_trees():
     return ExtraTreesClassifier(
         name="ExtraTreesClassifier",
         component_class=ExtraTreesClassifier,
-        component_type=constants.CLASSIFIER,
+        component_type=AlgorithmType.CLASSIFIER,
         hyperparameters=[
             CategoricalHyperparameter(
                 "criterion", ["gini", "entropy"], default="gini"),
@@ -323,7 +323,7 @@ def gradient_boosting():
     return AlgorithmComponent(
         name="GradientBoostingClassifier",
         component_class=GradientBoostingClassifier,
-        component_type=constants.CLASSIFIER,
+        component_type=AlgorithmType.CLASSIFIER,
         hyperparameters=[
             UniformFloatHyperparameter(
                 "learning_rate", 0.01, 1, default=0.1, log=True),
@@ -349,7 +349,7 @@ def random_forest_classifier():
     return AlgorithmComponent(
         name="RandomForestClassifier",
         component_class=RandomForestClassifier,
-        component_type=constants.CLASSIFIER,
+        component_type=AlgorithmType.CLASSIFIER,
         hyperparameters=[
             UniformIntHyperparameter(
                 "n_estimators", 50, 200, default=50, n=10),

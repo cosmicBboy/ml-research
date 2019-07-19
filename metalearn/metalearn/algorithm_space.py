@@ -25,8 +25,7 @@ from collections import OrderedDict
 from sklearn.pipeline import Pipeline
 
 from . import components
-from . import data_types
-from .components import constants
+from .data_types import AlgorithmType, TargetType
 from .components.constants import START_TOKEN, END_TOKEN, NONE_TOKEN
 
 
@@ -34,24 +33,24 @@ SPECIAL_TOKENS = [START_TOKEN, END_TOKEN, NONE_TOKEN]
 # ml framework pipeline must have this signature. Can eventually support
 # multiple signatures.
 CLASSIFIER_MLF_SIGNATURE = [
-    constants.IMPUTER,
-    constants.ONE_HOT_ENCODER,
-    constants.RESCALER,
-    constants.FEATURE_PREPROCESSOR,
-    constants.CLASSIFIER
+    AlgorithmType.IMPUTER,
+    AlgorithmType.ONE_HOT_ENCODER,
+    AlgorithmType.RESCALER,
+    AlgorithmType.FEATURE_PREPROCESSOR,
+    AlgorithmType.CLASSIFIER
 ]
 REGRESSOR_MLF_SIGNATURE = [
-    constants.IMPUTER,
-    constants.ONE_HOT_ENCODER,
-    constants.RESCALER,
-    constants.FEATURE_PREPROCESSOR,
-    constants.REGRESSOR
+    AlgorithmType.IMPUTER,
+    AlgorithmType.ONE_HOT_ENCODER,
+    AlgorithmType.RESCALER,
+    AlgorithmType.FEATURE_PREPROCESSOR,
+    AlgorithmType.REGRESSOR
 ]
 TARGET_TYPE_TO_MLF_SIGNATURE = {
-    data_types.TargetType.BINARY: CLASSIFIER_MLF_SIGNATURE,
-    data_types.TargetType.MULTICLASS: CLASSIFIER_MLF_SIGNATURE,
-    data_types.TargetType.REGRESSION: REGRESSOR_MLF_SIGNATURE,
-    data_types.TargetType.MULTIREGRESSION: REGRESSOR_MLF_SIGNATURE,
+    TargetType.BINARY: CLASSIFIER_MLF_SIGNATURE,
+    TargetType.MULTICLASS: CLASSIFIER_MLF_SIGNATURE,
+    TargetType.REGRESSION: REGRESSOR_MLF_SIGNATURE,
+    TargetType.MULTIREGRESSION: REGRESSOR_MLF_SIGNATURE,
 }
 
 
@@ -59,12 +58,12 @@ class AlgorithmSpace(object):
     """Class that generates machine learning frameworks."""
 
     ALL_COMPONENTS = [
-        constants.IMPUTER,
-        constants.ONE_HOT_ENCODER,
-        constants.RESCALER,
-        constants.FEATURE_PREPROCESSOR,
-        constants.CLASSIFIER,
-        constants.REGRESSOR
+        AlgorithmType.IMPUTER,
+        AlgorithmType.ONE_HOT_ENCODER,
+        AlgorithmType.RESCALER,
+        AlgorithmType.FEATURE_PREPROCESSOR,
+        AlgorithmType.CLASSIFIER,
+        AlgorithmType.REGRESSOR
     ]
 
     def __init__(self,

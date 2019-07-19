@@ -30,7 +30,7 @@ from .algorithm_component import AlgorithmComponent, EXCLUDE_ALL
 from .hyperparameter import (
     CategoricalHyperparameter, UniformIntHyperparameter,
     UniformFloatHyperparameter, TuplePairHyperparameter)
-from . import constants
+from ..data_types import AlgorithmType
 
 
 # constant used for rbf kernel
@@ -63,7 +63,7 @@ def fast_ica():
     return AlgorithmComponent(
         name="FastICA",
         component_class=FastICA,
-        component_type=constants.FEATURE_PREPROCESSOR,
+        component_type=AlgorithmType.FEATURE_PREPROCESSOR,
         hyperparameters=[
             UniformIntHyperparameter(
                 "n_components", 10, 2000, default=100),
@@ -82,7 +82,7 @@ def feature_agglomeration():
     return AlgorithmComponent(
         name="FeatureAgglomeration",
         component_class=FeatureAgglomeration,
-        component_type=constants.FEATURE_PREPROCESSOR,
+        component_type=AlgorithmType.FEATURE_PREPROCESSOR,
         hyperparameters=[
             UniformIntHyperparameter("n_clusters", 2, 400, default=2, n=20),
             CategoricalHyperparameter(
@@ -111,7 +111,7 @@ def kernel_pca():
     return AlgorithmComponent(
         name="KernelPCA",
         component_class=KernelPCA,
-        component_type=constants.FEATURE_PREPROCESSOR,
+        component_type=AlgorithmType.FEATURE_PREPROCESSOR,
         hyperparameters=[
             UniformIntHyperparameter("n_components", 10, 2000, default=100),
             CategoricalHyperparameter(
@@ -145,7 +145,7 @@ def rbf_sampler():
     return AlgorithmComponent(
         name="RBFSample",
         component_class=RBFSampler,
-        component_type=constants.FEATURE_PREPROCESSOR,
+        component_type=AlgorithmType.FEATURE_PREPROCESSOR,
         hyperparameters=[
             UniformFloatHyperparameter("gamma", GAMMA_MIN, 8.0, default=1.0),
             UniformIntHyperparameter(
@@ -164,7 +164,7 @@ def nystroem_sampler():
     return AlgorithmComponent(
         name="Nystroem",
         component_class=Nystroem,
-        component_type=constants.FEATURE_PREPROCESSOR,
+        component_type=AlgorithmType.FEATURE_PREPROCESSOR,
         hyperparameters=[
             CategoricalHyperparameter(
                 "kernel", ["poly", "rbf", "sigmoid", "cosine"], default="rbf"),
@@ -208,7 +208,7 @@ def pca():
     return AlgorithmComponent(
         name="PCA",
         component_class=PCA,
-        component_type=constants.FEATURE_PREPROCESSOR,
+        component_type=AlgorithmType.FEATURE_PREPROCESSOR,
         hyperparameters=[
             UniformFloatHyperparameter(
                 "n_components", 0.5, 0.999, default=0.999),
@@ -221,7 +221,7 @@ def polynomial_features():
     return AlgorithmComponent(
         name="PolynomialFeatures",
         component_class=PolynomialFeatures,
-        component_type=constants.FEATURE_PREPROCESSOR,
+        component_type=AlgorithmType.FEATURE_PREPROCESSOR,
         hyperparameters=[
             UniformIntHyperparameter("degree", 2, 3, default=2, n=2),
             CategoricalHyperparameter(
@@ -236,7 +236,7 @@ def random_trees_embedding():
     return AlgorithmComponent(
         name="RandomTreesEmbedding",
         component_class=RandomTreesEmbedding,
-        component_type=constants.FEATURE_PREPROCESSOR,
+        component_type=AlgorithmType.FEATURE_PREPROCESSOR,
         hyperparameters=[
             UniformIntHyperparameter("n_estimators", 10, 100, default=10),
             UniformIntHyperparameter("max_depth", 2, 10, default=5),
@@ -268,7 +268,7 @@ def truncated_svd():
     return AlgorithmComponent(
         name="TruncatedSVD",
         component_class=TruncatedSVD,
-        component_type=constants.FEATURE_PREPROCESSOR,
+        component_type=AlgorithmType.FEATURE_PREPROCESSOR,
         hyperparameters=[
             UniformIntHyperparameter("n_components", 10, 256, default=128)
         ])
@@ -282,7 +282,7 @@ def variance_threshold_filter():
     return AlgorithmComponent(
         name="VarianceThresholdFilter",
         component_class=VarianceThreshold,
-        component_type=constants.FEATURE_PREPROCESSOR,
+        component_type=AlgorithmType.FEATURE_PREPROCESSOR,
         hyperparameters=[
             UniformFloatHyperparameter("threshold", 0.0, 10.0, default=0.0)
         ])

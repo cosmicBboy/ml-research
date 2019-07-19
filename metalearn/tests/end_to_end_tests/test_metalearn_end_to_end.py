@@ -46,7 +46,8 @@ def _algorithm_space(classifiers=None, regressors=None):
         regressors=None,
         with_end_token=False,
         hyperparam_with_start_token=False,
-        hyperparam_with_none_token=False)
+        hyperparam_with_none_token=False,
+        random_state=2001)
 
 
 def _metalearn_controller(a_space, t_env):
@@ -248,6 +249,7 @@ def test_kaggle_regression_data():
 
 def test_kaggle_classification_data():
     """Test classification dataset from kaggle."""
+    torch.manual_seed(100)
     n_episodes = 5
     a_space = _algorithm_space()
     for dataset_name in [

@@ -3,7 +3,7 @@ import pytest
 from collections import OrderedDict
 from itertools import product
 from metalearn.components.algorithm_component import AlgorithmComponent
-from metalearn.components.constants import CLASSIFIER
+from metalearn.data_types import AlgorithmType
 from sklearn.base import BaseEstimator
 
 
@@ -34,7 +34,7 @@ MOCK_HYPERPARAMS = [
 
 
 def _algorithm_component(
-        component_type=CLASSIFIER,
+        component_type=AlgorithmType.CLASSIFIER,
         initialize_component=None,
         hyperparameters=None,
         exclusion_conditions=None):

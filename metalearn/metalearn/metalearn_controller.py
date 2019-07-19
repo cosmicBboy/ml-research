@@ -13,7 +13,6 @@ import torch
 import torch.nn as nn
 
 from collections import defaultdict, OrderedDict
-from pathlib import Path
 from torch.autograd import Variable
 from torch.distributions import Categorical
 
@@ -31,6 +30,7 @@ class MetaLearnController(nn.Module):
             hidden_size,
             output_size,
             a_space,
+            mlf_signature=None,
             metafeature_encoding_size=20,
             aux_reward_size=1,
             dropout_rate=0.1,
@@ -42,6 +42,7 @@ class MetaLearnController(nn.Module):
         :param int hidden_size: dimensionality of hidden RNN layer.
         :param int output_size: dimensionality of output space.
         :param AlgorithmSpace a_space:
+        :param list[str] mlf_signature:
         :param int metafeature_encoding_size: dim of metafeatures embedding
         :param float dropout_rate:
         :param int num_rnn_layers:
@@ -99,8 +100,10 @@ class MetaLearnController(nn.Module):
         # for each algorithm component and hyperparameter value, create a
         # softmax classifier over the number of unique components/hyperparam
         # values.
+        self._mlf_signature = mlf_signature
         all_components = self.a_space.component_dict_from_signature(
-            self.a_space.ALL_COMPONENTS)
+            self.a_space.ALL_COMPONENTS if self._mlf_signature is None
+            else self._mlf_signature)
         idx = 0
         # TODO: this logic should be in algorithm_space
         for atype, acomponents in all_components.items():

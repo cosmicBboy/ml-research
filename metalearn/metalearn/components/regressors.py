@@ -11,7 +11,7 @@ from .algorithm_component import AlgorithmComponent, EXCLUDE_ALL
 from .hyperparameter import (
     CategoricalHyperparameter, UniformIntHyperparameter,
     UniformFloatHyperparameter, BaseEstimatorHyperparameter)
-from . import constants
+from ..data_types import AlgorithmType
 
 
 # TODO: add sgd regressor, xgboost regressor
@@ -25,7 +25,7 @@ def adaboost_regression():
     return AlgorithmComponent(
         name="AdaBoostRegressor",
         component_class=AdaBoostRegressor,
-        component_type=constants.REGRESSOR,
+        component_type=AlgorithmType.REGRESSOR,
         hyperparameters=[
             BaseEstimatorHyperparameter(
                 hname="base_estimator",
@@ -56,7 +56,7 @@ def random_forest_regression():
     return AlgorithmComponent(
         name="RandomForestRegressor",
         component_class=RandomForestRegressor,
-        component_type=constants.REGRESSOR,
+        component_type=AlgorithmType.REGRESSOR,
         hyperparameters=[
             UniformIntHyperparameter(
                 "n_estimators", 50, 200, default=50, n=10),
@@ -99,7 +99,7 @@ def rbf_gaussian_process_regression():
     return AlgorithmComponent(
         name="GaussianProcessRegressor",
         component_class=GaussianProcessRegressor,
-        component_type=constants.REGRESSOR,
+        component_type=AlgorithmType.REGRESSOR,
         hyperparameters=[
             UniformFloatHyperparameter(
                 "alpha", 1e-14, 1.0, default=1e-8, log=True),
@@ -119,7 +119,7 @@ def ard_regression():
     return AlgorithmComponent(
         name="ARDRegression",
         component_class=ARDRegression,
-        component_type=constants.REGRESSOR,
+        component_type=AlgorithmType.REGRESSOR,
         hyperparameters=[
             UniformFloatHyperparameter(
                 "tol", 1e-5, 1e-1, default=1e-3, log=True),
@@ -146,7 +146,7 @@ def bayesian_ridge_regression():
     return AlgorithmComponent(
         name="BayesianRidge",
         component_class=BayesianRidge,
-        component_type=constants.REGRESSOR,
+        component_type=AlgorithmType.REGRESSOR,
         hyperparameters=[
             UniformFloatHyperparameter(
                 "tol", 1e-5, 1e-1, default=1e-3, log=True),
@@ -171,7 +171,7 @@ def ridge_regression():
     return AlgorithmComponent(
         name="RidgeRegression",
         component_class=Ridge,
-        component_type=constants.REGRESSOR,
+        component_type=AlgorithmType.REGRESSOR,
         hyperparameters=[
             UniformFloatHyperparameter(
                 "alpha", 10 ** -5, 10.0, default=1., log=True),
@@ -188,7 +188,7 @@ def lasso_regression():
     return AlgorithmComponent(
         name="LassoRegression",
         component_class=Lasso,
-        component_type=constants.REGRESSOR,
+        component_type=AlgorithmType.REGRESSOR,
         hyperparameters=[
             UniformFloatHyperparameter(
                 "alpha", 10 ** -5, 10.0, default=1., log=True),
@@ -216,7 +216,7 @@ def k_nearest_neighbors_regression():
     return AlgorithmComponent(
         name="KNearestNeighorsRegressor",
         component_class=KNeighborsRegressor,
-        component_type=constants.REGRESSOR,
+        component_type=AlgorithmType.REGRESSOR,
         hyperparameters=[
             UniformIntHyperparameter(
                 "n_neighbors", 1, 100, log=True, default=1),
@@ -237,7 +237,7 @@ def support_vector_regression_linear():
     return AlgorithmComponent(
         name="LinearSVR",
         component_class=LinearSVR,
-        component_type=constants.REGRESSOR,
+        component_type=AlgorithmType.REGRESSOR,
         hyperparameters=[
             UniformFloatHyperparameter(
                 "C", 0.03125, 32768, default=1.0, log=True, n=10),
@@ -258,7 +258,7 @@ def support_vector_regression_nonlinear():
     return AlgorithmComponent(
         name="NonlinearSVR",
         component_class=SVR,
-        component_type=constants.REGRESSOR,
+        component_type=AlgorithmType.REGRESSOR,
         hyperparameters=[
             UniformFloatHyperparameter(
                 "C", 0.03125, 32768, default=1.0, log=True),
@@ -326,7 +326,7 @@ def support_vector_regression_poly():
     return AlgorithmComponent(
         name="PolyKernelSVR",
         component_class=SVR,
-        component_type=constants.REGRESSOR,
+        component_type=AlgorithmType.REGRESSOR,
         hyperparameters=(
             _libsvm_hyperparameters() +
             _libsvm_poly_sigmoid_hyperparameters() +
@@ -342,7 +342,7 @@ def support_vector_regression_rbf():
     return AlgorithmComponent(
         name="RBFKernelSVR",
         component_class=SVR,
-        component_type=constants.REGRESSOR,
+        component_type=AlgorithmType.REGRESSOR,
         hyperparameters=_libsvm_hyperparameters(),
         constant_hyperparameters=constant_hyperparameters
     )
@@ -354,7 +354,7 @@ def support_vector_regression_sigmoid():
     return AlgorithmComponent(
         name="SigmoidKernelSVR",
         component_class=SVR,
-        component_type=constants.REGRESSOR,
+        component_type=AlgorithmType.REGRESSOR,
         hyperparameters=(
             _libsvm_hyperparameters() +
             _libsvm_poly_sigmoid_hyperparameters()
@@ -372,7 +372,7 @@ def decision_tree_regression():
     return AlgorithmComponent(
         name="DecisionTreeRegressor",
         component_class=DecisionTreeRegressor,
-        component_type=constants.REGRESSOR,
+        component_type=AlgorithmType.REGRESSOR,
         hyperparameters=[
             CategoricalHyperparameter(
                 "criterion", ["mse", "friedman_mse", "mae"], default="mse"),

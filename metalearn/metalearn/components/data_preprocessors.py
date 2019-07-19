@@ -7,11 +7,11 @@ from sklearn.preprocessing import (
 from sklearn.impute import SimpleImputer
 
 from .algorithm_component import AlgorithmComponent
-from . import constants
 from .hyperparameter import (
     CategoricalHyperparameter, UniformIntHyperparameter,
     UniformFloatHyperparameter, TuplePairHyperparameter,
     BaseEstimatorHyperparameter, EmbeddedEstimatorHyperparameter)
+from ..data_types import AlgorithmType
 
 
 def simple_imputer():
@@ -30,7 +30,7 @@ def simple_imputer():
     return AlgorithmComponent(
         name="SimpleImputer",
         component_class=ColumnTransformer,
-        component_type=constants.IMPUTER,
+        component_type=AlgorithmType.IMPUTER,
         initialize_component=init_simple_imputer,
         hyperparameters=[
             EmbeddedEstimatorHyperparameter(
@@ -85,7 +85,7 @@ def one_hot_encoder():
     return AlgorithmComponent(
         name="OneHotEncoder",
         component_class=ColumnTransformer,
-        component_type=constants.ONE_HOT_ENCODER,
+        component_type=AlgorithmType.ONE_HOT_ENCODER,
         initialize_component=init_one_hot_encoder,
         constant_hyperparameters={
             "remainder": "passthrough",
@@ -101,7 +101,7 @@ def minmax_scaler():
     return AlgorithmComponent(
         name="MinMaxScaler",
         component_class=MinMaxScaler,
-        component_type=constants.RESCALER)
+        component_type=AlgorithmType.RESCALER)
 
 
 def standard_scaler():
@@ -109,7 +109,7 @@ def standard_scaler():
     return AlgorithmComponent(
         name="StandardScaler",
         component_class=StandardScaler,
-        component_type=constants.RESCALER,
+        component_type=AlgorithmType.RESCALER,
         hyperparameters=[
             CategoricalHyperparameter(
                 "with_mean", [True, False], default=True),
@@ -123,7 +123,7 @@ def robust_scaler():
     return AlgorithmComponent(
         name="RobustScaler",
         component_class=RobustScaler,
-        component_type=constants.RESCALER,
+        component_type=AlgorithmType.RESCALER,
         hyperparameters=[
             CategoricalHyperparameter(
                 "with_centering", [True, False], default=True),
@@ -144,7 +144,7 @@ def normalizer():
     return AlgorithmComponent(
         name="Normalizer",
         component_class=Normalizer,
-        component_type=constants.RESCALER,
+        component_type=AlgorithmType.RESCALER,
         hyperparameters=[
             CategoricalHyperparameter(
                 "norm", ["l1", "l2", "max"], default="l2")

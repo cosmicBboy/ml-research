@@ -3,6 +3,16 @@
 from enum import Enum
 
 
+class AlgorithmType(Enum):
+
+    ONE_HOT_ENCODER = "one_hot_encoder"
+    IMPUTER = "imputer"
+    RESCALER = "rescaler"
+    FEATURE_PREPROCESSOR = "feature_preprocessor"
+    CLASSIFIER = "classifier"
+    REGRESSOR = "regressor"
+
+
 class FeatureType(Enum):
     """Feature type definition, effects the MLF proposal path."""
 
