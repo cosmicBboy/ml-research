@@ -8,9 +8,18 @@ from sklearn.model_selection import train_test_split
 
 from ..data_types import FeatureType, TargetType
 
-from typing import List, Tuple
+from typing import List, Union, Tuple
 
 NULL_DATA_ENV = "<NULL_DATA_ENV>"
+
+
+PreprocessedFeatures = namedtuple(
+    "PreprocessedFeatures", [
+        "X",
+        "feature_types",
+        "feature_indices",
+        "feature_names",
+    ], defaults=(None, ))
 
 
 DataEnvSample = namedtuple(
@@ -22,7 +31,7 @@ DataEnvSample = namedtuple(
     ])
 
 
-def create_simple_date_features(x):
+def create_simple_date_features(x, name=None):
     """Create of simple date features.
 
     Creates five` numerical features from a datetime:
@@ -33,34 +42,65 @@ def create_simple_date_features(x):
     - day-of-week
     """
     x_dates = pd.to_datetime(x)
-    return [
+    x = [
         x_dates.year.values.reshape(-1, 1),
         x_dates.month.values.reshape(-1, 1),
         x_dates.dayofyear.values.reshape(-1, 1),
         x_dates.day.values.reshape(-1, 1),  # month
         x_dates.dayofweek.values.reshape(-1, 1),
     ]
+    if name is not None:
+        feature_names = [
+            f"{name}_year",
+            f"{name}_month",
+            f"{name}_day_of_year",
+            f"{name}_day",
+            f"{name}_day_of_week",
+        ]
+    else:
+        feature_names = None
+    return x, feature_names
 
 
 def _stack_features(
         clean_features: List[np.ndarray],
-        feature_types: List[FeatureType]
-        ) -> Tuple[np.ndarray, List[FeatureType], List[int]]:
+        feature_types: List[FeatureType],
+        feature_names: List[str]=None
+        ) -> PreprocessedFeatures:
     """Stack continuous features before categorical features."""
+    if feature_names is not None and len(feature_names) != len(feature_types):
+        raise ValueError(
+            "expected feature_types and feature_names to have the same "
+            f"length, found {len(feature_names)} and {len(feature_types)}")
     feature_groups = defaultdict(list)
-    for ftype, x in zip(feature_types, clean_features):
+    feature_name_groups = defaultdict(list)
+    for i, (ftype, x) in enumerate(zip(feature_types, clean_features)):
         # all feature types should reduce to categorical and continuous
         feature_groups[ftype].append(x)
-    feature_types, X = zip(*(
-        (ftype, i)
-        for ftype in [FeatureType.CONTINUOUS, FeatureType.CATEGORICAL]
-        for i in feature_groups[ftype]))
-    return np.hstack(X), list(feature_types), list(range(len(feature_types)))
+        if feature_names is not None:
+            feature_name_groups[ftype].append(feature_names[i])
+
+    X, output_feature_types = [], []
+    output_feature_names = None if feature_names is None else []
+    for ftype in [FeatureType.CONTINUOUS, FeatureType.CATEGORICAL]:
+        X.extend(feature_groups[ftype])
+        output_feature_types.extend([ftype] * len(feature_groups[ftype]))
+        if feature_names is not None:
+            output_feature_names.extend(feature_name_groups[ftype])
+
+    return PreprocessedFeatures(
+        np.hstack(X),
+        output_feature_types,
+        list(range(len(output_feature_types))),
+        output_feature_names,
+    )
 
 
 def preprocess_features(
-        features: np.ndarray, feature_types: List[FeatureType]
-        ) -> Tuple[np.ndarray, List[FeatureType], List[int]]:
+        features: np.ndarray,
+        feature_types: List[FeatureType],
+        feature_names: List[str]=None,
+        ) -> PreprocessedFeatures:
     """Prepare data environment for use by task environment.
 
     :param numpy.array features: rows are training instances and columns are
@@ -69,26 +109,37 @@ def preprocess_features(
     """
     clean_features = []
     clean_feature_types = []
+    clean_feature_names = None if feature_names is None else []
 
     for i, ftype in enumerate(feature_types):
         x_i = features[:, i]
         if ftype == FeatureType.CATEGORICAL:
             clean_x = [x_i]
             clean_feature_types.append(FeatureType.CATEGORICAL)
+            if feature_names is not None:
+                clean_feature_names.append(feature_names[i])
+
         elif ftype == FeatureType.DATE:
-            clean_x = create_simple_date_features(x_i)
+            clean_x, date_features = create_simple_date_features(
+                x_i, None if feature_names is None else feature_names[i])
             clean_feature_types.extend(
                 [FeatureType.CONTINUOUS for _ in range(len(clean_x))])
+            if feature_names is not None:
+                clean_feature_names.extend(date_features)
+
         elif ftype == FeatureType.CONTINUOUS:
             clean_x = [x_i.astype(float)]
             clean_feature_types.append(FeatureType.CONTINUOUS)
+            if feature_names is not None:
+                clean_feature_names.append(feature_names[i])
 
         if len(clean_x) == 1 and len(clean_x[0].shape) == 1:
             clean_x = [clean_x[0].reshape(-1, 1)]
         clean_features.extend(clean_x)
 
     assert len(clean_features) == len(clean_feature_types)
-    return _stack_features(clean_features, clean_feature_types)
+    return _stack_features(
+        clean_features, clean_feature_types, clean_feature_names)
 
 
 def _create_data_partition_fns(fetch_training_data, test_size, random_state):
@@ -208,8 +259,8 @@ class DataEnvironment(object):
             _features, _target = fetch_data_fn()
             if self.target_preprocessor is not None:
                 _target = self.target_preprocessor().fit_transform(_target)
-            _features, feature_types, feature_indices = preprocess_features(
-                _features, self.raw_feature_types)
+            _features, feature_types, feature_indices, _ = preprocess_features(
+                _features, self.raw_feature_types, feature_names=None)
 
             # cache features and target
             self._data_cache[feature_key] = _features

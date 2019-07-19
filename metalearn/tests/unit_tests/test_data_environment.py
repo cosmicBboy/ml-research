@@ -54,10 +54,41 @@ def test_preprocess_features():
         data_types.FeatureType.CATEGORICAL,
     ]
     expected_feature_indices = list(range(len(expected_feature_features)))
-    result, feature_types, feature_indices = \
-        data_environment.preprocess_features(features, feature_types)
-    result_array = [list(x) for x in list(result)]
+
+    preprocessed_features = data_environment.preprocess_features(
+        features, feature_types)
+    result_array = [list(x) for x in list(preprocessed_features.X)]
 
     assert pd.DataFrame(expected_array).equals(pd.DataFrame(result_array))
-    assert expected_feature_features == feature_types
-    assert expected_feature_indices == feature_indices
+    assert expected_feature_features == preprocessed_features.feature_types
+    assert expected_feature_indices == preprocessed_features.feature_indices
+    assert preprocessed_features.feature_names is None
+
+    # preprocess features with feature_names
+    feature_names = [
+        "continuous1",
+        "continuous2",
+        "categorical1",
+        "categorical2",
+        "date",
+    ]
+    expected_feature_names = [
+        "continuous1",
+        "continuous2",
+        "date_year",
+        "date_month",
+        "date_day_of_year",
+        "date_day",
+        "date_day_of_week",
+        "categorical1",
+        "categorical2",
+    ]
+
+    preprocessed_features = data_environment.preprocess_features(
+        features, feature_types, feature_names)
+    result_array = [list(x) for x in list(preprocessed_features.X)]
+
+    assert pd.DataFrame(expected_array).equals(pd.DataFrame(result_array))
+    assert expected_feature_features == preprocessed_features.feature_types
+    assert expected_feature_indices == preprocessed_features.feature_indices
+    assert expected_feature_names == preprocessed_features.feature_names
