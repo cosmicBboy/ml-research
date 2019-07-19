@@ -200,8 +200,7 @@ class MetaLearnController(nn.Module):
                 self.a_space.component_dict_from_target_type(target_type)
         else:
             algorithm_components = \
-                self.a_space.component_dict_from_target_type(
-                    self._mlf_signature)
+                self.a_space.component_dict_from_signature(self._mlf_signature)
         for atype in algorithm_components:
             action, input_tensor, hidden = self._decode_action(
                 input_tensor, aux, metafeatures, hidden, self.atype_map[atype])
