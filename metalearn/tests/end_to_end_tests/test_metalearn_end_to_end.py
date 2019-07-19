@@ -130,7 +130,7 @@ def test_metalearn_reinforce_fit_multi_baseline():
 def test_cash_zero_gradient():
     """Test that gradient is zero if the reward is zero."""
     torch.manual_seed(100)  # ensure weight initialized is deterministic
-    n_episodes = 10
+    n_episodes = 30
     t_env = _task_environment()
     a_space = _algorithm_space()
     controller = _metalearn_controller(a_space, t_env)
@@ -143,6 +143,8 @@ def test_cash_zero_gradient():
         n_episodes=n_episodes,
         **_fit_kwargs())
     # make sure there's at least one zero-valued aggregate gradient
+    assert any([g == 0 for g in
+                reinforce.tracker.history["aggregate_gradients"]])
     for r, g in zip(reinforce.tracker.history["mean_rewards"],
                     reinforce.tracker.history["aggregate_gradients"]):
         if r == 0:
@@ -220,7 +222,7 @@ def test_cash_missing_data():
 
 def test_kaggle_regression_data():
     """Test regression dataset from kaggle."""
-    n_episodes = 10
+    n_episodes = 5
     a_space = _algorithm_space()
     for dataset_name in [
                 "kaggle.restaurant_revenue_prediction",
@@ -233,7 +235,7 @@ def test_kaggle_regression_data():
             env_sources=["KAGGLE"],
             target_types=["REGRESSION"],
             dataset_names=[dataset_name],
-            n_samples=50)
+            n_samples=30)
         controller = _metalearn_controller(a_space, t_env)
         reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
         reinforce.fit(
@@ -246,7 +248,7 @@ def test_kaggle_regression_data():
 
 def test_kaggle_classification_data():
     """Test classification dataset from kaggle."""
-    n_episodes = 10
+    n_episodes = 5
     a_space = _algorithm_space()
     for dataset_name in [
                 "kaggle.homesite_quote_conversion",
@@ -259,7 +261,7 @@ def test_kaggle_classification_data():
             env_sources=["KAGGLE"],
             target_types=["BINARY", "MULTICLASS"],
             dataset_names=[dataset_name],
-            n_samples=50)
+            n_samples=30)
         controller = _metalearn_controller(a_space, t_env)
         reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
         reinforce.fit(
@@ -271,7 +273,7 @@ def test_kaggle_classification_data():
 
 
 def test_openml_regression_data():
-    n_episodes = 10
+    n_episodes = 5
     a_space = _algorithm_space()
     datasets = openml_api.regression_envs(
         n=openml_api.N_REGRESSION_ENVS)
@@ -280,7 +282,7 @@ def test_openml_regression_data():
             env_sources=["OPEN_ML"],
             target_types=["REGRESSION"],
             dataset_names=[dataset_name],
-            n_samples=50)
+            n_samples=30)
         controller = _metalearn_controller(a_space, t_env)
         reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
         reinforce.fit(
@@ -292,7 +294,7 @@ def test_openml_regression_data():
 
 
 def test_openml_classification_data():
-    n_episodes = 10
+    n_episodes = 5
     a_space = _algorithm_space()
     datasets = openml_api.classification_envs(
         n=openml_api.N_CLASSIFICATION_ENVS)
@@ -301,7 +303,7 @@ def test_openml_classification_data():
             env_sources=["OPEN_ML"],
             target_types=["BINARY", "MULTICLASS"],
             dataset_names=[dataset_name],
-            n_samples=50)
+            n_samples=30)
         controller = _metalearn_controller(a_space, t_env)
         reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
         reinforce.fit(
