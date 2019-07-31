@@ -56,7 +56,7 @@ def test_preprocess_features():
     expected_feature_indices = list(range(len(expected_feature_features)))
 
     preprocessed_features = data_environment.preprocess_features(
-        features, feature_types)
+        "my_dataset", features, feature_types)
     result_array = [list(x) for x in list(preprocessed_features.X)]
 
     assert pd.DataFrame(expected_array).equals(pd.DataFrame(result_array))
@@ -85,7 +85,7 @@ def test_preprocess_features():
     ]
 
     preprocessed_features = data_environment.preprocess_features(
-        features, feature_types, feature_names)
+        "my_dataset", features, feature_types, feature_names)
     result_array = [list(x) for x in list(preprocessed_features.X)]
 
     assert pd.DataFrame(expected_array).equals(pd.DataFrame(result_array))

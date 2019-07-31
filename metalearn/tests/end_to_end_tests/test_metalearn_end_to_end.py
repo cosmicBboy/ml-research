@@ -223,8 +223,10 @@ def test_cash_missing_data():
 
 def test_kaggle_regression_data():
     """Test regression dataset from kaggle."""
-    n_episodes = 5
-    a_space = _algorithm_space()
+    n_episodes = 3
+    a_space = _algorithm_space(
+        classifiers=[components.regressors.lasso_regression()],
+    )
     for dataset_name in [
                 "kaggle.restaurant_revenue_prediction",
                 "kaggle.nyc_taxi_trip_duration",
@@ -236,7 +238,7 @@ def test_kaggle_regression_data():
             env_sources=["KAGGLE"],
             target_types=["REGRESSION"],
             dataset_names=[dataset_name],
-            n_samples=30)
+            n_samples=500)
         controller = _metalearn_controller(a_space, t_env)
         reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
         reinforce.fit(
@@ -250,8 +252,10 @@ def test_kaggle_regression_data():
 def test_kaggle_classification_data():
     """Test classification dataset from kaggle."""
     torch.manual_seed(100)
-    n_episodes = 5
-    a_space = _algorithm_space()
+    n_episodes = 3
+    a_space = _algorithm_space(
+        classifiers=[components.classifiers.logistic_regression()],
+    )
     for dataset_name in [
                 "kaggle.homesite_quote_conversion",
                 "kaggle.santander_customer_satisfaction",
@@ -263,7 +267,7 @@ def test_kaggle_classification_data():
             env_sources=["KAGGLE"],
             target_types=["BINARY", "MULTICLASS"],
             dataset_names=[dataset_name],
-            n_samples=30)
+            n_samples=500)
         controller = _metalearn_controller(a_space, t_env)
         reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
         reinforce.fit(
@@ -275,8 +279,10 @@ def test_kaggle_classification_data():
 
 
 def test_openml_regression_data():
-    n_episodes = 5
-    a_space = _algorithm_space()
+    n_episodes = 3
+    a_space = _algorithm_space(
+        classifiers=[components.regressors.lasso_regression()],
+    )
     datasets = openml_api.regression_envs(
         n=openml_api.N_REGRESSION_ENVS)
     for dataset_name in datasets.keys():
@@ -284,7 +290,7 @@ def test_openml_regression_data():
             env_sources=["OPEN_ML"],
             target_types=["REGRESSION"],
             dataset_names=[dataset_name],
-            n_samples=30)
+            n_samples=500)
         controller = _metalearn_controller(a_space, t_env)
         reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
         reinforce.fit(
@@ -296,16 +302,18 @@ def test_openml_regression_data():
 
 
 def test_openml_classification_data():
-    n_episodes = 5
-    a_space = _algorithm_space()
+    n_episodes = 10
+    a_space = _algorithm_space(
+        classifiers=[components.classifiers.logistic_regression()],
+    )
     datasets = openml_api.classification_envs(
         n=openml_api.N_CLASSIFICATION_ENVS)
-    for dataset_name in datasets.keys():
+    for dataset_name in ["openml.mfeat-fourier"]:
         t_env = _task_environment(
             env_sources=["OPEN_ML"],
             target_types=["BINARY", "MULTICLASS"],
             dataset_names=[dataset_name],
-            n_samples=30)
+            n_samples=1000)
         controller = _metalearn_controller(a_space, t_env)
         reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
         reinforce.fit(

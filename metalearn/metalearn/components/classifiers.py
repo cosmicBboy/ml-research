@@ -95,7 +95,8 @@ def logistic_regression():
                 default="liblinear"),
             CategoricalHyperparameter(
                 "multi_class", ["ovr", "multinomial"], default="ovr"),
-            UniformIntHyperparameter("C", 1, 300, default=1.0, log=True, n=5),
+            UniformFloatHyperparameter(
+                "C", 0.001, 300.0, default=1.0, log=True, n=10),
         ],
         exclusion_conditions={
             "penalty": {

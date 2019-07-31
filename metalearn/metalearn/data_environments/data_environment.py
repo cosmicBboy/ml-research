@@ -1,5 +1,6 @@
 """Module to handle logic for data environments."""
 
+import logging
 import numpy as np
 import pandas as pd
 
@@ -11,6 +12,9 @@ from ..data_types import FeatureType, TargetType
 from typing import List, Union, Tuple
 
 NULL_DATA_ENV = "<NULL_DATA_ENV>"
+
+
+logger = logging.getLogger(__name__)
 
 
 PreprocessedFeatures = namedtuple(
@@ -97,6 +101,7 @@ def _stack_features(
 
 
 def preprocess_features(
+        name: str,
         features: np.ndarray,
         feature_types: List[FeatureType],
         feature_names: List[str]=None,
@@ -113,6 +118,16 @@ def preprocess_features(
 
     for i, ftype in enumerate(feature_types):
         x_i = features[:, i]
+
+        try:
+            if np.isnan(x_i).all():
+                logger.info(
+                    f"feature {features[i]} of type {feature_types[i]} has "
+                    f"all null values, dropping from the {name} dataset.")
+                continue
+        except TypeError:
+            pass
+
         if ftype == FeatureType.CATEGORICAL:
             clean_x = [x_i]
             clean_feature_types.append(FeatureType.CATEGORICAL)
@@ -260,7 +275,10 @@ class DataEnvironment(object):
             if self.target_preprocessor is not None:
                 _target = self.target_preprocessor().fit_transform(_target)
             _features, feature_types, feature_indices, _ = preprocess_features(
-                _features, self.raw_feature_types, feature_names=None)
+                self.name,
+                _features,
+                self.raw_feature_types,
+                feature_names=None)
 
             # cache features and target
             self._data_cache[feature_key] = _features

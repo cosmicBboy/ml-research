@@ -36,25 +36,20 @@ def simple_imputer():
             EmbeddedEstimatorHyperparameter(
                 "continuous_imputer",
                 CategoricalHyperparameter(
-                    "strategy",
-                    ["mean", "median", "most_frequent"],
+                    "strategy", ["mean", "median"],
                     default="mean")),
-            EmbeddedEstimatorHyperparameter(
-                "continuous_imputer",
-                CategoricalHyperparameter(
-                    "add_indicator", [True, False], default=True)),
             EmbeddedEstimatorHyperparameter(
                 "categorical_imputer",
                 CategoricalHyperparameter(
                     "strategy", ["most_frequent"],
                     default="most_frequent")),
-            EmbeddedEstimatorHyperparameter(
-                "categorical_imputer",
-                CategoricalHyperparameter(
-                    "add_indicator", [True, False], default=True)),
         ],
-        constant_hyperparameters={"remainder": "passthrough"}
-        )
+        constant_hyperparameters={
+            "remainder": "passthrough",
+            "continuous_imputer__add_indicator": False,
+            "categorical_imputer__add_indicator": False,
+        }
+    )
 
 
 def one_hot_encoder():
