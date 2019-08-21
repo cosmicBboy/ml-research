@@ -31,7 +31,7 @@ setup(
         "openml==0.9.0",
         "pandas==0.24.2",
         "pynisher",
-        "torch==1.1.0.post2",
+        "torch==1.2.0",
         "scikit-learn==0.21.2",
         "scipy",
         "yamlordereddictloader",
