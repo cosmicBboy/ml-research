@@ -228,7 +228,7 @@ class MetaLearnController(nn.Module):
             if mask is None:
                 self._exclude_masks[action_name] = m
             else:
-                self._exclude_masks[action_name] = (m + mask) > 0
+                self._exclude_masks[action_name] = (m.int() + mask.int()) > 0
 
     def _decode_action(
             self, input_tensor, aux, metafeatures, hidden, action_index):
