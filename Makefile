@@ -13,6 +13,7 @@ deps:
 		jupyter \
 		jupyterlab \
 		plotly \
+		psutil \
 		seaborn \
 		scikit-learn==0.21.2 \
 		ipykernel \

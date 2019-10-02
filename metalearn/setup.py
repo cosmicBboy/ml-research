@@ -30,6 +30,7 @@ setup(
         "numpy",
         "openml==0.9.0",
         "pandas==0.24.2",
+        "psutil",
         "pynisher",
         "torch==1.2.0",
         "scikit-learn==0.21.2",
