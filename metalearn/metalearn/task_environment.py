@@ -19,7 +19,7 @@ from .data_environments.data_environment import NULL_DATA_ENV
 from .data_types import FeatureType, TargetType, DataSourceType
 from .errors import is_valid_fit_error, is_valid_predict_error, \
     FIT_WARNINGS, SCORE_WARNINGS, SCORE_ERRORS
-from . import scorers, utils
+from . import enforce_fit_limits, scorers, utils
 
 logger = logging.getLogger(__name__)
 
@@ -185,7 +185,7 @@ class TaskEnvironment(object):
         # TODO: support heuristic schedule for changing these contraints
         # over time.
         if self.enforce_limits:
-            self.ml_framework_fitter = pynisher.enforce_limits(
+            self.ml_framework_fitter = enforce_fit_limits.enforce_limits(
                 mem_in_mb=self.per_framework_memory_limit,
                 wall_time_in_s=self.per_framework_time_limit,
                 grace_period_in_s=self.fit_grace_period,
