@@ -1,0 +1,51 @@
+name: metalearn_multiclass
+experiment_type: METALEARN_REINFORCE
+description: |
+  test metalearning capabilities
+  * train agent on multiclass tasks
+  * evaluation plan: test against all task held out test sets
+  * evaluation plan: test against BINARY, REGRESSION tasks
+  * evaluation plan: test against AUTOSKLEARN_BENCHMARK tasks
+created_at: 2019-10-02-01-32-59
+git_hash: b59eafd
+parameters:
+  datasets: null
+  output_fp: /output
+  n_trials: 1
+  input_size: 128
+  hidden_size: 128
+  output_size: 128
+  n_layers: 5
+  dropout_rate: 0.2
+  beta: 0.9
+  entropy_coef: 0.1
+  with_baseline: true
+  single_baseline: true
+  normalize_reward: false
+  n_episodes: 1000
+  n_iter: 16
+  learning_rate: 0.005
+  env_sources:
+  - SKLEARN
+  - OPEN_ML
+  - KAGGLE
+  target_types:
+  - MULTICLASS
+  test_set_config:
+    SKLEARN:
+      test_size: 0.2
+      random_state: 100
+    OPEN_ML:
+      test_size: 0.2
+      random_state: 100
+    KAGGLE:
+      test_size: 0.2
+      random_state: 100
+  error_reward: 0
+  n_samples: 5000
+  per_framework_time_limit: 180
+  per_framework_memory_limit: 5000
+  metric_logger: floyd
+  fit_verbose: 0
+  controller_seed: 1000
+  task_environment_seed: 100

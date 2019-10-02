@@ -12,6 +12,7 @@ import numpy as np
 import openml
 
 from openml.exceptions import OpenMLServerException
+from typing import Dict, FrozenSet
 
 from .data_environment import DataEnvironment
 from . import autosklearn_clf_task_ids
@@ -34,6 +35,8 @@ FEATURE_TYPE_MAP = {
 }
 DATASOURCE_TYPES = [
     DataSourceType.OPEN_ML, DataSourceType.AUTOSKLEARN_BENCHMARK]
+
+AUTOSKLEARN_BENCHMARN_TASK_IDS = frozenset(autosklearn_clf_task_ids.TASK_IDS)
 
 
 def _map_feature(feature):
@@ -177,6 +180,13 @@ def _create_envs(
     return OrderedDict([(d.name, d) for d in envs if d])
 
 
+def _filter_out_ids(openml_task_metadata: Dict, filter_out_ids: FrozenSet):
+    return {
+        k: v for k, v in openml_task_metadata.items()
+        if k not in filter_out_ids
+    }
+
+
 def classification_envs(
         n=N_CLASSIFICATION_ENVS, test_size=None, random_state=None,
         verbose=False):
@@ -184,7 +194,9 @@ def classification_envs(
         n = N_CLASSIFICATION_ENVS
     task_type = OpenMLTaskType.SUPERVISED_CLASSIFICATION
     dataset_metadata = _get_dataset_metadata(
-        openml.tasks.list_tasks(task_type_id=task_type.value, size=n),
+        _filter_out_ids(
+            openml.tasks.list_tasks(task_type_id=task_type.value, size=n),
+            AUTOSKLEARN_BENCHMARN_TASK_IDS),
         task_type)
     return _create_envs(
         DataSourceType.OPEN_ML, *dataset_metadata +
@@ -197,7 +209,9 @@ def regression_envs(
         n = N_CLASSIFICATION_ENVS
     task_type = OpenMLTaskType.SUPERVISED_REGRESSION
     dataset_metadata = _get_dataset_metadata(
-        openml.tasks.list_tasks(task_type_id=task_type.value, size=n),
+        _filter_out_ids(
+            openml.tasks.list_tasks(task_type_id=task_type.value, size=n),
+            AUTOSKLEARN_BENCHMARN_TASK_IDS),
         task_type)
     return _create_envs(
         DataSourceType.OPEN_ML, *dataset_metadata + (test_size, random_state))
@@ -205,10 +219,8 @@ def regression_envs(
 
 def _task_ids(n):
     if n is None:
-        task_ids = autosklearn_clf_task_ids.TASK_IDS
-    else:
-        task_ids = autosklearn_clf_task_ids.TASK_IDS[:n]
-    return task_ids
+        return autosklearn_clf_task_ids.TASK_IDS
+    return autosklearn_clf_task_ids.TASK_IDS[:n]
 
 
 def _get_task(id, verbose):

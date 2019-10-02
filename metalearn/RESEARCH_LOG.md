@@ -1,5 +1,12 @@
 # Research Log
 
+## 10/01/2019
+
+### Thoroughly Test Meta-learning Capabilities
+
+So far, experiments have demonstrated that the ML Framework controller can
+learn to propose good models on the...
+
 ## 09/05/2018
 
 ### Correct Baseline Controller Implementation
