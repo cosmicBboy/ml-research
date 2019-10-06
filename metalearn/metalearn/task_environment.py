@@ -424,7 +424,7 @@ def get_default_scorers():
     # complicated.
     return {
         TargetType.BINARY: scorers.roc_auc(),
-        TargetType.MULTICLASS: scorers.accuracy(),
+        TargetType.MULTICLASS: scorers.f1_score_macro(),
         TargetType.REGRESSION: scorers.mean_squared_error(),
         TargetType.MULTIREGRESSION: scorers.mean_squared_error(),
     }

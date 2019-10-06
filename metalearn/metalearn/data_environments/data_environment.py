@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 
 from ..data_types import FeatureType, TargetType
 
-from typing import List, Union, Tuple
+from typing import List
 
 NULL_DATA_ENV = "<NULL_DATA_ENV>"
 
@@ -23,7 +23,7 @@ PreprocessedFeatures = namedtuple(
         "feature_types",
         "feature_indices",
         "feature_names",
-    ], defaults=(None, ))
+    ])
 
 
 DataEnvSample = namedtuple(
