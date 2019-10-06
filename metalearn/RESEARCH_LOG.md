@@ -5,7 +5,36 @@
 ### Thoroughly Test Meta-learning Capabilities
 
 So far, experiments have demonstrated that the ML Framework controller can
-learn to propose good models on the...
+learn to propose good models on the training task distribution. However, no
+experiments have been done to demonstrate that the controller implements a
+reinforcement learning model within the recurrent loop of the RNN.
+
+First need to thoroughly test the current system's metalearning capabilities:
+
+- Train task type-specific distributions: binary, multiclass, regression
+- Evaluate the out-of-distribution test tasks with frozen weights on the
+  controller. Null hypothesis is that the controller displays random behavior.
+  Alternative hypothesis is that controller displays increasing mean reward.
+
+It's possible that the there are a few issues in the current architecture that
+are preventing the controller from learning an RL policy in the RNN loop:
+
+- Problem: currently, models have been trained on 16 iterations per episode,
+  and each gradient update occurs only at the end of the episode. This means
+  that the controller only has a chance to update itself once based on the
+  aggregate loss over the entire episode (this would Monte Carlo policy
+  gradient learning). At the end of an episode, the task is re-sampled.
+  - Solution: loosen the MetaLearnReinforce implementation to implement
+    TD-lambda learning so that gradient updates can be based on as few as one
+    iteration during an episode.
+
+- Problem: in experiments so far, the controller is a function of the previous
+  reward, where the reward is not normalized. This may cause issues across
+  tasks with different reward distributions.
+  - Solution: normalize the reward per iteration.
+
+-
+
 
 ## 09/05/2018
 

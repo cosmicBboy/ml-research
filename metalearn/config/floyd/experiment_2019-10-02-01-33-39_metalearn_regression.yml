@@ -1,11 +1,5 @@
 name: metalearn_regression
 experiment_type: METALEARN_REINFORCE
-description: |
-  test metalearning capabilities
-  * train agent on regression tasks
-  * evaluation plan: test against all task held out test sets
-  * evaluation plan: test against BINARY, MULTICLASS tasks
-  * evaluation plan: test against AUTOSKLEARN_BENCHMARK tasks
 created_at: 2019-10-02-01-33-39
 git_hash: b59eafd
 parameters:
@@ -16,14 +10,14 @@ parameters:
   hidden_size: 128
   output_size: 128
   n_layers: 5
-  dropout_rate: 0.2
+  dropout_rate: 0.3
   beta: 0.9
-  entropy_coef: 0.1
+  entropy_coef: 0.01
   with_baseline: true
-  single_baseline: true
-  normalize_reward: false
-  n_episodes: 1000
-  n_iter: 16
+  single_baseline: false
+  normalize_reward: true
+  n_episodes: 100
+  n_iter: 100
   learning_rate: 0.005
   env_sources:
   - SKLEARN
@@ -49,3 +43,12 @@ parameters:
   fit_verbose: 0
   controller_seed: 1000
   task_environment_seed: 100
+description: |
+  test metalearning capabilities
+  * train agent on regression tasks
+  * evaluation plan: test against all task held out test sets
+  * evaluation plan: test against BINARY, MULTICLASS tasks
+  * evaluation plan: test against AUTOSKLEARN_BENCHMARK tasks
+
+  * descrease entropy coefficient to reduce exploration
+  * normalize rewards, maintain one baseline reward function per task env
