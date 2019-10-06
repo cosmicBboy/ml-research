@@ -35,6 +35,7 @@ setup(
         "torch==1.2.0",
         "scikit-learn==0.21.2",
         "scipy",
+        "streamlit==0.47.4",
         "yamlordereddictloader",
     ],
     scripts=["bin/metalearn"],
