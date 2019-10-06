@@ -12,7 +12,7 @@ parameters:
   n_layers: 5
   dropout_rate: 0.3
   beta: 0.9
-  entropy_coef: 0.01
+  entropy_coef: 0.03
   with_baseline: true
   single_baseline: false
   normalize_reward: true
@@ -55,3 +55,4 @@ description: |
   * descrease entropy coefficient to reduce exploration
   * increase n_iter = 100, n_episodes = 100
   * normalize rewards, maintain one baseline reward function per task env
+  * increase entropy coefficient to encourage exploration
