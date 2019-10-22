@@ -1,4 +1,6 @@
+colorlover
 click
+cytoolz
 dill
 kaggle
 pandas

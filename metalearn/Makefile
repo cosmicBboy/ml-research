@@ -1,5 +1,9 @@
 .PHONY: unit-tests endtoend-tests tests
 
+deps:
+	pip install -e . && \
+	pip install -r dev-requirements.txt
+
 unit-tests:
 	pytest tests/unit_tests
 

@@ -4,6 +4,13 @@ with open('README.md') as f:
     long_description = f.read()
 
 
+# use fork of floyd-cli to support click==0.7
+floyd_url = (
+    "https://github.com/cosmicBboy/floyd-cli/"
+    "tarball/master#egg=floyd-cli-0.11.17-fork"
+)
+floyd_cli = "floyd-cli @ %s" % floyd_url
+
 setup(
     name="meta-ml",
     version="0.0.15",
@@ -19,12 +26,13 @@ setup(
         "metalearn.inference"],
     install_requires=[
         "colorlover",
-        "click==6.7",
+        "click==7.0",
+        "cytoolz",
         "dash",
         "dash-core-components",
         "dash-html-components",
         "dill",
-        "floyd-cli",
+        floyd_cli,
         "kaggle",
         "matplotlib",
         "numpy",
