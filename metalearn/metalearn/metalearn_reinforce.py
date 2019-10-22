@@ -199,12 +199,14 @@ class MetaLearnReinforce(object):
         """Begin training the controller."""
         self._n_valid_mlf = 0
         prev_reward, prev_action = 0, self.controller.init_action()
+        prev_hidden = self.controller.init_hidden()
         for i in range(n_iter):
-            prev_reward, prev_action = self._fit_iter(
+            prev_reward, prev_action, prev_hidden = self._fit_iter(
                 self.t_env.sample_task_state(),
                 self.t_env.current_data_env.target_type,
                 prev_reward,
-                prev_action)
+                prev_action,
+                prev_hidden)
             if verbose:
                 print(
                     "iter %d - n valid mlf: %d/%d" % (
@@ -212,13 +214,18 @@ class MetaLearnReinforce(object):
                     sep=" ", end="\r", flush=True)
 
     def _fit_iter(
-            self, metafeature_tensor, target_type, prev_reward, prev_action):
-        actions, action_activation = self.controller.decode(
+            self,
+            metafeature_tensor,
+            target_type,
+            prev_reward,
+            prev_action,
+            prev_hidden):
+        actions, action_activation, hidden = self.controller.decode(
             init_input_tensor=prev_action,
             target_type=target_type,
             aux=utils.aux_tensor(prev_reward),
             metafeatures=Variable(metafeature_tensor),
-            init_hidden=self.controller.init_hidden())
+            init_hidden=prev_hidden)
         reward = self.evaluate_actions(actions, action_activation)
         # TODO: directly update the underlying data structures
         self._update_log_prob_buffer(actions)
@@ -227,7 +234,7 @@ class MetaLearnReinforce(object):
         self._update_baseline_reward_buffer(reward)
         for k, v in self._baseline_fn["buffer"].items():
             self._baseline_buffer_history[k].extend(v)
-        return reward, Variable(action_activation.data)
+        return reward, Variable(action_activation.data), hidden
 
     def evaluate_actions(self, actions, action_activation):
         """Evaluate actions on the validation set of the data environment."""

@@ -221,7 +221,7 @@ class MetaLearnController(nn.Module):
                 if hyperparameter_action is None:
                     continue
                 actions.append(hyperparameter_action)
-        return actions, input_tensor
+        return actions, input_tensor, hidden
 
     def _get_exclusion_mask(self, action_name):
 

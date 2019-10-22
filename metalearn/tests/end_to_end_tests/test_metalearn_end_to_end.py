@@ -340,15 +340,19 @@ def _exclusion_mask_test_harness(n_episodes, a_space_kwargs, t_env_kwargs):
     # NOTE: this is a pared down version of how the reinforce fitter implements
     # the fit method
     t_env.sample_data_env()
+    prev_hidden = controller.init_hidden()
     for i in range(n_episodes):
         metafeature_tensor = t_env.sample_task_state()
         target_type = t_env.current_data_env.target_type
-        actions, action_activation = controller.decode(
+        actions, action_activation, hidden = controller.decode(
             init_input_tensor=prev_action,
             target_type=target_type,
             aux=utils.aux_tensor(prev_reward),
             metafeatures=Variable(metafeature_tensor),
-            init_hidden=controller.init_hidden())
+            init_hidden=prev_hidden)
+
+        prev_hidden = hidden
+        
         for action in actions:
             # exclude masks are 1 to ignore the action and 0 to include in
             # in the candidates of actions to sample from.
