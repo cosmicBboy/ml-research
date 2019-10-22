@@ -5,6 +5,7 @@
 .pytest_cache
 *.pkl
 **/.tmp
+.vscode
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
