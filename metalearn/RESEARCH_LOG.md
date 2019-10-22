@@ -33,8 +33,6 @@ are preventing the controller from learning an RL policy in the RNN loop:
   tasks with different reward distributions.
   - Solution: normalize the reward per iteration.
 
--
-
 
 ## 09/05/2018
 
