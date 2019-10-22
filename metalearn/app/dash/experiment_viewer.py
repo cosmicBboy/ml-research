@@ -12,7 +12,7 @@ import re
 from dash.dependencies import Input, Output
 from pathlib import Path
 
-import plotting_helpers
+from metalearn import plotting
 
 
 OUTPUT_ROOT = Path(os.path.dirname(__file__)) / ".." / "floyd_outputs"
@@ -61,7 +61,7 @@ def preprocess_results(results):
         results
         .set_index(["episode", "job_number"])
         .groupby("job_number")
-        .apply(lambda df: df[plotting_helpers.METRICS].ewm(alpha=0.05).mean())
+        .apply(lambda df: df[plotting.METRICS].ewm(alpha=0.05).mean())
         .reset_index()
     )
     return preprocessed_results
@@ -109,7 +109,7 @@ app.layout = html.Div(children=[
         id="performance-metric",
         options=[
             {"label": m.replace("_", " "), "value": m}
-            for m in plotting_helpers.METRICS
+            for m in plotting.METRICS
         ],
         value="mean_rewards"),
     dcc.Graph(id="graph-run-history-by-dataenv"),
@@ -139,7 +139,7 @@ def plot_run_history_callback(data_store):
     data_store = pd.read_json(data_store, orient="split")
     if data_store.empty:
         return {}
-    return plotting_helpers.plot_run_history(data_store)
+    return plotting.plot_run_history(data_store)
 
 
 @app.callback(
@@ -152,7 +152,7 @@ def plot_run_history_by_dataenv_callback(data_store, performance_metric):
     data_store = pd.read_json(data_store, orient="split")
     if data_store.empty:
         return {}
-    return plotting_helpers.plot_run_history_by_dataenv(
+    return plotting.plot_run_history_by_dataenv(
         data_store, metric=performance_metric)
 
 
@@ -163,7 +163,7 @@ def plot_best_mlfs(job_choice):
     best_mlfs = read_best_mlfs(job_nums)
     if best_mlfs.empty:
         return {}
-    return plotting_helpers.plot_best_mlfs(best_mlfs)
+    return plotting.plot_best_mlfs(best_mlfs)
 
 
 if __name__ == "__main__":
