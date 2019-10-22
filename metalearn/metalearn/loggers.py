@@ -16,6 +16,7 @@ def _metrics():
         "n_unique_hyperparams",
         "hyperparam_diversity",
         "best_validation_scores",
+        "entropy_coefficient",
     ]
 
 

@@ -137,7 +137,8 @@ def test_cash_zero_gradient():
     controller = _metalearn_controller(a_space, t_env)
     # don't train with baseline since this will modify the reward signal when
     # computing the `advantage = reward - baseline`.
-    reinforce = _metalearn_reinforce(controller, t_env, with_baseline=False)
+    reinforce = _metalearn_reinforce(
+        controller, t_env, with_baseline=False, entropy_coef=0.0)
     fit_kwargs = _fit_kwargs()
     fit_kwargs.update({"n_iter": 1})
     reinforce.fit(
@@ -349,12 +350,13 @@ def _exclusion_mask_test_harness(n_episodes, a_space_kwargs, t_env_kwargs):
             metafeatures=Variable(metafeature_tensor),
             init_hidden=controller.init_hidden())
         for action in actions:
-            # actions that are in the _exclude_masks dict attribute should
-            # have a value of zero since excluded action probabilities should
-            # be zeroed out.
+            # exclude masks are 1 to ignore the action and 0 to include in
+            # in the candidates of actions to sample from.
             if action["action_name"] in controller._exclude_masks:
                 exclude_mask = controller._exclude_masks[
                     action["action_name"]].tolist()
+                assert any(i == 0 for i in exclude_mask)
+                # make sure that the chosen action is not masked
                 assert exclude_mask[action["choice_index"]] == 0
 
 

@@ -23,9 +23,11 @@ class MetaLearnReinforce(object):
             t_env,
             beta=0.99,
             entropy_coef=0.0,
+            entropy_coef_anneal_by=None,
             with_baseline=True,
             single_baseline=True,
             normalize_reward=True,
+            sample_new_task_every=10,
             metrics_logger=loggers.default_logger):
         """Initialize CASH Reinforce Algorithm.
 
@@ -36,6 +38,11 @@ class MetaLearnReinforce(object):
         :param float beta: hyperparameter for exponential moving average to
             compute baseline reward (used to regularize REINFORCE).
         :param float entropy_coef: coefficient for entropy regularization.
+        :param float entropy_coef_anneal_by: Value between 0.0 and 1.0
+            indicating when during the course of n_episodes the entropy
+            coefficient should reach 0. If None, no annealing is performed.
+            For example if this value is 0.5, then the entropy coefficient will
+            linearly reach 0.0 half-way through training.
         :param bool with_baseline: whether or not to regularize the controller
             with the exponential moving average of past rewards.
         :param bool single_baseline: if True, maintains a single baseline
@@ -43,6 +50,8 @@ class MetaLearnReinforce(object):
             each data environment available to the task environment.
         :param bool normalize_reward: whether or not to mean-center and
             standard-deviation-scale the reward signal for backprop.
+        :param int sample_data_env_every: sample a new task after these many
+            episodes.
         :param callable metrics_logger: logging function to use. The function
             takes as input a tracking.TrackerBase object and prints out a
             message.
@@ -54,10 +63,17 @@ class MetaLearnReinforce(object):
         self.t_env = t_env
         self._beta = beta
         self._entropy_coef = entropy_coef
+        self._entropy_coef_anneal_by = entropy_coef_anneal_by
         self._with_baseline = with_baseline
         self._single_baseline = single_baseline
         self._normalize_reward = normalize_reward
         self._metrics_logger = metrics_logger
+
+        if entropy_coef_anneal_by is not None and \
+                not 0 < entropy_coef_anneal_by <= 1:
+            raise ValueError(
+                "entropy_coef_anneal must be between (0, 1], found %s" %
+                entropy_coef_anneal_by)
 
     def fit(self, optim, optim_kwargs, n_episodes=100, n_iter=100,
             verbose=True, procnum=None):
@@ -75,6 +91,17 @@ class MetaLearnReinforce(object):
         # set optimization object
         self.optim = optim(self.controller.parameters(), **optim_kwargs)
         self._n_episodes = n_episodes
+
+        # set entropy coefficient schedule per episode
+        if self._entropy_coef_anneal_by is not None:
+            episodes_to_zero = int(n_episodes * self._entropy_coef_anneal_by)
+            # linearly decrease coefficient to zero
+            self._entropy_coef_schedule = np.linspace(
+                self._entropy_coef, 0.0, num=episodes_to_zero).tolist()
+            self._entropy_coef_schedule += [
+                0.0 for _ in range(n_episodes - episodes_to_zero)]
+        else:
+            self._entropy_coef_schedule = [self._entropy_coef] * n_episodes
 
         # track metrics
         self.tracker = MetricsTracker()
@@ -98,7 +125,7 @@ class MetaLearnReinforce(object):
             self._best_validation_score = None
             self._best_mlf = None
             msg = "episode %d, task: %s" % (
-                i_episode, self.t_env.current_data_env.name)
+                i_episode + 1, self.t_env.current_data_env.name)
             if procnum is not None:
                 msg = "proc num: %d, %s" % (procnum, msg)
             print("\n" + msg)
@@ -133,7 +160,8 @@ class MetaLearnReinforce(object):
                 mean_val_scores, std_val_scores = np.nan, np.nan
 
             # backward pass through controller
-            loss, grad_agg = self.end_episode(baseline, mlf_diversity)
+            loss, grad_norm = self.end_episode(
+                baseline, self._entropy_coef_schedule[i_episode])
 
             self.tracker.update_metrics({
                 "episode": i_episode + 1,
@@ -141,7 +169,7 @@ class MetaLearnReinforce(object):
                 "scorers": self.t_env.scorer.name,
                 "losses": loss,
                 "mean_rewards": mean_rewards,
-                "aggregate_gradients": grad_agg,
+                "aggregate_gradients": grad_norm,
                 "mean_validation_scores": mean_val_scores,
                 "std_validation_scores": std_val_scores,
                 "best_validation_scores": self._best_validation_score,
@@ -150,7 +178,8 @@ class MetaLearnReinforce(object):
                 "n_unique_mlfs": n_unique_mlfs,
                 "n_unique_hyperparams": n_unique_hyperparams,
                 "mlf_diversity": mlf_diversity,
-                "hyperparam_diversity": hyperparam_diversity
+                "hyperparam_diversity": hyperparam_diversity,
+                "entropy_coefficient": self._entropy_coef_schedule[i_episode],
             })
             if self._metrics_logger is not None:
                 self._metrics_logger(self.tracker)
@@ -223,7 +252,7 @@ class MetaLearnReinforce(object):
                 self._best_mlf = mlf
             return reward
 
-    def end_episode(self, baseline, mlf_diversity):
+    def end_episode(self, baseline, entropy_coef):
         """End an episode with one backpropagation step.
 
         Since REINFORCE algorithm is a gradient ascent method, negate the log
@@ -232,8 +261,6 @@ class MetaLearnReinforce(object):
 
         :param float baseline: baseline reward value, the exponential mean of
             rewards over previous episodes.
-        :param float mlf_diversity: 1.0 means all successfully fitted mlfs
-            are unique, 0.0 if there is only a single unique mlf in the batch.
         :returns: tuple of loss and aggregated gradient.
         :rtype: tuple[float, float]
         """
@@ -251,7 +278,7 @@ class MetaLearnReinforce(object):
             R = normalize_reward(R)
 
         # compute loss
-        loss = [-l * r - self._entropy_coef * e
+        loss = [-l * r - entropy_coef * e
                 for log_probs, r, entropies in zip(
                     self.controller.log_prob_buffer, R,
                     self.controller.entropy_buffer)
@@ -265,16 +292,19 @@ class MetaLearnReinforce(object):
         nn.utils.clip_grad_norm_(self.controller.parameters(), 20)
         self.optim.step()
 
-        grad_agg = sum([
-            p.grad.data.sum() for p in self.controller.parameters()
-            if p.grad is not None])
+        grad_norm = 0.
+        for p in self.controller.parameters():
+            if p.grad is not None:
+                param_norm = p.grad.data.norm(2)
+                grad_norm += param_norm.item() ** 2
+        grad_norm = grad_norm ** 0.5
 
         # reset rewards and log probs
         del self.controller.log_prob_buffer[:]
         del self.controller.reward_buffer[:]
         del self.controller.entropy_buffer[:]
 
-        return loss.data.item(), grad_agg
+        return loss.data.item(), grad_norm
 
     def _update_log_prob_buffer(self, actions):
         self.controller.log_prob_buffer.append(

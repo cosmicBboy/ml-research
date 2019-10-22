@@ -6,7 +6,6 @@ import numpy as np
 
 from collections import OrderedDict
 from sklearn.base import BaseEstimator
-from sklearn.compose import ColumnTransformer
 from typing import List, Tuple, Any, Union
 
 from ..data_types import AlgorithmType

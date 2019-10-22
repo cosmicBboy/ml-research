@@ -33,6 +33,9 @@ def run():
 @click.option("--beta", default=DEFAULT["beta"], type=float)
 @click.option("--entropy_coef", default=DEFAULT["entropy_coef"],
               type=float)
+@click.option("--entropy_coef_anneal_by",
+              default=DEFAULT["entropy_coef_anneal_by"],
+              type=float)
 @click.option("--with_baseline/--without_baseline",
               default=DEFAULT["with_baseline"])
 @click.option("--single_baseline/--multi_baseline",

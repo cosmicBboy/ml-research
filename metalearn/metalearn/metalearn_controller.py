@@ -127,6 +127,11 @@ class MetaLearnController(nn.Module):
         self.n_actions = len(self.action_classifiers)
 
     def _exclusion_condition_to_mask(self, h_state_space, exclude):
+        """
+        Create a mask of the action space to prevent selecting invalid states
+        given previous choices.
+        """
+
         # TODO: this can probably be moved to algorithm_space.py
         if exclude is None:
             return None
@@ -137,7 +142,8 @@ class MetaLearnController(nn.Module):
                 if exclude_values == EXCLUDE_ALL:
                     mask = [1 for _ in h_state_space[hname]]
                 else:
-                    mask = [i in exclude_values for i in h_state_space[hname]]
+                    mask = [
+                        int(i in exclude_values) for i in h_state_space[hname]]
                 exclude_masks[choice].update({hname: torch.ByteTensor(mask)})
 
         return exclude_masks
@@ -203,22 +209,27 @@ class MetaLearnController(nn.Module):
                 self.a_space.component_dict_from_signature(self._mlf_signature)
         for atype in algorithm_components:
             action, input_tensor, hidden = self._decode_action(
-                input_tensor, aux, metafeatures, hidden, self.atype_map[atype])
+                input_tensor, aux, metafeatures, hidden,
+                action_index=self.atype_map[atype])
             actions.append(action)
             # each algorithm is associated with a set of hyperparameters
             for h_index in self.acomponent_to_hyperparam[action["choice"]]:
-                action, input_tensor, hidden = self._decode_action(
-                    input_tensor, aux, metafeatures, hidden, h_index)
-                if action is None:
+                hyperparameter_action, input_tensor, hidden = \
+                    self._decode_action(
+                        input_tensor, aux, metafeatures, hidden,
+                        action_index=h_index)
+                if hyperparameter_action is None:
                     continue
-                actions.append(action)
+                actions.append(hyperparameter_action)
         return actions, input_tensor
 
     def _get_exclusion_mask(self, action_name):
 
         if action_name in self._exclude_masks:
-            mask = ~self._exclude_masks[action_name].view(1, -1)
-            return Variable(mask.type(torch.FloatTensor))
+            return (
+                self._exclude_masks[action_name]
+                .view(1, -1).type(torch.ByteTensor)
+            )
         else:
             return None
 
@@ -228,7 +239,9 @@ class MetaLearnController(nn.Module):
             if mask is None:
                 self._exclude_masks[action_name] = m
             else:
-                self._exclude_masks[action_name] = (m.int() + mask.int()) > 0
+                acc_mask = (m.int() + mask.int()) > 0
+                acc_mask = acc_mask.type(torch.ByteTensor)
+                self._exclude_masks[action_name] = acc_mask
 
     def _decode_action(
             self, input_tensor, aux, metafeatures, hidden, action_index):
@@ -240,6 +253,8 @@ class MetaLearnController(nn.Module):
         action_probs, hidden = self.forward(
             input_tensor, aux, metafeatures, hidden, action_classifier)
         action = self._select_action(action_probs, action_classifier, mask)
+        if action is None:
+            return None, input_tensor, hidden
         input_tensor = self.encode_embedding(
             action_index, action["choice_index"])
         return action, input_tensor, hidden
@@ -247,12 +262,15 @@ class MetaLearnController(nn.Module):
     def _select_action(self, action_probs, action_classifier, mask):
         """Select action based on action probability distribution."""
         # compute unmasked log probabilitises.
+        # TODO: make sure computing log action probs before masking is correct.
         log_action_probs = action_probs.log()
         if mask is not None:
-            action_probs = action_probs * mask
+            # need to invert mask to have masked action probabilities == 0
+            action_probs = action_probs * (mask == 0).type(torch.FloatTensor)
         if (action_probs.data > 0).sum() == 0:
-            raise RuntimeError(
-                "at least one action probability must be > 0")
+            # case where previous choice excludes all choices of the current
+            # hyperparameter
+            return None
 
         choice_index = Categorical(action_probs).sample()
         _choice_index = int(choice_index.data)

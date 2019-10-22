@@ -425,8 +425,8 @@ def get_default_scorers():
     return {
         TargetType.BINARY: scorers.roc_auc(),
         TargetType.MULTICLASS: scorers.f1_score_macro(),
-        TargetType.REGRESSION: scorers.mean_squared_error(),
-        TargetType.MULTIREGRESSION: scorers.mean_squared_error(),
+        TargetType.REGRESSION: scorers.r2_score(),
+        TargetType.MULTIREGRESSION: scorers.r2_score(),
     }
 
 
@@ -460,8 +460,8 @@ def _ml_framework_fitter(mlf, X, y):
 
     :returns: a two-tuple where the first element is the proposed ML framework
         (sklearn.pipeline.Pipeline) and the second element is a subclass of
-        BaseException if calling `mlf.fit` if it successfully fits a
-        model and None if it fit successfully.
+        BaseException if calling `mlf.fit` fails and None if it fit
+        successfully.
     """
     # TODO: handle MemoryError due to pynisher limits.
     # raise numpy overflow errors

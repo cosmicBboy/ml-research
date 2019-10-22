@@ -38,7 +38,8 @@ class MetricsTracker(TrackerBase):
             "n_unique_mlfs",
             "n_unique_hyperparams",
             "mlf_diversity",
-            "hyperparam_diversity"
+            "hyperparam_diversity",
+            "entropy_coefficient",
         ])
 
     @property
