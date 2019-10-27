@@ -58,7 +58,7 @@ class CASHInference(object):
                 else:
                     print(
                         "%s is a kaggle data environment using a holdout "
-                        "partition training data to product test data. Note "
+                        "partition training data to produce test data. Note "
                         "this mode is for 'development', where the kaggle "
                         "test labels should only be accessible through the "
                         "kaggle API. For 'production' mode, specify a task "

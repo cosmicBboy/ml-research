@@ -1,7 +1,5 @@
 from . import (
-    algorithm_env,
     algorithm_space,
-    beam_search,
     enforce_fit_limits,
     metalearn_controller,
     metalearn_reinforce,
@@ -14,16 +12,13 @@ from . import (
     loggers,
     plotting,
     random_search,
-    rnn_code_generator,
     scorers,
     task_environment,
     tracking)
 
 
 __all__ = [
-    "algorithm_env",
     "algorithm_space",
-    "beam_search",
     "enforce_fit_limits",
     "metalearn_controller",
     "metalearn_reinforce",
@@ -36,7 +31,6 @@ __all__ = [
     "loggers",
     "plotting",
     "random_search",
-    "rnn_code_generator",
     "scorers",
     "task_environment",
     "tracking",
