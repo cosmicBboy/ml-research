@@ -19,7 +19,7 @@ class CASHInference(object):
 
     def __init__(self, controller, task_env):
         self.controller = utils.freeze_model(controller)
-        self.t_env = task_env
+        self.task_env = task_env
         self._validation_scores = []
         self._successful_mlfs = []
 
@@ -41,17 +41,16 @@ class CASHInference(object):
             of sklearn.Pipeline objects.
         """
         inference_results = []
-        data_env = [d for d in self.t_env.data_distribution
-                    if d.name == dataset]
+        data_env = [
+            d for d in self.task_env.data_distribution if d.name == dataset]
         if len(data_env) == 0:
             raise ValueError(
-                "%s not in the task environment data distribution." %
-                dataset)
+                "%s not in the task environment data distribution." % dataset)
         data_env = data_env[0]
-        self.t_env.set_data_env(data_env)
+        self.task_env.set_data_env(data_env)
         for mlf in mlfs:
             if data_env.source is DataSourceType.KAGGLE:
-                if self.t_env.current_data_env.y_test is None:
+                if self.task_env.current_data_env.y_test is None:
                     # TODO: send a submission and get score via kaggle api.
                     print("%s is a kaggle data environment" % data_env.name)
                     reward, test_score = None, None
@@ -65,10 +64,10 @@ class CASHInference(object):
                         "environment where test_set_config for KAGGLE data "
                         "source doesn't specify `test_size` or `random_state`"
                         % dataset)
-            mlf, reward, test_score = self.t_env.score(
+            mlf, reward, test_score = self.task_env.score(
                 mlf,
-                self.t_env.current_data_env.X_test,
-                self.t_env.current_data_env.y_test)
+                self.task_env.current_data_env.X_test,
+                self.task_env.current_data_env.y_test)
             if (mlf, reward, test_score) == (None, None, None):
                 raise NotFittedError(
                     "%s is not a fitted MLF. Make sure that the experiment "
@@ -78,17 +77,18 @@ class CASHInference(object):
         return inference_results
 
     def evaluate_training_data_envs(self, n=5, datasets=None, verbose=False):
+        """Evaluate automl controller on train dataset distribution."""
         train_data_env_results = {}
-        for train_data_env in self.t_env.data_distribution:
+        for train_data_env in self.task_env.data_distribution:
             if datasets and train_data_env.name not in datasets:
                 continue
-            self.t_env.set_data_env(train_data_env)
+            self.task_env.set_data_env(train_data_env)
             train_data_env_results[train_data_env.name] = self.infer(
                 n, verbose)
         return train_data_env_results
 
     def evaluate_test_data_envs(self, n=5, datasets=None, verbose=False):
-        """Test data env evaluation.
+        """Evaluate automl controller on test dataset distribution.
 
         This workflow evaluates the controller with respect to a new dataset
         that it hasn't seen before. The new dataset has three partitions:
@@ -98,11 +98,11 @@ class CASHInference(object):
         learn even if all the controller's weights are frozen.
         """
         test_data_env_results = {}
-        for test_data_env in self.t_env.test_data_distribution:
+        for test_data_env in self.task_env.test_data_distribution:
             if datasets and test_data_env.name not in datasets:
                 continue
             print("evaluating test data env: %s" % test_data_env.name)
-            self.t_env.set_data_env(test_data_env)
+            self.task_env.set_data_env(test_data_env)
             test_data_env_results[test_data_env.name] = self.infer(
                 n, verbose)
         return test_data_env_results
@@ -119,8 +119,8 @@ class CASHInference(object):
         n_valid_mlf = 0
         for i in range(n):
             mlf, inference = self._infer_iter(
-                self.t_env.sample_task_state(data_env_partition="test"),
-                self.t_env.current_data_env.target_type,
+                self.task_env.sample_task_state(data_env_partition="test"),
+                self.task_env.current_data_env.target_type,
                 prev_reward,
                 prev_action)
             # TODO: serialize the top k mlfs here
@@ -157,16 +157,16 @@ class CASHInference(object):
         algorithms, hyperparameters = utils.get_mlf_components(actions)
         mlf = self.controller.a_space.create_ml_framework(
             algorithms, hyperparameters=hyperparameters,
-            task_metadata=self.t_env.get_current_task_metadata())
+            task_metadata=self.task_env.get_current_task_metadata())
         return mlf, action_activation.data
 
     def evaluate_mlf(self, mlf):
         """Evaluate actions on the validation set of the data environment."""
-        mlf, reward, validation_score = self.t_env.evaluate(mlf)
+        mlf, reward, validation_score = self.task_env.evaluate(mlf)
         reward, is_valid = self.is_valid_mlf(reward)
         return mlf, reward, validation_score, is_valid
 
     def is_valid_mlf(self, reward):
         if reward is None:
-            return self.t_env.error_reward, False
+            return self.task_env.error_reward, False
         return reward,  True

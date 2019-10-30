@@ -1,11 +1,4 @@
-"""Benchmark of the autosklearn datasets using pre-trained baseline agent.
-
-This agent is pre-trained on the following sklearn datasets:
-- iris
-- digits
-- wine
-- breast_cancer
-"""
+"""Module for evaluating trained controller."""
 
 import pandas as pd
 import os
@@ -20,17 +13,18 @@ from metalearn.task_environment import TaskEnvironment
 from metalearn.data_environments import sklearn_classification
 
 
-build_path = Path(os.path.dirname(__file__)) / ".." / "floyd_outputs" / "225"
-output_path = Path(os.path.dirname(__file__)) / "results" / \
-    "autosklearn_benchmark_pretrained_sklearn_agent"
-results_path = output_path / "inference_results"
+def load_model():
+    pass
 
-results_path.mkdir(exist_ok=True)
 
-controller = MetaLearnController.load(build_path / "controller_trial_0.pt")
+MODEL_PATH = Path(os.path.dirname(__file__)) / ".." / "floyd_outputs" / "290"
+OUTPUT_PATH = Path.home() / ".metalearn-cache" / "inference_results" / "290"
+OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
+
+controller = MetaLearnController.load(MODEL_PATH / "controller_trial_0.pt")
 experiment_results = pd.read_csv(
-    build_path / "rnn_metalearn_controller_experiment.csv")
-base_mlf_path = build_path / "metalearn_controller_mlfs_trial_0"
+    MODEL_PATH / "rnn_metalearn_controller_experiment.csv")
+base_mlf_path = MODEL_PATH / "metalearn_controller_mlfs_trial_0"
 
 
 # get top 10 best mlfs for each data env across all episodes.
@@ -102,7 +96,7 @@ train_env_inference_results = inference_engine.evaluate_training_data_envs(
     n=500, datasets=sklearn_data_envs.keys(), verbose=True)
 train_env_results_df = create_inference_result_df(train_env_inference_results)
 train_env_results_df.to_csv(
-    results_path / "train_env_inference_results.csv", index=False)
+    OUTPUT_PATH / "train_env_inference_results.csv", index=False)
 
 # evaluate controller on test data environments
 for test_data_env in task_env.test_data_distribution:
@@ -111,6 +105,6 @@ for test_data_env in task_env.test_data_distribution:
     test_env_results_df = create_inference_result_df(
         test_env_inference_results)
     test_env_results_df.to_csv(
-        results_path / ("test_env_inference_results_%s.csv" %
+        OUTPUT_PATH / ("test_env_inference_results_%s.csv" %
                         test_data_env.name),
         index=False)

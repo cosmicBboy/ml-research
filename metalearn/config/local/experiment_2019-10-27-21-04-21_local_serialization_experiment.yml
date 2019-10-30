@@ -1,0 +1,44 @@
+name: local_serialization_experiment
+experiment_type: METALEARN_REINFORCE
+created_at: 2019-10-27-21-04-21
+git_hash: f68b6e5
+parameters:
+  datasets: null
+  output_fp: ./output
+  n_trials: 1
+  input_size: 32
+  hidden_size: 32
+  output_size: 32
+  n_layers: 5
+  dropout_rate: 0.3
+  beta: 0.9
+  entropy_coef: 1.0
+  entropy_coef_anneal_by: 1.0
+  with_baseline: true
+  single_baseline: false
+  normalize_reward: true
+  n_episodes: 4
+  n_iter: 16
+  learning_rate: 0.005
+  env_sources:
+  - SKLEARN
+  target_types:
+  - BINARY
+  test_set_config:
+    SKLEARN:
+      test_size: 0.2
+      random_state: 100
+    OPEN_ML:
+      test_size: 0.2
+      random_state: 100
+    KAGGLE:
+      test_size: 0.2
+      random_state: 100
+  error_reward: 0
+  n_samples: 2000
+  per_framework_time_limit: 360
+  per_framework_memory_limit: 5000
+  metric_logger: null
+  fit_verbose: 1
+  controller_seed: 1000
+  task_environment_seed: 100

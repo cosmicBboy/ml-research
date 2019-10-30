@@ -324,10 +324,10 @@ class MetaLearnController(nn.Module):
     def save(self, path):
         """Save weights and configuration."""
         torch.save(
-            OrderedDict({
+            {
                 "config": self.config,
                 "weights": self.state_dict(),
-            }),
+            },
             path,
             pickle_module=dill)
 

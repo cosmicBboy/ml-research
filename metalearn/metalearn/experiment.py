@@ -14,7 +14,6 @@ import yamlordereddictloader
 from collections import namedtuple, OrderedDict
 from functools import partial
 from pathlib import Path
-from shutil import rmtree
 from sklearn.externals import joblib
 
 from .algorithm_space import AlgorithmSpace
@@ -234,6 +233,15 @@ def run_experiment(
     save_experiment(
         gather_history(return_dict),
         data_path, "rnn_metalearn_controller_experiment.csv")
+
+    for i in range(n_trials):
+        print("loading controllers from each trial")
+        try:
+            controller = reinforce.controller.load(
+                data_path / ("controller_trial_%d.pt" % i))
+            print(controller)
+        except Exception:
+            print("could not read controller for process %d" % i)
 
 
 def run_random_search(

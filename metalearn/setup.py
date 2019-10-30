@@ -31,7 +31,7 @@ setup(
         "dash",
         "dash-core-components",
         "dash-html-components",
-        "dill",
+        "dill==0.3.1.1",
         floyd_cli,
         "kaggle",
         "matplotlib",
