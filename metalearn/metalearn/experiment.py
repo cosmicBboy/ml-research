@@ -15,9 +15,9 @@ import yamlordereddictloader
 from collections import namedtuple, OrderedDict
 from functools import partial
 from pathlib import Path
-from sklearn.externals import joblib
 
 from .algorithm_space import AlgorithmSpace
+from .evaluate import evaluate_controller
 from .task_environment import TaskEnvironment
 from .metalearn_controller import MetaLearnController
 from .metalearn_reinforce import MetaLearnReinforce
@@ -121,6 +121,7 @@ def save_experiment(history, data_path, fname):
 
 def run_experiment(
         datasets=None,
+        test_datasets=None,
         output_fp=os.path.dirname(__file__) + "/../output",
         n_trials=1,
         input_size=30,
@@ -130,6 +131,7 @@ def run_experiment(
         dropout_rate=0.2,
         beta=0.9,
         entropy_coef=0.0,
+        entropy_coef_anneal_to=0.0,
         entropy_coef_anneal_by=None,
         with_baseline=True,
         single_baseline=True,
@@ -138,12 +140,19 @@ def run_experiment(
         n_iter=16,
         learning_rate=0.005,
         env_sources=["SKLEARN", "OPEN_ML", "KAGGLE"],
+        test_env_sources=["AUTOSKLEARN_BENCHMARK"],
+        n_eval_iter=10,
         target_types=["BINARY", "MULTICLASS"],
-        test_set_config=OrderedDict([
-            ("SKLEARN", OrderedDict([
-                ("test_size", 0.8),
-                ("random_state", 100)]))
-        ]),
+        test_set_config={
+            "SKLEARN": {
+                "test_size": 0.8,
+                "random_state": 100,
+            },
+            "AUTOSKLEARN_BENCHMARK": {
+                "test_size": 0.8,
+                "random_state": 100,
+            },
+        },
         error_reward=0,
         n_samples=5000,
         per_framework_time_limit=180,
@@ -180,6 +189,17 @@ def run_experiment(
         reinforce.controller.save(data_path / ("controller_trial_%d.pt" % i))
         # serialize best mlfs
         save_best_mlfs(data_path, reinforce.best_mlfs, procnum)
+
+        evaluation_results = evaluate_controller(
+            reinforce.controller, reinforce.t_env, n=n_eval_iter)
+
+        for env_key, results in evaluation_results.items():
+            if results is None:
+                continue
+            with (data_path /
+                  f"{env_key}_inference_results.csv").open("w") as f:
+                results.to_csv(f)
+
         return_dict[procnum] = reinforce.history
 
     # multiprocessing manager
@@ -190,12 +210,14 @@ def run_experiment(
     for i in range(n_trials):
         t_env = TaskEnvironment(
             env_sources=env_sources,
+            test_env_sources=test_env_sources,
             target_types=target_types,
             test_set_config=test_set_config,
             random_state=task_environment_seed,
             per_framework_time_limit=per_framework_time_limit,
             per_framework_memory_limit=per_framework_memory_limit,
             dataset_names=datasets,
+            test_dataset_names=test_datasets,
             error_reward=error_reward,
             n_samples=n_samples)
 
@@ -218,6 +240,7 @@ def run_experiment(
             controller, t_env,
             beta=beta,
             entropy_coef=entropy_coef,
+            entropy_coef_anneal_to=entropy_coef_anneal_to,
             entropy_coef_anneal_by=entropy_coef_anneal_by,
             with_baseline=with_baseline,
             single_baseline=single_baseline,
@@ -282,7 +305,6 @@ def run_random_search(
     metric_logger = get_loggers().get(metric_logger, empty_logger)
 
     def worker(procnum, random_search, return_dict):
-        """Fit REINFORCE Helper function."""
         random_search.fit(
             n_episodes=n_episodes,
             n_iter=n_iter,

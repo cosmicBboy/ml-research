@@ -23,6 +23,7 @@ class MetaLearnReinforce(object):
             t_env,
             beta=0.99,
             entropy_coef=0.0,
+            entropy_coef_anneal_to=0.0,
             entropy_coef_anneal_by=None,
             with_baseline=True,
             single_baseline=True,
@@ -38,6 +39,7 @@ class MetaLearnReinforce(object):
         :param float beta: hyperparameter for exponential moving average to
             compute baseline reward (used to regularize REINFORCE).
         :param float entropy_coef: coefficient for entropy regularization.
+        :param float entropy_coef: coefficient to anneal to by end of training.
         :param float entropy_coef_anneal_by: Value between 0.0 and 1.0
             indicating when during the course of n_episodes the entropy
             coefficient should reach 0. If None, no annealing is performed.
@@ -63,6 +65,7 @@ class MetaLearnReinforce(object):
         self.t_env = t_env
         self._beta = beta
         self._entropy_coef = entropy_coef
+        self._entropy_coef_anneal_to = entropy_coef_anneal_to
         self._entropy_coef_anneal_by = entropy_coef_anneal_by
         self._with_baseline = with_baseline
         self._single_baseline = single_baseline
@@ -97,9 +100,12 @@ class MetaLearnReinforce(object):
             episodes_to_zero = int(n_episodes * self._entropy_coef_anneal_by)
             # linearly decrease coefficient to zero
             self._entropy_coef_schedule = np.linspace(
-                self._entropy_coef, 0.0, num=episodes_to_zero).tolist()
+                self._entropy_coef,
+                self._entropy_coef_anneal_to,
+                num=episodes_to_zero).tolist()
             self._entropy_coef_schedule += [
-                0.0 for _ in range(n_episodes - episodes_to_zero)]
+                self._entropy_coef_anneal_to
+                for _ in range(n_episodes - episodes_to_zero)]
         else:
             self._entropy_coef_schedule = [self._entropy_coef] * n_episodes
 
@@ -225,7 +231,7 @@ class MetaLearnReinforce(object):
             target_type=target_type,
             aux=utils.aux_tensor(prev_reward),
             metafeatures=Variable(metafeature_tensor),
-            init_hidden=prev_hidden)
+            hidden=prev_hidden)
         reward = self.evaluate_actions(actions, action_activation)
         # TODO: directly update the underlying data structures
         self._update_log_prob_buffer(actions)

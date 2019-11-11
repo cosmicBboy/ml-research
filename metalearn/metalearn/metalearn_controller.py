@@ -187,7 +187,7 @@ class MetaLearnController(nn.Module):
         return action_probs, hidden
 
     def decode(self, init_input_tensor, target_type, aux, metafeatures,
-               init_hidden):
+               hidden):
         """Decode a metafeature tensor to sequence of actions.
 
         Where the actions are a sequence of algorithm components and
@@ -195,7 +195,7 @@ class MetaLearnController(nn.Module):
 
         TODO: add unit tests for this method and related methods.
         """
-        input_tensor, hidden = init_input_tensor, init_hidden
+        input_tensor = init_input_tensor
         actions = []
         # create attribute dictionary that maps hyperparameter names to
         # conditional masks

@@ -34,7 +34,9 @@ FEATURE_TYPE_MAP = {
     "numeric": FeatureType.CONTINUOUS,
 }
 DATASOURCE_TYPES = [
-    DataSourceType.OPEN_ML, DataSourceType.AUTOSKLEARN_BENCHMARK]
+    DataSourceType.OPEN_ML,
+    DataSourceType.AUTOSKLEARN_BENCHMARK
+]
 
 AUTOSKLEARN_BENCHMARN_TASK_IDS = frozenset(autosklearn_clf_task_ids.TASK_IDS)
 
@@ -104,7 +106,7 @@ def openml_to_data_env(
             dataset_format="array")
         if openml_dataset.format == SPARSE_DATA_FORMAT:
             # TODO: currently the controller can't handle sparse matrices.
-            data = data.todense()
+            data = np.array(data.todense())
 
         # remove rows with null targets. Only case we'll need that is if
         # metalearn supports semi-supervised learning.
@@ -250,9 +252,12 @@ def autosklearn_paper_classification_envs(
         None, [_get_task(id, verbose) for id in task_ids]))
     openml_datasets = [t.get_dataset() for t in openml_tasks]
     target_columns = (t.target_name for t in openml_tasks)
-    target_types = (_get_target_type(
-        len(t.class_labels),
-        OpenMLTaskType.SUPERVISED_CLASSIFICATION) for t in openml_tasks)
+    target_types = (
+        _get_target_type(
+            len(t.class_labels),
+            OpenMLTaskType.SUPERVISED_CLASSIFICATION)
+        for t in openml_tasks
+        if t.class_labels is not None)
     return _create_envs(
         DataSourceType.AUTOSKLEARN_BENCHMARK, openml_datasets, target_columns,
         target_types, test_size, random_state)

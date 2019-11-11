@@ -349,10 +349,9 @@ def _exclusion_mask_test_harness(n_episodes, a_space_kwargs, t_env_kwargs):
             target_type=target_type,
             aux=utils.aux_tensor(prev_reward),
             metafeatures=Variable(metafeature_tensor),
-            init_hidden=prev_hidden)
+            hidden=prev_hidden)
 
         prev_hidden = hidden
-        
         for action in actions:
             # exclude masks are 1 to ignore the action and 0 to include in
             # in the candidates of actions to sample from.

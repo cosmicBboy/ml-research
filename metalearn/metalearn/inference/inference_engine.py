@@ -12,10 +12,16 @@ TestSetResult = namedtuple(
     "TestSetResult", ["ml_framework", "reward", "test_score"])
 InferenceResult = namedtuple(
     "InferenceResult",
-    ["mlf_description", "reward", "action", "validation_score", "is_valid"])
+    ["mlf_description", "reward", "action", "hidden_state", "validation_score",
+     "is_valid"])
 
 
 class CASHInference(object):
+
+    """Inference engine for generating predictions using controller.
+
+    The controller's weights are frozen.
+    """
 
     def __init__(self, controller, task_env):
         self.controller = utils.freeze_model(controller)
@@ -114,7 +120,9 @@ class CASHInference(object):
         :param bool verbose: prints metric logs during training.
         :returns list[InferenceResult]: a named tuple
         """
-        prev_reward, prev_action = 0, self.controller.init_action()
+        prev_reward = 0
+        prev_action = self.controller.init_action()
+        prev_hidden = self.controller.init_hidden()
         inference_results = []
         n_valid_mlf = 0
         for i in range(n):
@@ -122,10 +130,13 @@ class CASHInference(object):
                 self.task_env.sample_task_state(data_env_partition="test"),
                 self.task_env.current_data_env.target_type,
                 prev_reward,
-                prev_action)
+                prev_action,
+                prev_hidden)
             # TODO: serialize the top k mlfs here
             inference_results.append(inference)
-            prev_reward, prev_action = inference.reward, inference.action
+            prev_reward = inference.reward
+            prev_action = inference.action
+            prev_hidden = inference.hidden_state
             n_valid_mlf += int(inference.is_valid)
             if verbose:
                 print(
@@ -135,30 +146,36 @@ class CASHInference(object):
         return inference_results
 
     def _infer_iter(
-            self, metafeature_tensor, target_type, prev_reward, prev_action):
-        mlf, action_activation = self.propose_mlf(
-            metafeature_tensor, target_type, prev_reward, prev_action)
+            self, metafeature_tensor, target_type, prev_reward, prev_action,
+            prev_hidden):
+        mlf, action, hidden = self.propose_mlf(
+            metafeature_tensor, target_type, prev_reward, prev_action,
+            prev_hidden)
         mlf, reward, validation_score, is_valid = self.evaluate_mlf(mlf)
 
         return mlf, InferenceResult(
-            str(mlf.named_steps) if mlf is not None else mlf,
-            reward, Variable(action_activation),
-            validation_score, is_valid)
+            mlf_description=str(mlf.named_steps) if mlf is not None else mlf,
+            reward=reward,
+            action=action,
+            hidden_state=hidden,
+            validation_score=validation_score,
+            is_valid=is_valid)
 
     def propose_mlf(
-            self, task_state_tensor, target_type, prev_reward, prev_action):
+            self, task_state_tensor, target_type, prev_reward, prev_action,
+            prev_hidden):
         """Given a task state,  propose a machine learning framework."""
-        actions, action_activation = self.controller.decode(
+        actions, action_activation, hidden = self.controller.decode(
             init_input_tensor=prev_action,
             target_type=target_type,
             aux=utils.aux_tensor(prev_reward),
             metafeatures=Variable(task_state_tensor),
-            init_hidden=self.controller.init_hidden())
+            hidden=prev_hidden)
         algorithms, hyperparameters = utils.get_mlf_components(actions)
         mlf = self.controller.a_space.create_ml_framework(
             algorithms, hyperparameters=hyperparameters,
             task_metadata=self.task_env.get_current_task_metadata())
-        return mlf, action_activation.data
+        return mlf, action_activation.data, hidden
 
     def evaluate_mlf(self, mlf):
         """Evaluate actions on the validation set of the data environment."""
