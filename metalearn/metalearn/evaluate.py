@@ -62,8 +62,6 @@ def evaluate_controller(controller, task_env, n=20):
 
     # evaluate controller on test data environments
     test_env_inference_results = []
-    print("TEST DATA DIST", task_env.test_data_distribution)
-    print("TEST DATA DIST", [x.name for x in task_env.test_data_distribution])
     for test_data_env in task_env.test_data_distribution:
         inference_results = inference_engine.evaluate_test_data_envs(
             n=n, datasets=[test_data_env.name], verbose=True)

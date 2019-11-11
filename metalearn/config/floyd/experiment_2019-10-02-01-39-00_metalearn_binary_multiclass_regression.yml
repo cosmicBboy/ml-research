@@ -24,6 +24,8 @@ parameters:
   - SKLEARN
   - OPEN_ML
   - KAGGLE
+  test_env_sources:
+  - "AUTOSKLEARN_BENCHMARK"
   target_types:
   - BINARY
   - MULTICLASS
@@ -36,6 +38,9 @@ parameters:
       test_size: 0.2
       random_state: 100
     KAGGLE:
+      test_size: 0.2
+      random_state: 100
+    AUTOSKLEARN_BENCHMARK:
       test_size: 0.2
       random_state: 100
   error_reward: 0

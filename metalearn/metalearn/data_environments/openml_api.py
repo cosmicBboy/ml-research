@@ -113,7 +113,10 @@ def openml_to_data_env(
         X = data[:, feature_indices]
         y = data[:, target_index].ravel()
         y_not_nan = ~np.isnan(y)
-        return X[y_not_nan, :], y[y_not_nan]
+        try:
+            return X[y_not_nan, :], y[y_not_nan]
+        except:
+            import ipdb; ipdb.set_trace()
 
     # normalize feature indices so that index is aligned with
     # _fetch_training_data
@@ -234,8 +237,9 @@ def _get_task(id, verbose):
             print("skipping dataset %d id. "
                   "openml.tasks.get_task return null" % id)
         return task
-    except OpenMLServerException as e:
+    except (OpenMLServerException, ValueError) as e:
         print("skipping dataset %d. error: %s" % (id, e))
+        return None
 
 
 def autosklearn_paper_classification_envs(
