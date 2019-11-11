@@ -1,10 +1,11 @@
 """Evaluate controller after training."""
+
+import joblib
 import pandas as pd
 import os
 import torch
 
 from pathlib import Path
-from sklearn.externals import joblib
 
 from metalearn.metalearn_controller import MetaLearnController
 from metalearn.inference.inference_engine import CASHInference

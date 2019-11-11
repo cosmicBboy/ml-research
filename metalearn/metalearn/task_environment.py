@@ -56,8 +56,7 @@ class TaskEnvironment(object):
         :param list[str] env_sources: list of data environment source names.
             These should correspond with the DataSourceType enum names.
         :param list[str]|None test_env_sources: list of data environment
-            source names for test. These should correspond with the
-            DataSourceType enum names.
+            source names for test dataset distribution. These should correspond
         :param list[str] target_types: list of target types that the task
             environment will sample from. These should correspond with the
             TargetType enum names.

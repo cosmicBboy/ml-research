@@ -2,13 +2,13 @@
 
 # TODO: this script is still under construction!
 
+import joblib
 import pandas as pd
 import os
 import torch
 
 from collections import OrderedDict
 from pathlib import Path
-from sklearn.externals import joblib
 
 from metalearn.metalearn_controller import MetaLearnController
 from metalearn.inference.inference_engine import CASHInference

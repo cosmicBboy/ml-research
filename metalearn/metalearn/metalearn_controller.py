@@ -12,7 +12,7 @@ import dill
 import torch
 import torch.nn as nn
 
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 from torch.autograd import Variable
 from torch.distributions import Categorical
 

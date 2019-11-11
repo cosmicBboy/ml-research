@@ -1,13 +1,13 @@
 """Example usage of the CASH Controller."""
 
+import joblib
 import logging
-
 import os
-import pandas as pd
-import torch
 
 from shutil import rmtree
-from sklearn.externals import joblib
+
+import pandas as pd
+import torch
 
 from metalearn.task_environment import TaskEnvironment
 from metalearn.algorithm_space import AlgorithmSpace
