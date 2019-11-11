@@ -7,12 +7,13 @@ This agent is pre-trained on the following sklearn datasets:
 - breast_cancer
 """
 
-import pandas as pd
 import os
+
+import joblib
+import pandas as pd
 import torch
 
 from pathlib import Path
-from sklearn.externals import joblib
 
 from metalearn.metalearn_controller import MetaLearnController
 from metalearn.inference.inference_engine import CASHInference
