@@ -17,13 +17,15 @@ parameters:
   with_baseline: true
   single_baseline: false
   normalize_reward: true
-  n_episodes: 200
+  n_episodes: 500
   n_iter: 100
   learning_rate: 0.005
   env_sources:
   - SKLEARN
   - OPEN_ML
   - KAGGLE
+  test_env_sources:
+  - "AUTOSKLEARN_BENCHMARK"
   target_types:
   - BINARY
   test_set_config:
@@ -34,6 +36,9 @@ parameters:
       test_size: 0.2
       random_state: 100
     KAGGLE:
+      test_size: 0.2
+      random_state: 100
+    AUTOSKLEARN_BENCHMARK:
       test_size: 0.2
       random_state: 100
   error_reward: 0
@@ -56,4 +61,5 @@ description: |
   * increase entropy coefficient to encourage exploration
   * increase number of episodes and iterations per episode
   * test results with entropy annealing
-  # bugfix: exclusion mask logic in controller class led to conflicting masks
+  * bugfix: exclusion mask logic in controller class led to conflicting masks
+  * increase number of episodes, add entropy annealing

@@ -12,11 +12,12 @@ parameters:
   n_layers: 5
   dropout_rate: 0.3
   beta: 0.9
-  entropy_coef: 0.03
+  entropy_coef: 1.0
+  entropy_coef_anneal_by: 1.0
   with_baseline: true
   single_baseline: false
   normalize_reward: true
-  n_episodes: 100
+  n_episodes: 1000
   n_iter: 100
   learning_rate: 0.005
   env_sources:
@@ -56,3 +57,4 @@ description: |
   * increase n_iter = 100, n_episodes = 100
   * normalize rewards, maintain one baseline reward function per task env
   * increase entropy coefficient to encourage exploration
+  * increase number of episodes, add entropy annealing
