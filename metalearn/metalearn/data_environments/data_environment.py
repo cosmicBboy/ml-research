@@ -69,7 +69,7 @@ def create_simple_date_features(x, name=None):
 def _stack_features(
         clean_features: List[np.ndarray],
         feature_types: List[FeatureType],
-        feature_names: List[str]=None
+        feature_names: List[str] = None
         ) -> PreprocessedFeatures:
     """Stack continuous features before categorical features."""
     if feature_names is not None and len(feature_names) != len(feature_types):
@@ -104,7 +104,7 @@ def preprocess_features(
         name: str,
         features: np.ndarray,
         feature_types: List[FeatureType],
-        feature_names: List[str]=None,
+        feature_names: List[str] = None,
         ) -> PreprocessedFeatures:
     """Prepare data environment for use by task environment.
 

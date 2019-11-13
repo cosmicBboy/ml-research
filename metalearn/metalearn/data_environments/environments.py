@@ -38,7 +38,10 @@ ENV_SOURCES = {
          kaggle_api.regression_envs]),
     DataSourceType.AUTOSKLEARN_BENCHMARK: partial(
         get_envs_from_source,
-        [openml_api.autosklearn_paper_classification_envs])
+        [openml_api.autosklearn_paper_classification_envs]),
+    DataSourceType.OPEN_ML_BENCHMARK_CC18: partial(
+        get_envs_from_source,
+        [openml_api.openml_benchmark_cc18_envs])
 }
 
 

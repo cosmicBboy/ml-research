@@ -11,7 +11,7 @@ from functools import partial
 import numpy as np
 import openml
 
-from openml.exceptions import OpenMLServerException
+from openml.exceptions import OpenMLServerException, OpenMLPrivateDatasetError
 from typing import Dict, FrozenSet
 
 from .data_environment import DataEnvironment
@@ -35,7 +35,8 @@ FEATURE_TYPE_MAP = {
 }
 DATASOURCE_TYPES = [
     DataSourceType.OPEN_ML,
-    DataSourceType.AUTOSKLEARN_BENCHMARK
+    DataSourceType.AUTOSKLEARN_BENCHMARK,
+    DataSourceType.OPEN_ML_BENCHMARK_CC18,
 ]
 
 AUTOSKLEARN_BENCHMARN_TASK_IDS = frozenset(autosklearn_clf_task_ids.TASK_IDS)
@@ -60,6 +61,8 @@ def openml_to_data_env(
         data_source_type, test_size, random_state, target_preprocessor=None,
         include_features_with_na=False):
     print("fetching openml dataset: %s" % openml_dataset.name)
+    if openml_dataset.format == SPARSE_DATA_FORMAT:
+        raise TypeError("cannot handle sparse data.")
     if data_source_type not in DATASOURCE_TYPES:
         raise ValueError(
             "expected one of %s, found : %s" % (
@@ -104,19 +107,18 @@ def openml_to_data_env(
         data, *_ = openml_dataset.get_data(
             include_row_id=True, include_ignore_attributes=True,
             dataset_format="array")
-        if openml_dataset.format == SPARSE_DATA_FORMAT:
-            # TODO: currently the controller can't handle sparse matrices.
-            data = np.array(data.todense())
 
         # remove rows with null targets. Only case we'll need that is if
         # metalearn supports semi-supervised learning.
         X = data[:, feature_indices]
         y = data[:, target_index].ravel()
-        y_not_nan = ~np.isnan(y)
-        try:
-            return X[y_not_nan, :], y[y_not_nan]
-        except:
-            import ipdb; ipdb.set_trace()
+        y_is_nan = np.isnan(y)
+        n_nan = y_is_nan.sum()
+        if n_nan > 0:
+            print(
+                "removing %d/%d rows with null targets" % (n_nan, X.shape[0])
+            )
+        return X[~y_is_nan, :], y[~y_is_nan]
 
     # normalize feature indices so that index is aligned with
     # _fetch_training_data
@@ -180,8 +182,15 @@ def _create_envs(
         test_size=test_size,
         random_state=random_state,
         include_features_with_na=True)
-    envs = [_openml_to_data_env(*args) for args in zip(
-                datasets, target_columns, target_types)]
+    envs = []
+    for dataset, target_cols, target_types in zip(
+            datasets, target_columns, target_types):
+        try:
+            envs.append(
+                _openml_to_data_env(dataset, target_cols, target_types))
+        except TypeError as e:
+            print("skipping dataset %s due to error parsing dataset: %s" % (
+                dataset.name, e))
     return OrderedDict([(d.name, d) for d in envs if d])
 
 
@@ -195,6 +204,7 @@ def _filter_out_ids(openml_task_metadata: Dict, filter_out_ids: FrozenSet):
 def classification_envs(
         n=N_CLASSIFICATION_ENVS, test_size=None, random_state=None,
         verbose=False):
+    print("getting OpenML classification datasets")
     if n is None:
         n = N_CLASSIFICATION_ENVS
     task_type = OpenMLTaskType.SUPERVISED_CLASSIFICATION
@@ -210,6 +220,7 @@ def classification_envs(
 
 def regression_envs(
         n=N_REGRESSION_ENVS, test_size=None, random_state=None, verbose=False):
+    print("getting OpenML regression datasets")
     if n is None:
         n = N_CLASSIFICATION_ENVS
     task_type = OpenMLTaskType.SUPERVISED_REGRESSION
@@ -234,11 +245,14 @@ def _get_task(id, verbose):
     try:
         task = openml.tasks.get_task(id)
         if task is None:
-            print("skipping dataset %d id. "
+            print("skipping task id %d. "
                   "openml.tasks.get_task return null" % id)
         return task
-    except (OpenMLServerException, ValueError) as e:
-        print("skipping dataset %d. error: %s" % (id, e))
+    except (OpenMLServerException,
+            OpenMLPrivateDatasetError,
+            ValueError,
+            TypeError) as e:
+        print("skipping task id %d. error: %s" % (id, e))
         return None
 
 
@@ -248,12 +262,13 @@ def autosklearn_paper_classification_envs(
 
     https://papers.nips.cc/paper/5872-efficient-and-robust-automated-machine-learning  # noqa
     """
+    print("getting OpenML Auto-SKlearn benchmark datasets")
     if n is None:
         task_ids = autosklearn_clf_task_ids.TASK_IDS
     else:
         task_ids = autosklearn_clf_task_ids.TASK_IDS[:n]
     openml_tasks = list(filter(
-        None, [_get_task(id, verbose) for id in task_ids]))
+        None, (_get_task(id, verbose) for id in task_ids)))
     openml_datasets = [t.get_dataset() for t in openml_tasks]
     target_columns = (t.target_name for t in openml_tasks)
     target_types = (
@@ -261,7 +276,36 @@ def autosklearn_paper_classification_envs(
             len(t.class_labels),
             OpenMLTaskType.SUPERVISED_CLASSIFICATION)
         for t in openml_tasks
-        if t.class_labels is not None)
+        if t.class_labels is not None
+    )
     return _create_envs(
         DataSourceType.AUTOSKLEARN_BENCHMARK, openml_datasets, target_columns,
+        target_types, test_size, random_state)
+
+
+def openml_benchmark_cc18_envs(
+        n=None, test_size=None, random_state=None, verbose=False):
+    """From OpenML benchmarks documentation:
+
+    https://docs.openml.org/benchmark
+    """
+    print("getting OpenML-CC18 benchmark datasets")
+    benchmark_suite = openml.study.get_suite('OpenML-CC18')
+    if n is None:
+        task_ids = list(benchmark_suite.tasks)
+    else:
+        task_ids = list(benchmark_suite.tasks)[:n]
+    openml_tasks = list(filter(
+        None, (_get_task(id, verbose) for id in task_ids)))
+    openml_datasets = [t.get_dataset() for t in openml_tasks]
+    target_columns = (t.target_name for t in openml_tasks)
+    target_types = (
+        _get_target_type(
+            len(t.class_labels),
+            OpenMLTaskType.SUPERVISED_CLASSIFICATION)
+        for t in openml_tasks
+        if t.class_labels is not None
+    )
+    return _create_envs(
+        DataSourceType.OPEN_ML_BENCHMARK_CC18, openml_datasets, target_columns,
         target_types, test_size, random_state)

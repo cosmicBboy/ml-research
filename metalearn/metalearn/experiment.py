@@ -168,6 +168,7 @@ def run_experiment(
     output_fp = os.path.dirname(__file__) + "/../output" if \
         output_fp is None else output_fp
     data_path = Path(output_fp)
+    data_path.mkdir(exist_ok=True)
 
     # initialize error logging (this is to log fit/predict/score errors made
     # when evaluating a proposed MLF)
@@ -295,6 +296,7 @@ def run_random_search(
     output_fp = os.path.dirname(__file__) + "/../output" if \
         output_fp is None else output_fp
     data_path = Path(output_fp)
+    data_path.mkdir(exist_ok=True)
 
     # initialize error logging (this is to log fit/predict/score errors made
     # when evaluating a proposed MLF)

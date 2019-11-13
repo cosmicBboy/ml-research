@@ -16,3 +16,7 @@ var
 *.pkl
 *.pt
 analysis/
+output/
+examples/
+benchmarks/
+build/
