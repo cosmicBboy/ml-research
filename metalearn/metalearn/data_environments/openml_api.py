@@ -4,6 +4,7 @@ https://www.openml.org/search?type=data
 """
 
 import logging
+import os
 
 from collections import OrderedDict
 from functools import partial
@@ -11,6 +12,7 @@ from functools import partial
 import numpy as np
 import openml
 
+from openml import config
 from openml.exceptions import OpenMLServerException, OpenMLPrivateDatasetError
 from typing import Dict, FrozenSet
 
@@ -20,6 +22,8 @@ from ..data_types import FeatureType, TargetType, OpenMLTaskType, \
     DataSourceType
 
 
+# TODO: test caching and create floyd dataset to mount onto jobs
+config.set_cache_directory(os.getenv("OPEN_ML_CACHE_DIR", "~/.openml/cache"))
 logger = logging.getLogger(__name__)
 
 
