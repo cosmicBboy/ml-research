@@ -4,7 +4,7 @@ created_at: 2019-10-02-01-21-54
 git_hash: b59eafd
 parameters:
   datasets: null
-  output_fp: ./output
+  output_fp: /output
   n_trials: 1
   input_size: 128
   hidden_size: 128
@@ -12,9 +12,9 @@ parameters:
   n_layers: 5
   dropout_rate: 0.3
   beta: 0.9
-  entropy_coef: 1.0
-  entropy_coef_anneal_to: 0.03
-  entropy_coef_anneal_by: 1.0
+  entropy_coef: 0.5
+  entropy_coef_anneal_to: 0.05
+  entropy_coef_anneal_by: 0.9
   with_baseline: true
   single_baseline: false
   normalize_reward: true

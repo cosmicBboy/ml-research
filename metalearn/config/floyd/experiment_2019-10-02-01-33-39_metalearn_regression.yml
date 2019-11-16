@@ -12,17 +12,22 @@ parameters:
   n_layers: 5
   dropout_rate: 0.3
   beta: 0.9
-  entropy_coef: 0.03
+  entropy_coef: 0.5
+  entropy_coef_anneal_to: 0.05
+  entropy_coef_anneal_by: 0.9
   with_baseline: true
   single_baseline: false
   normalize_reward: true
-  n_episodes: 100
+  n_episodes: 250
   n_iter: 100
+  n_eval_iter: 100
   learning_rate: 0.005
   env_sources:
-  - SKLEARN
+  - AUTOSKLEARN_BENCHMARK
   - OPEN_ML
   - KAGGLE
+  test_env_sources:
+  - OPEN_ML_BENCHMARK_CC18
   target_types:
   - REGRESSION
   test_set_config:
