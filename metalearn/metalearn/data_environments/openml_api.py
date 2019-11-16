@@ -8,6 +8,7 @@ import os
 
 from collections import OrderedDict
 from functools import partial
+from pathlib import Path
 
 import numpy as np
 import openml
@@ -23,7 +24,8 @@ from ..data_types import FeatureType, TargetType, OpenMLTaskType, \
 
 
 # TODO: test caching and create floyd dataset to mount onto jobs
-config.set_cache_directory(os.getenv("OPEN_ML_CACHE_DIR", "~/.openml/cache"))
+config.set_cache_directory(
+    os.getenv("OPEN_ML_CACHE_DIR", Path.home() / ".openml" / "cache"))
 logger = logging.getLogger(__name__)
 
 

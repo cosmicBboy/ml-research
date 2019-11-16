@@ -22,5 +22,5 @@ def test_regression_envs():
 def test_autosklearn_paper_classification_envs():
     autosklearn_envs = openml_api.autosklearn_paper_classification_envs(n=10)
     assert all([
-        isinstance(x, DataEnvironment) for x in autosklearn_envs
+        isinstance(x, DataEnvironment) for x in autosklearn_envs.values()
     ])
