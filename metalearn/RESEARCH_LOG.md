@@ -1,5 +1,31 @@
 # Research Log
 
+## 12/04/2019
+
+### Single RNN Does not Meta-learn
+
+Based on the results in `analysis/metalearn_openml_cc18_benchmark.ipynb`,
+it doesn't appear that the RNN loop is able to model the previous action and
+reward signal to implement an RL learning policy even with the RNN's weights
+frozen. Consider two hypotheses:
+
+1. Currently gradient tracking is reset on the previous action and reward vectors
+   as they are passed along to the next time step. In a sequence decoder setting,
+   does this even make sense to do? The gradient should be backpropped along all
+   the way back to the beginning of the episode, so I think the current
+   implementation is preventing the controller from learning anything time scales
+   beyond selecting the actions that specify an ML Framework.
+2. Right now the RNN has to model two things: the sequences of actions that
+   produce high rewards, and how previous action and reward `(a_prev, r_prev)`
+   maps to the current action and reward `(a_curr, r_curr)`. Perhaps two
+   separate RNNs would enable meta-learning, one to model the
+   `(r_prev, a_prev) -> (a_curr, r_curr)` and another to learn sequences of
+   actions that specify and ML Framework that maximize the validation performance
+   reward signal.
+
+`1` is easier to implement and test, so this should be the first thing to try.
+
+
 ## 10/01/2019
 
 ### Thoroughly Test Meta-learning Capabilities

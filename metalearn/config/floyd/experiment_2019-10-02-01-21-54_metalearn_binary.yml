@@ -6,13 +6,13 @@ parameters:
   datasets: null
   output_fp: /output
   n_trials: 1
-  input_size: 128
-  hidden_size: 128
-  output_size: 128
+  input_size: 256
+  hidden_size: 256
+  output_size: 256
   n_layers: 5
   dropout_rate: 0.3
   beta: 0.9
-  entropy_coef: 0.5
+  entropy_coef: 0.1
   entropy_coef_anneal_to: 0.05
   entropy_coef_anneal_by: 0.9
   with_baseline: true

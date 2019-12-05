@@ -240,6 +240,7 @@ class MetaLearnReinforce(object):
         self._update_baseline_reward_buffer(reward)
         for k, v in self._baseline_fn["buffer"].items():
             self._baseline_buffer_history[k].extend(v)
+        # TODO: make sure reward and hidden tensors require grad
         return reward, Variable(action_activation.data), hidden
 
     def evaluate_actions(self, actions, action_activation):
