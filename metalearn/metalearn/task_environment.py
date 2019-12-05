@@ -35,6 +35,7 @@ class TaskEnvironment(object):
             env_sources=["SKLEARN", "OPEN_ML", "KAGGLE"],
             test_env_sources=None,
             target_types=["BINARY", "MULTICLASS"],
+            test_env_target_types=["BINARY", "MULTICLASS"],
             test_set_config=None,
             scorers=None,
             use_target_type_scorers=True,
@@ -58,8 +59,11 @@ class TaskEnvironment(object):
             source names for test dataset distribution. These should correspond
             to the DataSourceType enum names.
         :param list[str] target_types: list of target types that the task
-            environment will sample from. These should correspond with the
-            TargetType enum names.
+            environment will sample from for the training task distribution.
+            These should correspond with the TargetType enum names.
+        :param list[str] test_env_target_types: list of target types that the
+            task environment will sample from for the test task distribution.
+            These should correspond with the TargetType enum names.
         :param dict[DataSourceType -> dict] test_set_config: a dictionary where
             keys DataSourceTypes and values are dictionaries of the form:
             {"test_size": float, "random_state": int}. This is used to set the
@@ -142,16 +146,22 @@ class TaskEnvironment(object):
 
         # set train and test data environments
         self.target_types = [TargetType[t] for t in target_types]
+        self.test_env_target_types = [
+            TargetType[t] for t in test_env_target_types]
         get_envs = partial(
             env_gen,
-            target_types=self.target_types,
             test_set_config=test_set_config)
         self.data_distribution = get_envs(
-            dataset_names, [DataSourceType[e] for e in env_sources])
+            dataset_names,
+            [DataSourceType[e] for e in env_sources],
+            target_types=self.target_types)
+
         self.test_data_distribution = None
         if test_env_sources is not None:
             self.test_data_distribution = get_envs(
-                test_dataset_names, test_env_sources)
+                test_dataset_names, test_env_sources,
+                self.test_env_target_types,
+            )
 
         # TODO: the metafeature spec should be somehow persisted along with the
         # trained MetaLearnController. Need to create a method in

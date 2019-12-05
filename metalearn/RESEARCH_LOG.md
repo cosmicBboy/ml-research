@@ -25,6 +25,18 @@ frozen. Consider two hypotheses:
 
 `1` is easier to implement and test, so this should be the first thing to try.
 
+### Experiment: Try Doing Inference on Other Task Types
+
+Looking at the openml cc18 benchmark results, it actually looks like the
+controller is achieving decent validation scores, i.e. it doesn't test the
+controller's ability to learn different kinds of supervised tasks of similar
+structure.
+
+One way to test this would be to train the contoller on a purely binary
+classification task distribution and then generate inferences for binary,
+multiclass, and regression tasks. We'd expect it to already do well for binary
+tasks even in the test task distribution, but it will probably not have
+explored algorithm space for multiclass or regression estimators.
 
 ## 10/01/2019
 

@@ -143,6 +143,7 @@ def run_experiment(
         test_env_sources=["AUTOSKLEARN_BENCHMARK"],
         n_eval_iter=10,
         target_types=["BINARY", "MULTICLASS"],
+        test_env_target_types=["BINARY", "MULTICLASS"],
         test_set_config={
             "SKLEARN": {
                 "test_size": 0.8,
@@ -213,6 +214,7 @@ def run_experiment(
             env_sources=env_sources,
             test_env_sources=test_env_sources,
             target_types=target_types,
+            test_env_target_types=test_env_target_types,
             test_set_config=test_set_config,
             random_state=task_environment_seed,
             per_framework_time_limit=per_framework_time_limit,

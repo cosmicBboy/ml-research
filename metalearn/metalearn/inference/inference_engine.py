@@ -119,6 +119,7 @@ class CASHInference(object):
         :param bool verbose: prints metric logs during training.
         :returns list[InferenceResult]: a named tuple
         """
+        # TODO: make sure mlf string is captured here
         prev_reward = 0
         prev_action = self.controller.init_action()
         prev_hidden = self.controller.init_hidden()
