@@ -8,7 +8,6 @@ import numpy as np
 import torch
 
 import torch.nn as nn
-from torch.autograd import Variable
 
 from .data_types import CASHComponent
 from .data_environments.data_environment import NULL_DATA_ENV
@@ -114,8 +113,7 @@ def aux_tensor(prev_reward):
     of each episode, the previous reward is reset to 0.
     """
     r_tensor = torch.zeros(1, 1, 1)
-    r_tensor += prev_reward
-    return Variable(r_tensor)
+    return r_tensor + prev_reward
 
 
 def get_mlf_components(actions):
@@ -175,12 +173,6 @@ def _create_input_tensor(a_space, seq):
     for i, action in enumerate(seq):
         t[i][0][a_space.components.index(action)] = 1
     return t
-
-
-def _create_training_data_tensors(a_space, metafeatures, seq):
-    return (
-        Variable(_create_metafeature_tensor(metafeatures, seq)),
-        Variable(_create_input_tensor(a_space, seq)))
 
 
 def _ml_framework_string(ml_framework):

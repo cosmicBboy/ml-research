@@ -2,7 +2,6 @@
 
 from collections import namedtuple
 from sklearn.exceptions import NotFittedError
-from torch.autograd import Variable
 
 from .. import utils
 from ..data_types import DataSourceType
@@ -169,7 +168,7 @@ class CASHInference(object):
             init_input_tensor=prev_action,
             target_type=target_type,
             aux=utils.aux_tensor(prev_reward),
-            metafeatures=Variable(task_state_tensor),
+            metafeatures=task_state_tensor,
             hidden=prev_hidden)
         algorithms, hyperparameters = utils.get_mlf_components(actions)
         mlf = self.controller.a_space.create_ml_framework(

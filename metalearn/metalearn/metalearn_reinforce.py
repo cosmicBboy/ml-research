@@ -5,7 +5,6 @@ import torch
 import torch.nn as nn
 
 from collections import defaultdict
-from torch.autograd import Variable
 
 from . import utils, loggers
 from .tracking import MetricsTracker
@@ -230,7 +229,7 @@ class MetaLearnReinforce(object):
             init_input_tensor=prev_action,
             target_type=target_type,
             aux=utils.aux_tensor(prev_reward),
-            metafeatures=Variable(metafeature_tensor),
+            metafeatures=metafeature_tensor,
             hidden=prev_hidden)
         reward = self.evaluate_actions(actions, action_activation)
         # TODO: directly update the underlying data structures
@@ -241,7 +240,7 @@ class MetaLearnReinforce(object):
         for k, v in self._baseline_fn["buffer"].items():
             self._baseline_buffer_history[k].extend(v)
         # TODO: make sure reward and hidden tensors require grad
-        return reward, Variable(action_activation.data), hidden
+        return reward, action_activation, hidden
 
     def evaluate_actions(self, actions, action_activation):
         """Evaluate actions on the validation set of the data environment."""

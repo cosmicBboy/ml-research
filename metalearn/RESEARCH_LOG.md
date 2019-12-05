@@ -9,8 +9,8 @@ it doesn't appear that the RNN loop is able to model the previous action and
 reward signal to implement an RL learning policy even with the RNN's weights
 frozen. Consider two hypotheses:
 
-1. Currently gradient tracking is reset on the previous action and reward vectors
-   as they are passed along to the next time step. In a sequence decoder setting,
+1. Currently gradient tracking is reset on the previous action vector as it's
+   passed along to the next time step. In a sequence decoder setting,
    does this even make sense to do? The gradient should be backpropped along all
    the way back to the beginning of the episode, so I think the current
    implementation is preventing the controller from learning anything time scales

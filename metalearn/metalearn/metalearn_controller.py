@@ -13,7 +13,6 @@ import torch
 import torch.nn as nn
 
 from collections import defaultdict
-from torch.autograd import Variable
 from torch.distributions import Categorical
 
 from .data_types import CASHComponent
@@ -296,18 +295,18 @@ class MetaLearnController(nn.Module):
         """Encode action choice into embedding at input for next action."""
         action_classifier = self.action_classifiers[action_index]
         embedding = getattr(self, action_classifier["embedding_attr"])
-        action_embedding = embedding(
-            Variable(torch.LongTensor([choice_index])))
+        action_embedding = embedding(torch.LongTensor([choice_index]))
         return action_embedding.view(
             1, action_embedding.shape[0], action_embedding.shape[1])
 
     def init_hidden(self):
         """Initialize hidden layer with zeros."""
-        return Variable(torch.zeros(self.num_rnn_layers, 1, self.hidden_size))
+        return torch.zeros(
+            self.num_rnn_layers, 1, self.hidden_size, requires_grad=True)
 
     def init_action(self):
         """Initialize action input state."""
-        return Variable(torch.zeros(1, 1, self.input_size))
+        return torch.zeros(1, 1, self.input_size, requires_grad=True)
 
     @property
     def config(self):
