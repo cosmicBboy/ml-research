@@ -11,6 +11,7 @@ for the most recently chosen algorithm.
 import dill
 import torch
 import torch.nn as nn
+import warnings
 
 from collections import defaultdict
 from torch.distributions import Categorical
@@ -73,7 +74,7 @@ class MetaLearnController(nn.Module):
         self.atype_map = {}
         # maps algorithm component to list of index pointers referring to
         # action classifier for hyperparameters for that component
-        self.acomponent_to_hyperparam = defaultdict(list)
+        self.acomponent_to_hyperparams = defaultdict(list)
         # maps hyperparameter actions to conditional masks that determines what
         # subsequent actions the agent can make.
         self.hyperparam_exclude_conditions = defaultdict(dict)
@@ -121,17 +122,17 @@ class MetaLearnController(nn.Module):
                     self._add_action_classifier(
                         idx, CASHComponent.HYPERPARAMETER, hname, hchoices,
                         exclude_masks)
-                    self.acomponent_to_hyperparam[acomponent].append(idx)
+                    self.acomponent_to_hyperparams[acomponent].append(idx)
                     idx += 1
         self.n_actions = len(self.action_classifiers)
 
     def _exclusion_condition_to_mask(self, h_state_space, exclude):
         """
         Create a mask of the action space to prevent selecting invalid states
-        given previous choices.
+        given previous choices. A mask value 1 means to exclude the value from
+        the state space.
         """
 
-        # TODO: this can probably be moved to algorithm_space.py
         if exclude is None:
             return None
 
@@ -191,8 +192,6 @@ class MetaLearnController(nn.Module):
 
         Where the actions are a sequence of algorithm components and
         hyperparameter settings.
-
-        TODO: add unit tests for this method and related methods.
         """
         input_tensor = init_input_tensor
         actions = []
@@ -209,21 +208,31 @@ class MetaLearnController(nn.Module):
         for atype in algorithm_components:
             action, input_tensor, hidden = self._decode_action(
                 input_tensor, aux, metafeatures, hidden,
-                action_index=self.atype_map[atype])
+                action_index=self.atype_map[atype]
+            )
+            if action is None:
+                warnings.warn(
+                    "selected action for algorithm type %s is None, continuing."
+                    % atype)
+                continue
             actions.append(action)
             # each algorithm is associated with a set of hyperparameters
-            for h_index in self.acomponent_to_hyperparam[action["choice"]]:
+            for h_index in self.acomponent_to_hyperparams[action["choice"]]:
                 hyperparameter_action, input_tensor, hidden = \
                     self._decode_action(
                         input_tensor, aux, metafeatures, hidden,
-                        action_index=h_index)
+                        action_index=h_index
+                    )
                 if hyperparameter_action is None:
+                    warnings.warn(
+                        "selected action for hyperparameter index %s for "
+                        "algorithm choice %s" % (h_index, action["choice"])
+                    )
                     continue
                 actions.append(hyperparameter_action)
         return actions, input_tensor, hidden
 
     def _get_exclusion_mask(self, action_name):
-
         if action_name in self._exclude_masks:
             return (
                 self._exclude_masks[action_name]
@@ -246,8 +255,11 @@ class MetaLearnController(nn.Module):
             self, input_tensor, aux, metafeatures, hidden, action_index):
         action_classifier = self.action_classifiers[action_index]
         mask = self._get_exclusion_mask(action_classifier["name"])
-        if mask is not None and (mask == 0).all():
+        if mask is not None and (mask == 1).all():
             # If all actions are masked, then don't select any choice
+            warnings.warn(
+                "all actions are masked for action_classifier %s" %
+                action_classifier)
             return None, input_tensor, hidden
         action_probs, hidden = self.forward(
             input_tensor, aux, metafeatures, hidden, action_classifier)
@@ -266,9 +278,13 @@ class MetaLearnController(nn.Module):
         if mask is not None:
             # need to invert mask to have masked action probabilities == 0
             action_probs = action_probs * (mask == 0).type(torch.FloatTensor)
+
         if (action_probs.data > 0).sum() == 0:
             # case where previous choice excludes all choices of the current
             # hyperparameter
+            warnings.warn(
+                "all action probabilities are zero for action_classifier %s" %
+                action_classifier)
             return None
 
         choice_index = Categorical(action_probs).sample()
