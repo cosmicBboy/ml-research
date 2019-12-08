@@ -46,3 +46,16 @@ generator's fake samples.
 
 - `gan_gaussian_plot.png`
 - `gan_gaussian_evolution.png`
+
+
+## METAlearn
+
+**M**etaRL-based **E**stimator using **T**ask-encodings for
+**A**utomated machine **Learn**ing
+
+**META Learn** is a deep learning approach to automated machine learning that
+parameterizes the API of machine learning software as a sequence of actions to
+select the hyperparameters of a machine learning pipeline in an end-to-end
+fashion, from raw data representation, imputation, normalizing, feature
+representation, and classification/regression. Currently the
+[sklearn API][sklearn] is the only supported ML framework.

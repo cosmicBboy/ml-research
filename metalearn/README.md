@@ -165,16 +165,20 @@ maximizes validation performance over the task distribution.
 The `./analysis` subfolder contains jupyter notebooks that visualize the
 performance of the cash controller over time. Currently there are 5 analyses
 in the project `analysis` subfolder:
-- `rnn_metalearn_controller_experiment_analysis.ipynb`: analyzing the output of
-  running `examples/example_rnn_metalearn_controller.py` with static plots.
-- `metalearn_controller_analysis.ipynb`: a basic interactive analysis
+- `20180715_metalearn_controller_analysis.ipynb`: a basic interactive analysis
   of a single job's outputs.
-- `metalearn_controller_multi_experiment_analysis.ipynb`: analyzes multiple
-  job outputs, all assumed to have one trial (training run) per job.
-- `metalearn_controller_multi_trail_analysis.ipynb`: analyzes the
-  output of one job, but that job has multiple trials.
-- `metalearn_controller_multi_trial_experiment_analysis.ipynb`: analyzes
-  the output of multiple jobs, each with multiple trials.
+- `20180809_experiments_jobs_150_151.ipynb`: analyzes baseline performance
+  based on correct action selection implementation. For more info on the bug,
+  see [here](https://github.com/cosmicBboy/ml-research/commit/59ec74e7f87bb553220c83eecc44d9bdbda582e5).
+- `20180902_experiments_entropy_jobs_166-175.ipynb`: analyzes tuning experiment
+  after entropy coefficient was introduced in the loss function.
+- `20180930_experiments_regression_195.ipynb`: analyzes a pure regression
+  metalearn controller.
+- `20181003_experiments_regression_197.ipynb`: analyzes a pure regression
+  controller with two sets of entropy coef settings.
+- `20191111_metalearn_openml_cc18_benchmark.ipynb`: evaluate the metalearn
+  controller's ability to learn from an internal RL algorithm implemented within
+  the RNN loop.
 
 
 [neuralarchsearch]: https://arxiv.org/abs/1611.01578
