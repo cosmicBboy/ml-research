@@ -214,10 +214,14 @@ def classification_envs(
     if n is None:
         n = N_CLASSIFICATION_ENVS
     task_type = OpenMLTaskType.SUPERVISED_CLASSIFICATION
+
     dataset_metadata = _get_dataset_metadata(
         _filter_out_ids(
             openml.tasks.list_tasks(task_type_id=task_type.value, size=n),
-            AUTOSKLEARN_BENCHMARN_TASK_IDS),
+            # exclude any benchmark tasks
+            AUTOSKLEARN_BENCHMARN_TASK_IDS.union(
+                set(openml.study.get_suite('OpenML-CC18').tasks)
+            )),
         task_type)
     return _create_envs(
         DataSourceType.OPEN_ML, *dataset_metadata +
@@ -233,7 +237,10 @@ def regression_envs(
     dataset_metadata = _get_dataset_metadata(
         _filter_out_ids(
             openml.tasks.list_tasks(task_type_id=task_type.value, size=n),
-            AUTOSKLEARN_BENCHMARN_TASK_IDS),
+            # exclude any benchmark tasks
+            AUTOSKLEARN_BENCHMARN_TASK_IDS.union(
+                set(openml.study.get_suite('OpenML-CC18').tasks)
+            )),
         task_type)
     return _create_envs(
         DataSourceType.OPEN_ML, *dataset_metadata + (test_size, random_state))
@@ -273,8 +280,13 @@ def autosklearn_paper_classification_envs(
         task_ids = autosklearn_clf_task_ids.TASK_IDS
     else:
         task_ids = autosklearn_clf_task_ids.TASK_IDS[:n]
-    openml_tasks = list(filter(
-        None, (_get_task(id, verbose) for id in task_ids)))
+    # don't include other benchmark ids
+    exclude_ids = set(openml.study.get_suite('OpenML-CC18').tasks)
+    openml_tasks = [
+        task_id for task_id in
+        (_get_task(id, verbose) for id in task_ids)
+        if task_id is not None and task_id not in exclude_ids
+    ]
     openml_datasets = [t.get_dataset() for t in openml_tasks]
     target_columns = (t.target_name for t in openml_tasks)
     target_types = (

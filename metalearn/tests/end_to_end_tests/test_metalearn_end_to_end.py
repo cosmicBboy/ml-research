@@ -309,7 +309,7 @@ def test_openml_classification_data():
     )
     datasets = openml_api.classification_envs(
         n=openml_api.N_CLASSIFICATION_ENVS)
-    for dataset_name in ["openml.mfeat-fourier"]:
+    for dataset_name in datasets.keys():
         t_env = _task_environment(
             env_sources=["OPEN_ML"],
             target_types=["BINARY", "MULTICLASS"],
