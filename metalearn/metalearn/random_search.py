@@ -93,7 +93,8 @@ class CASHRandomSearch(object):
             "n_unique_mlfs": n_unique_mlfs,
             "n_unique_hyperparams": n_unique_hyperparams,
             "mlf_diversity": mlf_diversity,
-            "hyperparam_diversity": hyperparam_diversity
+            "hyperparam_diversity": hyperparam_diversity,
+            "entropy_coefficient": np.nan,
         })
         if self._metrics_logger is not None:
             self._metrics_logger(self.tracker)

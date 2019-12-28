@@ -5,8 +5,6 @@ import openml
 import pandas as pd
 import torch
 
-from torch.autograd import Variable
-
 from metalearn import components
 
 from metalearn.algorithm_space import AlgorithmSpace, \
@@ -58,7 +56,7 @@ def _metalearn_controller(a_space, t_env):
         output_size=5,
         a_space=a_space,
         dropout_rate=0.2,
-        num_rnn_layers=3)
+        num_rnn_layers=1)
 
 
 def _metalearn_reinforce(controller, task_env, **kwargs):
@@ -73,14 +71,14 @@ def _metalearn_reinforce(controller, task_env, **kwargs):
 def _fit_kwargs():
     return {
         "optim": torch.optim.Adam,
-        "optim_kwargs": {"lr": 0.005},
+        "optim_kwargs": {"lr": 0.005, "weight_decay": 0.01},
         "n_iter": 3,
         "verbose": False
     }
 
 
 def test_metalearn_reinforce_fit():
-    """Ensure DeepCASH training routine executes."""
+    """Ensure MetaLearn training routine executes."""
     n_episodes = 20
     t_env = _task_environment()
     a_space = _algorithm_space()
@@ -126,33 +124,6 @@ def test_metalearn_reinforce_fit_multi_baseline():
         **_fit_kwargs())
     assert reinforce._baseline_buffer_history["sklearn.iris"] != \
         reinforce._baseline_buffer_history["sklearn.wine"]
-
-
-def test_cash_zero_gradient():
-    """Test that gradient is zero if the reward is zero."""
-    torch.manual_seed(100)  # ensure weight initialized is deterministic
-    n_episodes = 30
-    t_env = _task_environment()
-    a_space = _algorithm_space()
-    controller = _metalearn_controller(a_space, t_env)
-    # don't train with baseline since this will modify the reward signal when
-    # computing the `advantage = reward - baseline`.
-    reinforce = _metalearn_reinforce(
-        controller, t_env, with_baseline=False, entropy_coef=0.0)
-    fit_kwargs = _fit_kwargs()
-    fit_kwargs.update({"n_iter": 1})
-    reinforce.fit(
-        n_episodes=n_episodes,
-        **_fit_kwargs())
-    # make sure there's at least one zero-valued aggregate gradient
-    assert any([g == 0 for g in
-                reinforce.tracker.history["aggregate_gradients"]])
-    for r, g in zip(reinforce.tracker.history["mean_rewards"],
-                    reinforce.tracker.history["aggregate_gradients"]):
-        if r == 0:
-            assert g == 0
-        else:
-            assert g != 0
 
 
 def test_metalearn_entropy_regularizer():
@@ -345,11 +316,12 @@ def _exclusion_mask_test_harness(n_episodes, a_space_kwargs, t_env_kwargs):
         metafeature_tensor = t_env.sample_task_state()
         target_type = t_env.current_data_env.target_type
         actions, action_activation, hidden = controller.decode(
-            init_input_tensor=prev_action,
+            prev_action=prev_action,
+            prev_reward=utils.aux_tensor(prev_reward),
+            metafeatures=metafeature_tensor,
+            hidden=prev_hidden,
             target_type=target_type,
-            aux=utils.aux_tensor(prev_reward),
-            metafeatures=Variable(metafeature_tensor),
-            hidden=prev_hidden)
+        )
 
         prev_hidden = hidden
         for action in actions:

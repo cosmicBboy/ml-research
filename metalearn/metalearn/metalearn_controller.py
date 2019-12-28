@@ -9,15 +9,19 @@ for the most recently chosen algorithm.
 
 
 import dill
+import logging
 import torch
 import torch.nn as nn
-import warnings
+import torch.nn.functional as F
 
 from collections import defaultdict
 from torch.distributions import Categorical
 
 from .data_types import CASHComponent
 from .components.algorithm_component import EXCLUDE_ALL
+
+
+logger = logging.getLogger(__name__)
 
 
 class MetaLearnController(nn.Module):
@@ -85,17 +89,34 @@ class MetaLearnController(nn.Module):
         self.entropy_buffer = []
 
         # architecture specification
-        self.rnn = nn.GRU(
+
+        # meta-rnn models representation of previous action, previous reward,
+        # and metafeatures
+        self.meta_rnn = nn.GRU(
             self.input_size + self.aux_reward_size +
             self.metafeature_encoding_size,
             self.hidden_size,
             num_layers=self.num_rnn_layers,
-            dropout=self.dropout_rate)
-        self.decoder = nn.Linear(self.hidden_size, self.output_size)
-        self.dropout = nn.Dropout(self.dropout_rate)
+            dropout=self.dropout_rate,
+        )
+        self.meta_decoder = nn.Linear(self.hidden_size, self.output_size)
+        self.meta_dropout = nn.Dropout(self.dropout_rate)
+
         # special encoding layer for initial metafeature input
         self.metafeature_dense = nn.Linear(
             self.metafeature_size, self.metafeature_encoding_size)
+
+        # micro action rnn takes meta-rnn representation and selects
+        # hyperparameters to specify an ML Framework.
+        self.micro_action_rnn = nn.GRU(
+            self.input_size,
+            self.hidden_size,
+            num_layers=self.num_rnn_layers,
+            dropout=self.dropout_rate,
+        )
+        self.micro_action_decoder = nn.Linear(
+            self.hidden_size, self.output_size)
+        self.micro_action_dropout = nn.Dropout(self.dropout_rate)
 
         # for each algorithm component and hyperparameter value, create a
         # softmax classifier over the number of unique components/hyperparam
@@ -171,30 +192,48 @@ class MetaLearnController(nn.Module):
             "exclude_masks": exclude_masks,
         })
 
-    def forward(self, input, aux, metafeatures, hidden, action_classifier):
+    def forward(self, action, hidden, action_classifier, mask=None):
         """Forward pass through controller."""
-        input_concat = torch.cat([
-            input, aux, self.metafeature_dense(metafeatures)], 2)
-        rnn_output, hidden = self.rnn(input_concat, hidden)
-        rnn_output = self.dropout(self.decoder(rnn_output))
+        rnn_output, hidden = self.micro_action_rnn(action, hidden)
+        rnn_output = self.micro_action_dropout(
+            self.micro_action_decoder(rnn_output))
 
         dense = getattr(self, action_classifier["dense_attr"])
         softmax = getattr(self, action_classifier["softmax_attr"])
 
         # obtain action probability distribution
         rnn_output = rnn_output.view(rnn_output.shape[0], -1)
-        action_probs = softmax(dense(rnn_output))
+        logits = dense(rnn_output)
+        if mask is not None:
+            logger.warning(
+                "applying mask %s to action_classifier %s" %
+                (mask, action_classifier))
+            logits[mask] = float("-inf")
+        action_probs = softmax(logits)
         return action_probs, hidden
 
-    def decode(self, init_input_tensor, target_type, aux, metafeatures,
-               hidden):
+    def decode(self, prev_action, prev_reward, metafeatures,
+               hidden, target_type):
         """Decode a metafeature tensor to sequence of actions.
 
         Where the actions are a sequence of algorithm components and
         hyperparameter settings.
         """
-        input_tensor = init_input_tensor
         actions = []
+
+        # first process inputs with metalearning rnn
+        action_tensor, hidden = self.meta_rnn(
+            torch.cat(
+                [
+                    prev_action,
+                    prev_reward,
+                    F.relu(self.metafeature_dense(metafeatures))
+                ],
+                dim=2
+            ),
+            hidden)
+        action_tensor = self.meta_dropout(self.meta_decoder(action_tensor))
+
         # create attribute dictionary that maps hyperparameter names to
         # conditional masks
         self._exclude_masks = {}
@@ -206,37 +245,39 @@ class MetaLearnController(nn.Module):
             algorithm_components = \
                 self.a_space.component_dict_from_signature(self._mlf_signature)
         for atype in algorithm_components:
-            action, input_tensor, hidden = self._decode_action(
-                input_tensor, aux, metafeatures, hidden,
-                action_index=self.atype_map[atype]
-            )
+            action, action_tensor, hidden = self._decode_action(
+                action_tensor, hidden, action_index=self.atype_map[atype])
             if action is None:
-                warnings.warn(
-                    "selected action for algorithm type %s is None, continuing."
-                    % atype)
-                continue
+                raise RuntimeError(
+                    "selected action for algorithm component cannot be None.\n"
+                    "exclude masks: %s\n"
+                    "algorithm components: %s\n"
+                    "algorithm type: %s" % (
+                        self._exclude_masks,
+                        algorithm_components,
+                        atype,
+                    )
+                )
             actions.append(action)
             # each algorithm is associated with a set of hyperparameters
             for h_index in self.acomponent_to_hyperparams[action["choice"]]:
-                hyperparameter_action, input_tensor, hidden = \
+                hyperparameter_action, action_tensor, hidden = \
                     self._decode_action(
-                        input_tensor, aux, metafeatures, hidden,
-                        action_index=h_index
-                    )
+                        action_tensor, hidden, action_index=h_index)
                 if hyperparameter_action is None:
-                    warnings.warn(
+                    logger.warning(
                         "selected action for hyperparameter index %s for "
                         "algorithm choice %s" % (h_index, action["choice"])
                     )
                     continue
                 actions.append(hyperparameter_action)
-        return actions, input_tensor, hidden
+        return actions, action_tensor, hidden
 
     def _get_exclusion_mask(self, action_name):
         if action_name in self._exclude_masks:
             return (
                 self._exclude_masks[action_name]
-                .view(1, -1).type(torch.ByteTensor)
+                .view(1, -1).type(torch.bool)
             )
         else:
             return None
@@ -252,41 +293,27 @@ class MetaLearnController(nn.Module):
                 self._exclude_masks[action_name] = acc_mask
 
     def _decode_action(
-            self, input_tensor, aux, metafeatures, hidden, action_index):
+            self, action_tensor, hidden, action_index):
         action_classifier = self.action_classifiers[action_index]
         mask = self._get_exclusion_mask(action_classifier["name"])
         if mask is not None and (mask == 1).all():
             # If all actions are masked, then don't select any choice
-            warnings.warn(
+            logger.warning(
                 "all actions are masked for action_classifier %s" %
                 action_classifier)
-            return None, input_tensor, hidden
+            return None, action_tensor, hidden
         action_probs, hidden = self.forward(
-            input_tensor, aux, metafeatures, hidden, action_classifier)
+            action_tensor, hidden, action_classifier, mask)
         action = self._select_action(action_probs, action_classifier, mask)
         if action is None:
-            return None, input_tensor, hidden
-        input_tensor = self.encode_embedding(
+            return None, action_tensor, hidden
+        action_tensor = self.encode_embedding(
             action_index, action["choice_index"])
-        return action, input_tensor, hidden
+        return action, action_tensor, hidden
 
     def _select_action(self, action_probs, action_classifier, mask):
         """Select action based on action probability distribution."""
         # compute unmasked log probabilitises.
-        # TODO: make sure computing log action probs before masking is correct.
-        log_action_probs = action_probs.log()
-        if mask is not None:
-            # need to invert mask to have masked action probabilities == 0
-            action_probs = action_probs * (mask == 0).type(torch.FloatTensor)
-
-        if (action_probs.data > 0).sum() == 0:
-            # case where previous choice excludes all choices of the current
-            # hyperparameter
-            warnings.warn(
-                "all action probabilities are zero for action_classifier %s" %
-                action_classifier)
-            return None
-
         choice_index = Categorical(action_probs).sample()
         _choice_index = int(choice_index.data)
         choice = action_classifier["choices"][_choice_index]
@@ -297,6 +324,15 @@ class MetaLearnController(nn.Module):
             for _, masks in action_classifier["exclude_masks"].items():
                 self._accumulate_exclusion_mask(masks)
 
+        # add small number to action probs so that zero-probability
+        # entries are large negative number instead of nan.
+        log_action_probs = (action_probs + 1e-45).log()
+        if mask is not None:
+            entropy = log_action_probs * action_probs
+            entropy[entropy != entropy] = 0
+            entropy = entropy.sum(1, keepdim=True)
+        else:
+            entropy = -(log_action_probs * action_probs).sum(1, keepdim=True)
         return {
             "action_type": action_classifier["action_type"],
             "action_name": action_classifier["name"],
@@ -304,7 +340,7 @@ class MetaLearnController(nn.Module):
             "choice_index": _choice_index,
             "choice": choice,
             "log_prob": log_action_probs.index_select(1, choice_index),
-            "entropy": -(log_action_probs * action_probs).sum(1, keepdim=True)
+            "entropy": entropy,
         }
 
     def encode_embedding(self, action_index, choice_index):

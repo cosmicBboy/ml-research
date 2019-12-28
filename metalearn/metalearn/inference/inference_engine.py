@@ -11,8 +11,8 @@ TestSetResult = namedtuple(
     "TestSetResult", ["ml_framework", "reward", "test_score"])
 InferenceResult = namedtuple(
     "InferenceResult",
-    ["mlf_description", "reward", "action", "hidden_state", "validation_score",
-     "is_valid"])
+    ["mlf", "mlf_full", "reward", "action", "hidden_state",
+     "validation_score", "is_valid", "scorer", "target_type"])
 
 
 class CASHInference(object):
@@ -154,23 +154,28 @@ class CASHInference(object):
         mlf, reward, validation_score, is_valid = self.evaluate_mlf(mlf)
 
         return mlf, InferenceResult(
-            mlf_description=str(mlf.named_steps) if mlf is not None else mlf,
+            mlf=utils._ml_framework_string(mlf) if mlf is not None else mlf,
+            mlf_full=str(mlf.named_steps) if mlf is not None else mlf,
             reward=reward,
             action=action,
             hidden_state=hidden,
             validation_score=validation_score,
-            is_valid=is_valid)
+            is_valid=is_valid,
+            scorer=self.task_env.scorer.name,
+            target_type=target_type,
+        )
 
     def propose_mlf(
-            self, task_state_tensor, target_type, prev_reward, prev_action,
+            self, metafeature_tensor, target_type, prev_reward, prev_action,
             prev_hidden):
-        """Given a task state,  propose a machine learning framework."""
+        """Given a task state, propose a machine learning framework."""
         actions, action_activation, hidden = self.controller.decode(
-            init_input_tensor=prev_action,
+            prev_action=prev_action,
+            prev_reward=utils.aux_tensor(prev_reward),
+            metafeatures=metafeature_tensor,
+            hidden=prev_hidden,
             target_type=target_type,
-            aux=utils.aux_tensor(prev_reward),
-            metafeatures=task_state_tensor,
-            hidden=prev_hidden)
+        )
         algorithms, hyperparameters = utils.get_mlf_components(actions)
         mlf = self.controller.a_space.create_ml_framework(
             algorithms, hyperparameters=hyperparameters,

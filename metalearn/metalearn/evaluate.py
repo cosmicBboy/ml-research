@@ -97,5 +97,8 @@ def create_inference_result_df(inference_results):
         _tabulate_results(lambda x: x.validation_score, "validation_score"),
         _tabulate_results(lambda x: x.reward, "reward"),
         _tabulate_results(lambda x: x.is_valid, "is_valid"),
-        _tabulate_results(lambda x: x.mlf_description, "mlf_description")
+        _tabulate_results(lambda x: x.mlf, "mlf"),
+        _tabulate_results(lambda x: x.mlf_full, "mlf_full"),
+        _tabulate_results(lambda x: x.scorer, "scorer"),
+        _tabulate_results(lambda x: x.target_type, "target_type"),
     ])

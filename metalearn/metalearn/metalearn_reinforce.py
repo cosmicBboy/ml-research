@@ -1,5 +1,6 @@
 """Reinforce module for training the CASH controller."""
 
+import math
 import numpy as np
 import torch
 import torch.nn as nn
@@ -226,11 +227,12 @@ class MetaLearnReinforce(object):
             prev_action,
             prev_hidden):
         actions, action_activation, hidden = self.controller.decode(
-            init_input_tensor=prev_action,
-            target_type=target_type,
-            aux=utils.aux_tensor(prev_reward),
+            prev_action=prev_action,
+            prev_reward=utils.aux_tensor(prev_reward),
             metafeatures=metafeature_tensor,
-            hidden=prev_hidden)
+            hidden=prev_hidden,
+            target_type=target_type,
+        )
         reward = self.evaluate_actions(actions, action_activation)
         # TODO: directly update the underlying data structures
         self._update_log_prob_buffer(actions)

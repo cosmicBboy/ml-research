@@ -24,7 +24,6 @@ def run():
 @run.command("experiment")
 @click.argument("datasets", nargs=-1)
 @click.option("--output_fp", default=DEFAULT["output_fp"])
-@click.option("--n_trials", default=DEFAULT["n_trials"])
 @click.option("--input_size", default=DEFAULT["input_size"])
 @click.option("--hidden_size", default=DEFAULT["hidden_size"])
 @click.option("--output_size", default=DEFAULT["output_size"])
@@ -74,37 +73,6 @@ def run_experiment(*args, **kwargs):
     # TODO: use the following SO solution to implement list option
     # https://stackoverflow.com/questions/47631914/how-to-pass-several-list-of-arguments-to-click-option
     experiment.run_experiment(*args, **kwargs)
-
-
-@run.command("random-search")
-@click.argument("datasets", nargs=-1)
-@click.option("--output_fp", default=DEFAULT["output_fp"])
-@click.option("--n_trials", default=DEFAULT["n_trials"])
-@click.option("--n_episodes", default=DEFAULT["n_episodes"])
-@click.option("--n_iter", default=DEFAULT["n_iter"])
-@click.option("--env_sources", "-e",
-              default=DEFAULT["env_sources"],
-              type=click.Choice(["SKLEARN", "OPEN_ML", "KAGGLE"]),
-              multiple=True)
-@click.option("--target_types", "-t",
-              default=DEFAULT["target_types"],
-              type=click.Choice(["BINARY", "MULTICLASS", "REGRESSION"]),
-              multiple=True)
-@click.option("--error_reward", default=DEFAULT["error_reward"],
-              type=float)
-@click.option("--per_framework_time_limit",
-              default=DEFAULT["per_framework_time_limit"])
-@click.option("--per_framework_memory_limit",
-              default=DEFAULT["per_framework_memory_limit"])
-@click.option("--metric_logger",
-              default=DEFAULT["metric_logger"])
-@click.option("--fit_verbose", default=DEFAULT["fit_verbose"])
-@click.option("--controller_seed",
-              default=DEFAULT["controller_seed"])
-@click.option("--task_environment_seed",
-              default=DEFAULT["task_environment_seed"])
-def random_search_baseline():
-    experiment.run_random_search()
 
 
 @run.command("from-config")

@@ -6,10 +6,10 @@ parameters:
   datasets: null
   output_fp: /output
   n_trials: 1
-  input_size: 256
-  hidden_size: 256
-  output_size: 256
-  n_layers: 5
+  input_size: 64
+  hidden_size: 64
+  output_size: 64
+  n_layers: 3
   dropout_rate: 0.3
   beta: 0.9
   entropy_coef: 1.0
@@ -33,7 +33,6 @@ parameters:
   test_env_target_types:
   - BINARY
   - MULTICLASS
-  - REGRESSION
   test_set_config:
     SKLEARN:
       test_size: 0.2

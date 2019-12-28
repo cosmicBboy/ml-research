@@ -20,3 +20,4 @@ output/
 examples/
 benchmarks/
 build/
+floyd_outputs/

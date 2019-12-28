@@ -2,6 +2,7 @@
 
 import datetime
 import inspect
+import itertools
 import joblib
 import logging
 import os
@@ -24,7 +25,6 @@ from .metalearn_reinforce import MetaLearnReinforce
 from .data_environments.environments import envs
 from .data_types import ExperimentType
 from .loggers import get_loggers, empty_logger
-from .random_search import CASHRandomSearch
 from . import utils
 
 # TODO: support ability to copy a config file with new name
@@ -41,7 +41,8 @@ ExperimentConfig = namedtuple(
         "description",
         "created_at",
         "git_hash",
-        "parameters"])
+        "parameters",
+    ])
 
 
 def _env_names():
@@ -51,7 +52,6 @@ def _env_names():
 def get_experiment_fn(experiment_type):
     return {
         ExperimentType.METALEARN_REINFORCE: run_experiment,
-        ExperimentType.RANDOM_SEARCH: run_random_search,
     }[ExperimentType[experiment_type]]
 
 
@@ -101,14 +101,18 @@ def _config_filepath(dir_path, config):
 
 def gather_history(return_dict):
     history = []
-    for i, h in return_dict.items():
-        h = pd.DataFrame(h).assign(trial_number=i)
+    for i, results in return_dict.items():
+        h = (
+            pd.DataFrame(results["history"])
+            .assign(trial_number=i)
+            .assign(**{k: v for k, v in results["hyperparameters"].items()})
+        )
         history.append(h)
     return pd.concat(history)
 
 
-def save_best_mlfs(data_path, best_mlfs, procnum):
-    mlf_path = data_path / ("metalearn_controller_mlfs_trial_%d" % procnum)
+def save_best_mlfs(data_path, best_mlfs, proc_num):
+    mlf_path = data_path / ("metalearn_controller_mlfs_trial_%d" % proc_num)
     mlf_path.mkdir(exist_ok=True)
     for i, mlf in enumerate(best_mlfs):
         joblib.dump(mlf, mlf_path / ("best_mlf_episode_%d.pkl" % (i + 1)))
@@ -119,11 +123,26 @@ def save_experiment(history, data_path, fname):
     history.to_csv(str(data_path / fname), index=False)
 
 
+def create_hyperparameter_grid(hyperparameters):
+    allowable_hyperparameters = [
+        "entropy_coef_anneal_to",
+        "learning_rate",
+    ]
+    hyperparameters = {
+        k: v for k, v in hyperparameters.items() if v is not None
+    }
+    hyperparameter_grid = itertools.product(*[
+        [(hyperparameter, value) for value in hyperparameters[hyperparameter]]
+        for hyperparameter in allowable_hyperparameters
+        if hyperparameter in hyperparameters
+    ])
+    return list(map(dict, hyperparameter_grid))
+
+
 def run_experiment(
         datasets=None,
         test_datasets=None,
         output_fp=os.path.dirname(__file__) + "/../output",
-        n_trials=1,
         input_size=30,
         hidden_size=30,
         output_size=30,
@@ -161,10 +180,12 @@ def run_experiment(
         metric_logger=None,
         fit_verbose=1,
         controller_seed=1000,
-        task_environment_seed=100):
+        task_environment_seed=100,
+        hyperparameters={
+            "entropy_coef_anneal_to": [0.0, 0.2],
+            "learning_rate": [0.0, 0.0005, 0.005, 0.05],
+        }):
     """Run deep cash experiment with single configuration."""
-    print("Running cash controller experiment with %d %s" % (
-        n_trials, "trials" if n_trials > 1 else "trial"))
     torch.manual_seed(controller_seed)
     output_fp = os.path.dirname(__file__) + "/../output" if \
         output_fp is None else output_fp
@@ -178,19 +199,22 @@ def run_experiment(
     # this logger is for logging metrics to floydhub/stdout
     metric_logger = get_loggers().get(metric_logger, empty_logger)
 
-    def worker(procnum, reinforce, return_dict):
-        """Fit REINFORCE Helper function."""
+    def fit_metalearn(proc_num, reinforce, return_dict, **hyperparameters):
+        """Fit Metalearning Algorithm helper."""
         reinforce.fit(
             optim=torch.optim.Adam,
-            optim_kwargs={"lr": learning_rate},
+            optim_kwargs={
+                "lr": hyperparameters.get("learning_rate", learning_rate),
+            },
             n_episodes=n_episodes,
             n_iter=n_iter,
             verbose=bool(int(fit_verbose)),
-            procnum=procnum)
+            procnum=proc_num)
         # serialize reinforce controller here
-        reinforce.controller.save(data_path / ("controller_trial_%d.pt" % i))
+        reinforce.controller.save(
+            data_path / ("controller_trial_%d.pt" % proc_num))
         # serialize best mlfs
-        save_best_mlfs(data_path, reinforce.best_mlfs, procnum)
+        save_best_mlfs(data_path, reinforce.best_mlfs, proc_num)
 
         evaluation_results = evaluate_controller(
             reinforce.controller, reinforce.t_env, n=n_eval_iter)
@@ -202,14 +226,19 @@ def run_experiment(
                   f"{env_key}_inference_results.csv").open("w") as f:
                 results.to_csv(f)
 
-        return_dict[procnum] = reinforce.history
+        return_dict[proc_num] = {
+            "history": reinforce.history,
+            "hyperparameters": hyperparameters,
+        }
 
     # multiprocessing manager
     manager = mp.Manager()
     return_dict = manager.dict()
     processes = []
 
-    for i in range(n_trials):
+    hyperparameter_grid = create_hyperparameter_grid(hyperparameters)
+    print("hyperparameter grid: %s" % hyperparameter_grid)
+    for proc_num, _hyperparameters in enumerate(hyperparameter_grid):
         t_env = TaskEnvironment(
             env_sources=env_sources,
             test_env_sources=test_env_sources,
@@ -224,7 +253,6 @@ def run_experiment(
             error_reward=error_reward,
             n_samples=n_samples)
 
-        # create algorithm space
         a_space = AlgorithmSpace(
             with_end_token=False,
             hyperparam_with_start_token=False,
@@ -240,17 +268,25 @@ def run_experiment(
             num_rnn_layers=n_layers)
 
         reinforce = MetaLearnReinforce(
-            controller, t_env,
+            controller,
+            t_env,
             beta=beta,
             entropy_coef=entropy_coef,
-            entropy_coef_anneal_to=entropy_coef_anneal_to,
+            entropy_coef_anneal_to=_hyperparameters.get(
+                "entropy_coef_anneal_to", entropy_coef_anneal_to),
             entropy_coef_anneal_by=entropy_coef_anneal_by,
             with_baseline=with_baseline,
             single_baseline=single_baseline,
             normalize_reward=normalize_reward,
-            metrics_logger=partial(metric_logger, prefix="proc_num_%d" % i))
+            metrics_logger=partial(
+                metric_logger, prefix="proc_num_%d" % proc_num)
+        )
 
-        p = mp.Process(target=worker, args=(i, reinforce, return_dict))
+        p = mp.Process(
+            target=fit_metalearn,
+            args=(proc_num, reinforce, return_dict),
+            kwargs=_hyperparameters,
+        )
         p.start()
         processes.append(p)
 
@@ -261,7 +297,7 @@ def run_experiment(
         gather_history(return_dict),
         data_path, "rnn_metalearn_controller_experiment.csv")
 
-    for i in range(n_trials):
+    for i in range(len(hyperparameter_grid)):
         print("loading controllers from each trial")
         try:
             controller = reinforce.controller.load(
@@ -269,89 +305,3 @@ def run_experiment(
             print(controller)
         except Exception:
             print("could not read controller for process %d" % i)
-
-
-def run_random_search(
-        datasets=None,
-        output_fp=os.path.dirname(__file__) + "/../output",
-        n_trials=1,
-        n_episodes=100,
-        n_iter=16,
-        env_sources=["SKLEARN", "OPEN_ML", "KAGGLE"],
-        target_types=["BINARY", "MULTICLASS"],
-        test_set_config=OrderedDict([
-            ("SKLEARN", OrderedDict([
-                ("test_size", 0.8),
-                ("random_state", 100)]))
-        ]),
-        error_reward=0,
-        n_samples=5000,
-        per_framework_time_limit=180,
-        per_framework_memory_limit=5000,
-        metric_logger="default",
-        fit_verbose=1,
-        controller_seed=1000,
-        task_environment_seed=100):
-    """Run deep cash experiment with single configuration."""
-    print("Running random search experiment with %d %s" % (
-        n_trials, "trials" if n_trials > 1 else "trial"))
-    output_fp = os.path.dirname(__file__) + "/../output" if \
-        output_fp is None else output_fp
-    data_path = Path(output_fp)
-    data_path.mkdir(exist_ok=True)
-
-    # initialize error logging (this is to log fit/predict/score errors made
-    # when evaluating a proposed MLF)
-    utils.init_logging(
-        str(Path(output_fp) / "fit_predict_error_logs_randomsearch.log"))
-
-    # this logger is for logging metrics to floydhub/stdout
-    metric_logger = get_loggers().get(metric_logger, empty_logger)
-
-    def worker(procnum, random_search, return_dict):
-        random_search.fit(
-            n_episodes=n_episodes,
-            n_iter=n_iter,
-            verbose=fit_verbose,
-            procnum=procnum)
-        save_best_mlfs(data_path, random_search.best_mlfs, procnum)
-        return_dict[procnum] = random_search.history
-
-    # multiprocessing manager
-    manager = mp.Manager()
-    return_dict = manager.dict()
-    processes = []
-
-    for i in range(n_trials):
-        t_env = TaskEnvironment(
-            env_sources=env_sources,
-            target_types=target_types,
-            test_set_config=test_set_config,
-            random_state=task_environment_seed,
-            per_framework_time_limit=per_framework_time_limit,
-            per_framework_memory_limit=per_framework_memory_limit,
-            dataset_names=datasets,
-            error_reward=error_reward,
-            n_samples=n_samples)
-
-        # create algorithm space
-        a_space = AlgorithmSpace(
-            with_end_token=False,
-            hyperparam_with_start_token=False,
-            hyperparam_with_none_token=False)
-
-        random_search = CASHRandomSearch(
-            a_space=a_space,
-            t_env=t_env,
-            metrics_logger=partial(metric_logger, prefix="proc_num_%d" % i))
-
-        p = mp.Process(target=worker, args=(i, random_search, return_dict))
-        p.start()
-        processes.append(p)
-
-    for p in processes:
-        p.join()
-
-    save_experiment(
-        gather_history(return_dict),
-        data_path, "rnn_cash_randomsearch_experiment.csv")

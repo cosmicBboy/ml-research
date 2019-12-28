@@ -38,6 +38,7 @@ class TaskEnvironment(object):
             test_env_target_types=["BINARY", "MULTICLASS"],
             test_set_config=None,
             scorers=None,
+            test_env_scorers=None,
             use_target_type_scorers=True,
             include_scoring_metafeature=False,
             score_transformers=None,
@@ -81,6 +82,7 @@ class TaskEnvironment(object):
             specific scorers specified in the `scorers` argument, or to use
             data-environment-specific scorers when available.
         :param bool include_scoring_metafeature: whether or not to use the
+            scoring function as a metafeature.
         :param int|None random_state: random seed determining the order of
             sampled data environments and the composition of the
             training/validation sets.
@@ -137,9 +139,8 @@ class TaskEnvironment(object):
         self.per_framework_memory_limit = per_framework_memory_limit
         self.fit_grace_period = fit_grace_period
 
-        test_set_config = {} if test_set_config is None else test_set_config
-        test_set_config = {
-            DataSourceType[k]: v for k, v in test_set_config.items()}
+        test_set_config = {} if test_set_config is None else \
+            {DataSourceType[k]: v for k, v in test_set_config.items()}
 
         test_env_sources = [] if test_env_sources is None else test_env_sources
         test_env_sources = [DataSourceType[e] for e in test_env_sources]
@@ -148,9 +149,7 @@ class TaskEnvironment(object):
         self.target_types = [TargetType[t] for t in target_types]
         self.test_env_target_types = [
             TargetType[t] for t in test_env_target_types]
-        get_envs = partial(
-            env_gen,
-            test_set_config=test_set_config)
+        get_envs = partial(env_gen, test_set_config=test_set_config)
         self.data_distribution = get_envs(
             dataset_names,
             [DataSourceType[e] for e in env_sources],

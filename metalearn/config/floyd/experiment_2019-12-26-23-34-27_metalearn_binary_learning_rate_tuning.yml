@@ -1,0 +1,61 @@
+name: metalearn_binary_learning_rate_tuning
+experiment_type: METALEARN_REINFORCE
+description: metalearn learning rate tuning experiment
+created_at: 2019-12-26-23-34-27
+git_hash: 83c9f4c
+parameters:
+  datasets: null
+  test_datasets: null
+  output_fp: /output
+  input_size: 64
+  hidden_size: 64
+  output_size: 64
+  n_layers: 3
+  dropout_rate: 0.3
+  beta: 0.9
+  entropy_coef: 1.0
+  entropy_coef_anneal_to: 0.0
+  entropy_coef_anneal_by: 1.0
+  with_baseline: true
+  single_baseline: false
+  normalize_reward: true
+  n_episodes: 250
+  n_iter: 100
+  n_eval_iter: 100
+  learning_rate: 0.005
+  env_sources:
+  - AUTOSKLEARN_BENCHMARK
+  - OPEN_ML
+  test_env_sources:
+  - OPEN_ML_BENCHMARK_CC18
+  - KAGGLE
+  target_types:
+  - BINARY
+  test_env_target_types:
+  - BINARY
+  - MULTICLASS
+  test_set_config:
+    SKLEARN:
+      test_size: 0.2
+      random_state: 100
+    OPEN_ML:
+      test_size: 0.2
+      random_state: 100
+    KAGGLE:
+      test_size: 0.2
+      random_state: 100
+  error_reward: 0
+  n_samples: 5000
+  per_framework_time_limit: 360
+  per_framework_memory_limit: 5000
+  metric_logger: floyd
+  fit_verbose: 0
+  controller_seed: 1000
+  task_environment_seed: 100
+  hyperparameters:
+    learning_rate:
+    - 0.0
+    - 0.0005
+    - 0.005
+    - 0.05
+    - 0.5

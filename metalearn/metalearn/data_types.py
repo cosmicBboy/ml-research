@@ -73,4 +73,3 @@ class ExperimentType(Enum):
     """Experiment types."""
 
     METALEARN_REINFORCE = 1
-    RANDOM_SEARCH = 2
