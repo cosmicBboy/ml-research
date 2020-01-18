@@ -1,6 +1,5 @@
 """Reinforce module for training the CASH controller."""
 
-import math
 import numpy as np
 import torch
 import torch.nn as nn
