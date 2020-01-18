@@ -28,6 +28,7 @@ class MetaLearnReinforce(object):
             with_baseline=True,
             single_baseline=True,
             normalize_reward=True,
+            meta_reward_multiplier=1.,
             sample_new_task_every=10,
             metrics_logger=loggers.default_logger):
         """Initialize CASH Reinforce Algorithm.
@@ -52,6 +53,9 @@ class MetaLearnReinforce(object):
             each data environment available to the task environment.
         :param bool normalize_reward: whether or not to mean-center and
             standard-deviation-scale the reward signal for backprop.
+        :param float meta_reward_multiplier: multiply the reward signal with
+            this value. If this is set to 0, this effectively disables the
+            metalearning reward signal.
         :param int sample_data_env_every: sample a new task after these many
             episodes.
         :param callable metrics_logger: logging function to use. The function
@@ -70,6 +74,7 @@ class MetaLearnReinforce(object):
         self._with_baseline = with_baseline
         self._single_baseline = single_baseline
         self._normalize_reward = normalize_reward
+        self._meta_reward_multiplier = meta_reward_multiplier
         self._metrics_logger = metrics_logger
 
         if entropy_coef_anneal_by is not None and \
@@ -210,7 +215,7 @@ class MetaLearnReinforce(object):
             prev_reward, prev_action, prev_hidden = self._fit_iter(
                 self.t_env.sample_task_state(),
                 self.t_env.current_data_env.target_type,
-                prev_reward,
+                prev_reward * self._meta_reward_multiplier,
                 prev_action,
                 prev_hidden)
             if verbose:

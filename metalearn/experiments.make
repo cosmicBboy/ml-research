@@ -18,5 +18,5 @@ metalearn-regression:
 metalearn-all-tasks:
 	${CMD} ${CONF}/experiment_2019-10-02-01-39-00_metalearn_binary_multiclass_regression.yml metalearn_binary_multiclass_regression
 
-metalearn-binary-learning-rate:
-	@${CMD} ${CONF}/experiment_2019-12-26-23-34-27_metalearn_binary_learning_rate_tuning.yml metalearn_binary_learning_rate_tuning
+metalearn-binary-tuning:
+	@${CMD} ${CONF}/experiment_2019-12-26-23-34-27_metalearn_binary_tuning.yml metalearn_binary_tuning

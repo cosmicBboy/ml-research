@@ -22,9 +22,10 @@ class CASHInference(object):
     The controller's weights are frozen.
     """
 
-    def __init__(self, controller, task_env):
+    def __init__(self, controller, task_env, meta_reward_multiplier):
         self.controller = utils.freeze_model(controller)
         self.task_env = task_env
+        self._meta_reward_multiplier = meta_reward_multiplier
         self._validation_scores = []
         self._successful_mlfs = []
 
@@ -129,7 +130,7 @@ class CASHInference(object):
             mlf, inference = self._infer_iter(
                 self.task_env.sample_task_state(data_env_partition="test"),
                 self.task_env.current_data_env.target_type,
-                prev_reward,
+                prev_reward * self._meta_reward_multiplier,
                 prev_action,
                 prev_hidden)
             # TODO: serialize the top k mlfs here

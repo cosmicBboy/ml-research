@@ -80,15 +80,17 @@ def run_experiment(*args, **kwargs):
 def from_config(config_fp):
     print("running experiment from config %s" % config_fp)
     config = experiment.read_config(config_fp)
+    # write config to output directory
+    experiment.write_config(config, config.parameters["output_fp"])
     print("\nparameters:")
-    for k, v in config["parameters"].items():
+    for k, v in config.parameters.items():
         print("\t%s: %s" % (k, v))
-    if "experiment_type" not in config:
+    if "experiment_type" not in config._fields:
         print("experiment_type not specified in config. Assuming experiment "
               "type is METALEARN_REINFORCE.")
     experiment_fn = experiment.get_experiment_fn(
-        config.get("experiment_type", "METALEARN_REINFORCE"))
-    experiment_fn(**config["parameters"])
+        config._asdict().get("experiment_type", "METALEARN_REINFORCE"))
+    experiment_fn(**config.parameters)
 
 
 @cli.group("create")

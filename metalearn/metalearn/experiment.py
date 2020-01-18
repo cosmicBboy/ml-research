@@ -63,14 +63,14 @@ def get_default_parameters(experiment_type):
     ])
 
 
-def create_config(name, experiment_type, description,
+def create_config(name, experiment_type, description=None,
                   date_format="%Y-%m-%d-%H-%M-%S", **custom_parameters):
     parameters = get_default_parameters(experiment_type)
     if custom_parameters:
         parameters.update(custom_parameters)
     created_at = datetime.datetime.now()
     git_hash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
-    return ExperimentConfig(
+    return ExperimentConfig( 
         name=name,
         experiment_type=experiment_type,
         description=description,
@@ -91,24 +91,13 @@ def write_config(config, dir_path):
 
 def read_config(fp):
     with open(fp, "r") as f:
-        return yaml.load(f, Loader=yamlordereddictloader.Loader)
+        return ExperimentConfig(
+            **yaml.load(f, Loader=yamlordereddictloader.Loader))
 
 
 def _config_filepath(dir_path, config):
     return dir_path / (
         "experiment_%s_%s.yml" % (config.created_at, config.name))
-
-
-def gather_history(return_dict):
-    history = []
-    for i, results in return_dict.items():
-        h = (
-            pd.DataFrame(results["history"])
-            .assign(trial_number=i)
-            .assign(**{k: v for k, v in results["hyperparameters"].items()})
-        )
-        history.append(h)
-    return pd.concat(history)
 
 
 def save_best_mlfs(data_path, best_mlfs, proc_num):
@@ -118,15 +107,12 @@ def save_best_mlfs(data_path, best_mlfs, proc_num):
         joblib.dump(mlf, mlf_path / ("best_mlf_episode_%d.pkl" % (i + 1)))
 
 
-def save_experiment(history, data_path, fname):
-    # save history of all trials
-    history.to_csv(str(data_path / fname), index=False)
-
-
 def create_hyperparameter_grid(hyperparameters):
     allowable_hyperparameters = [
+        "entropy_coef",
         "entropy_coef_anneal_to",
         "learning_rate",
+        "meta_reward_multiplier",
     ]
     hyperparameters = {
         k: v for k, v in hyperparameters.items() if v is not None
@@ -155,9 +141,12 @@ def run_experiment(
         with_baseline=True,
         single_baseline=True,
         normalize_reward=False,
+        meta_reward_multiplier=1.,
         n_episodes=100,
         n_iter=16,
         learning_rate=0.005,
+        beta1=0.9,
+        beta2=0.999,
         env_sources=["SKLEARN", "OPEN_ML", "KAGGLE"],
         test_env_sources=["AUTOSKLEARN_BENCHMARK"],
         n_eval_iter=10,
@@ -199,12 +188,14 @@ def run_experiment(
     # this logger is for logging metrics to floydhub/stdout
     metric_logger = get_loggers().get(metric_logger, empty_logger)
 
-    def fit_metalearn(proc_num, reinforce, return_dict, **hyperparameters):
+    def fit_metalearn(proc_num, reinforce, **hyperparameters):
         """Fit Metalearning Algorithm helper."""
+        reinforce.t_env.reset_random_state()
         reinforce.fit(
             optim=torch.optim.Adam,
             optim_kwargs={
                 "lr": hyperparameters.get("learning_rate", learning_rate),
+                "betas": (beta1, beta2),
             },
             n_episodes=n_episodes,
             n_iter=n_iter,
@@ -212,30 +203,31 @@ def run_experiment(
             procnum=proc_num)
         # serialize reinforce controller here
         reinforce.controller.save(
-            data_path / ("controller_trial_%d.pt" % proc_num))
+            data_path / f"controller_trial_{proc_num}.pt")
         # serialize best mlfs
         save_best_mlfs(data_path, reinforce.best_mlfs, proc_num)
 
         evaluation_results = evaluate_controller(
-            reinforce.controller, reinforce.t_env, n=n_eval_iter)
+            reinforce.controller,
+            reinforce.t_env, 
+            meta_reward_multiplier=hyperparameters.get(
+                "meta_reward_multiplier", meta_reward_multiplier),
+            n=n_eval_iter)
 
         for env_key, results in evaluation_results.items():
             if results is None:
                 continue
-            with (data_path /
-                  f"{env_key}_inference_results.csv").open("w") as f:
-                results.to_csv(f)
+            fname = f"{env_key}_inference_results_trial_{proc_num}.csv"
+            with (data_path / fname).open("w") as f:
+                results.to_csv(f, index=False)
 
-        return_dict[proc_num] = {
-            "history": reinforce.history,
-            "hyperparameters": hyperparameters,
-        }
+        history = pd.DataFrame(reinforce.history).assign(
+            trial_num=proc_num, **hyperparameters)
+        history.to_csv(
+            data_path / f"metalearn_training_results_trial_{proc_num}.csv",
+            index=False)
 
-    # multiprocessing manager
-    manager = mp.Manager()
-    return_dict = manager.dict()
     processes = []
-
     hyperparameter_grid = create_hyperparameter_grid(hyperparameters)
     print("hyperparameter grid: %s" % hyperparameter_grid)
     for proc_num, _hyperparameters in enumerate(hyperparameter_grid):
@@ -271,20 +263,22 @@ def run_experiment(
             controller,
             t_env,
             beta=beta,
-            entropy_coef=entropy_coef,
+            entropy_coef=_hyperparameters.get("entropy_coef", entropy_coef),
             entropy_coef_anneal_to=_hyperparameters.get(
                 "entropy_coef_anneal_to", entropy_coef_anneal_to),
             entropy_coef_anneal_by=entropy_coef_anneal_by,
             with_baseline=with_baseline,
             single_baseline=single_baseline,
             normalize_reward=normalize_reward,
+            meta_reward_multiplier=_hyperparameters.get(
+                "meta_reward_multiplier", meta_reward_multiplier),
             metrics_logger=partial(
                 metric_logger, prefix="proc_num_%d" % proc_num)
         )
 
         p = mp.Process(
             target=fit_metalearn,
-            args=(proc_num, reinforce, return_dict),
+            args=(proc_num, reinforce),
             kwargs=_hyperparameters,
         )
         p.start()
@@ -292,10 +286,6 @@ def run_experiment(
 
     for p in processes:
         p.join()
-
-    save_experiment(
-        gather_history(return_dict),
-        data_path, "rnn_metalearn_controller_experiment.csv")
 
     for i in range(len(hyperparameter_grid)):
         print("loading controllers from each trial")

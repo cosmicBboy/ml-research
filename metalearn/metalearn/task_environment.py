@@ -201,6 +201,10 @@ class TaskEnvironment(object):
         else:
             self.ml_framework_fitter = _ml_framework_fitter
 
+        self.reset_random_state()
+
+    def reset_random_state(self):
+        """Resets random state for deterministic task sampling."""
         np.random.seed(self.random_state)
 
     @property

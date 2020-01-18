@@ -1,5 +1,6 @@
 name: local_serialization_experiment
 experiment_type: METALEARN_REINFORCE
+description: null
 created_at: 2019-10-27-21-04-21
 git_hash: f68b6e5
 parameters:
@@ -13,7 +14,6 @@ parameters:
   - openml.mfeat-morphological
   - openml.car
   output_fp: ./output
-  n_trials: 1
   input_size: 32
   hidden_size: 32
   output_size: 32
@@ -51,3 +51,12 @@ parameters:
   fit_verbose: 1
   controller_seed: 1000
   task_environment_seed: 100
+  hyperparameters:
+    entropy_coef:
+    - 0.0
+    - 0.2
+    - 0.4
+    meta_reward_multiplier:
+    - 1.0
+    learning_rate:
+    - 0.005

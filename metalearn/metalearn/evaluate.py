@@ -45,8 +45,9 @@ def load_eval_task_env():
         target_types=["BINARY"])
 
 
-def evaluate_controller(controller, task_env, n=20):
-    inference_engine = CASHInference(controller, task_env)
+def evaluate_controller(controller, task_env, meta_reward_multiplier, n=20):
+    inference_engine = CASHInference(
+        controller, task_env, meta_reward_multiplier)
 
     # evaluate controller on training data envs
     train_env_inference_results = []
