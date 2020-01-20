@@ -1,7 +1,6 @@
 """End to end tests for fitting a cash controllers."""
 
 import numpy as np
-import openml
 import pandas as pd
 import torch
 
@@ -63,7 +62,7 @@ def _metalearn_reinforce(controller, task_env, **kwargs):
     return MetaLearnReinforce(
         controller,
         task_env,
-        beta=0.9,
+        gamma=0.9,
         metrics_logger=None,
         **kwargs)
 
@@ -111,31 +110,12 @@ def test_metalearn_reinforce_fit():
         assert col in history
 
 
-def test_metalearn_reinforce_fit_multi_baseline():
-    """Make sure that baseline function maintains buffers per data env."""
-    n_episodes = 20
-    t_env = _task_environment()
-    a_space = _algorithm_space()
-    controller = _metalearn_controller(a_space, t_env)
-    reinforce = _metalearn_reinforce(
-        controller, t_env, with_baseline=True, single_baseline=False)
-    reinforce.fit(
-        n_episodes=n_episodes,
-        **_fit_kwargs())
-    assert reinforce._baseline_buffer_history["sklearn.iris"] != \
-        reinforce._baseline_buffer_history["sklearn.wine"]
-
-
 def test_metalearn_entropy_regularizer():
     """Test that losses w/ entropy regularization are lower than baseline."""
     losses = {}
     for model, kwargs in [
-            ("baseline", {
-                "with_baseline": True,
-                "entropy_coef": 0.0}),
-            ("entropy_regularized", {
-                "with_baseline": True,
-                "entropy_coef": 0.5})]:
+            ("baseline", {"entropy_coef": 0.0}),
+            ("entropy_regularized", {"entropy_coef": 0.5})]:
         torch.manual_seed(200)  # ensure weight initialized is deterministic
         # only run for a few episodes because model losses
         # become incomparable as models diverge
@@ -315,7 +295,7 @@ def _exclusion_mask_test_harness(n_episodes, a_space_kwargs, t_env_kwargs):
     for i in range(n_episodes):
         metafeature_tensor = t_env.sample_task_state()
         target_type = t_env.current_data_env.target_type
-        actions, action_activation, hidden = controller.decode(
+        value, actions, action_activation, hidden = controller(
             prev_action=prev_action,
             prev_reward=utils.aux_tensor(prev_reward),
             metafeatures=metafeature_tensor,

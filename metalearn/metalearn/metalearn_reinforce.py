@@ -4,8 +4,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from collections import defaultdict
-
 from . import utils, loggers
 from .tracking import MetricsTracker
 
@@ -20,7 +18,7 @@ class MetaLearnReinforce(object):
             self,
             controller,
             t_env,
-            beta=0.99,
+            gamma=0.99,
             entropy_coef=0.0,
             entropy_coef_anneal_to=0.0,
             entropy_coef_anneal_by=None,
@@ -36,8 +34,7 @@ class MetaLearnReinforce(object):
             actions.
         :param TaskEnvironment t_env: task environment to sample data
             environments and evaluate proposed ml frameworks.
-        :param float beta: hyperparameter for exponential moving average to
-            compute baseline reward (used to regularize REINFORCE).
+        :param float gamma: discounted reward for computing returns.
         :param float entropy_coef: coefficient for entropy regularization.
         :param float entropy_coef: coefficient to anneal to by end of training.
         :param float entropy_coef_anneal_by: Value between 0.0 and 1.0
@@ -47,9 +44,6 @@ class MetaLearnReinforce(object):
             linearly reach 0.0 half-way through training.
         :param bool with_baseline: whether or not to regularize the controller
             with the exponential moving average of past rewards.
-        :param bool single_baseline: if True, maintains a single baseline
-            reward buffer, otherwise maintain a separate baseline buffer for
-            each data environment available to the task environment.
         :param bool normalize_reward: whether or not to mean-center and
             standard-deviation-scale the reward signal for backprop.
         :param float meta_reward_multiplier: multiply the reward signal with
@@ -60,13 +54,10 @@ class MetaLearnReinforce(object):
         :param callable metrics_logger: logging function to use. The function
             takes as input a tracking.TrackerBase object and prints out a
             message.
-        :ivar defaultdict[str -> list] _baseline_fn: a map that keeps track
-            of the baseline function for a particular task environment state
-            (i.e. the sampled data environment at a particular episode).
         """
         self.controller = controller
         self.t_env = t_env
-        self._beta = beta
+        self._gamma = gamma
         self._entropy_coef = entropy_coef
         self._entropy_coef_anneal_to = entropy_coef_anneal_to
         self._entropy_coef_anneal_by = entropy_coef_anneal_by
@@ -116,15 +107,6 @@ class MetaLearnReinforce(object):
         # track metrics
         self.tracker = MetricsTracker()
 
-        # baseline reward
-        self._baseline_fn = {
-            "buffer": defaultdict(list),
-            "current": defaultdict(int),
-        }
-        # the buffer history keeps track of baseline rewards across all the
-        # episodes, used for record-keeping and testing purposes.
-        self._baseline_buffer_history = defaultdict(list)
-
         for i_episode in range(self._n_episodes):
             self.t_env.sample_data_env()
             self._action_buffer = []
@@ -139,16 +121,6 @@ class MetaLearnReinforce(object):
             if procnum is not None:
                 msg = "proc num: %d, %s" % (procnum, msg)
             print("\n" + msg)
-            # since the action sequences within episode are no longer
-            # independent, need to get a single baseline value (the
-            # exponential mean of the return for the previous episode)
-            buffer = self._baseline_buffer()
-            if len(buffer) == 0:
-                baseline = self._baseline_current()
-            else:
-                # get last baseline value
-                baseline = buffer[-1]
-                del self._baseline_buffer()[:]
 
             self.start_episode(n_iter, verbose)
 
@@ -171,7 +143,7 @@ class MetaLearnReinforce(object):
 
             # backward pass through controller
             loss, grad_norm = self.end_episode(
-                baseline, self._entropy_coef_schedule[i_episode])
+                self._entropy_coef_schedule[i_episode])
 
             self.tracker.update_metrics({
                 "episode": i_episode + 1,
@@ -230,7 +202,7 @@ class MetaLearnReinforce(object):
             prev_reward,
             prev_action,
             prev_hidden):
-        actions, action_activation, hidden = self.controller.decode(
+        value, actions, action_activation, hidden = self.controller(
             prev_action=prev_action,
             prev_reward=utils.aux_tensor(prev_reward),
             metafeatures=metafeature_tensor,
@@ -238,14 +210,13 @@ class MetaLearnReinforce(object):
             target_type=target_type,
         )
         reward = self.evaluate_actions(actions, action_activation)
-        # TODO: directly update the underlying data structures
-        self._update_log_prob_buffer(actions)
-        self._update_reward_buffer(reward)
-        self._update_entropy_buffer(actions)
-        self._update_baseline_reward_buffer(reward)
-        for k, v in self._baseline_fn["buffer"].items():
-            self._baseline_buffer_history[k].extend(v)
-        # TODO: make sure reward and hidden tensors require grad
+
+        self.controller.value_buffer.append(value)
+        self.controller.log_prob_buffer.append(
+            [a["log_prob"] for a in actions])
+        self.controller.reward_buffer.append(reward)
+        self.controller.entropy_buffer.append([a["entropy"] for a in actions])
+
         return reward, action_activation, hidden
 
     def evaluate_actions(self, actions, action_activation):
@@ -271,42 +242,51 @@ class MetaLearnReinforce(object):
                 self._best_mlf = mlf
             return reward
 
-    def end_episode(self, baseline, entropy_coef):
+    def end_episode(self, entropy_coef):
         """End an episode with one backpropagation step.
 
         Since REINFORCE algorithm is a gradient ascent method, negate the log
         probability in order to do gradient descent on the negative expected
         rewards.
 
-        :param float baseline: baseline reward value, the exponential mean of
-            rewards over previous episodes.
         :returns: tuple of loss and aggregated gradient.
         :rtype: tuple[float, float]
         """
         _check_buffers(
+            self.controller.value_buffer,
             self.controller.log_prob_buffer,
             self.controller.reward_buffer,
             self.controller.entropy_buffer)
+
         self.optim.zero_grad()
         n = len(self.controller.reward_buffer)
 
-        R = torch.FloatTensor(self.controller.reward_buffer)
-        if self._with_baseline:
-            R = R - baseline
-        if self._normalize_reward:
-            R = normalize_reward(R)
+        # compute Q values
+        Q_values = torch.zeros(len(self.controller.value_buffer))
+        Q_val = self.controller.value_buffer[-1]
+        for t in reversed(range(n)):
+            Q_val = self.controller.reward_buffer[t] + self._gamma * Q_val
+            Q_values[t] = Q_val
+
+        values = torch.FloatTensor(self.controller.value_buffer)
+        advantage = Q_values - values
 
         # compute loss
-        loss = [-l * r - entropy_coef * e
-                for log_probs, r, entropies in zip(
-                    self.controller.log_prob_buffer, R,
-                    self.controller.entropy_buffer)
-                for l, e in zip(log_probs, entropies)]
+        actor_loss = [
+            -l * a - entropy_coef * e
+            for log_probs, a, entropies in zip(
+                self.controller.log_prob_buffer, advantage,
+                self.controller.entropy_buffer)
+            for l, e in zip(log_probs, entropies)
+        ]
 
-        loss = torch.cat(loss).sum().div(n)
+        actor_loss = torch.cat(actor_loss).sum().div(n)
+        critic_loss = 0.5 * advantage.pow(2).mean()
+
+        actor_critic_loss = actor_loss + critic_loss
 
         # one step of gradient descent
-        loss.backward()
+        actor_critic_loss.backward()
         # gradient clipping to prevent exploding gradient
         nn.utils.clip_grad_norm_(self.controller.parameters(), 20)
         self.optim.step()
@@ -319,67 +299,24 @@ class MetaLearnReinforce(object):
         grad_norm = grad_norm ** 0.5
 
         # reset rewards and log probs
+        del self.controller.value_buffer[:]
         del self.controller.log_prob_buffer[:]
         del self.controller.reward_buffer[:]
         del self.controller.entropy_buffer[:]
 
-        return loss.data.item(), grad_norm
-
-    def _update_log_prob_buffer(self, actions):
-        self.controller.log_prob_buffer.append(
-            [a["log_prob"] for a in actions])
-
-    def _update_reward_buffer(self, reward):
-        self.controller.reward_buffer.append(reward)
-
-    def _update_entropy_buffer(self, actions):
-        self.controller.entropy_buffer.append([a["entropy"] for a in actions])
-
-    def _update_baseline_reward_buffer(self, reward):
-        buffer = self._baseline_buffer()
-        current = self._baseline_current()
-        buffer.append(current)
-        self._update_current_baseline(
-            utils._exponential_mean(reward, current, beta=self._beta))
-
-    def _baseline_fn_key(self):
-        return SINGLE_BASELINE if self._single_baseline else \
-            self.t_env.current_data_env.name
-
-    def _baseline_buffer(self):
-        return self._baseline_fn["buffer"][self._baseline_fn_key()]
-
-    def _baseline_current(self):
-        return self._baseline_fn["current"][self._baseline_fn_key()]
-
-    def _update_current_baseline(self, new_baseline):
-        self._baseline_fn["current"][self._baseline_fn_key()] = new_baseline
+        return actor_critic_loss.data.item(), grad_norm
 
 
-def _check_buffers(log_prob_buffer, reward_buffer, entropy_buffer):
+def _check_buffers(
+        value_buffer, log_prob_buffer, reward_buffer, entropy_buffer):
+    n_vbuf = len(value_buffer)
     n_abuf = len(log_prob_buffer)
     n_rbuf = len(reward_buffer)
     n_ebuf = len(entropy_buffer)
-    if n_abuf != n_rbuf != n_ebuf:
+    if n_vbuf != n_abuf != n_rbuf != n_ebuf:
         raise ValueError(
             "all buffers need the same length, found:\n"
+            "value_buffer = %d\n"
             "log_prob_buffer = %d\n"
             "reward_buffer = %d\n"
             "entropy_buffer = %d\n" % (n_abuf, n_rbuf, n_ebuf))
-
-
-def normalize_reward(rbuffer):
-    """Mean-center and std-rescale the reward buffer.
-
-    :param torch.FloatTensor rbuffer: list of rewards from an episode
-    :returns: normalized tensor
-    """
-    return (rbuffer - rbuffer.mean()).div(rbuffer.std() + EPSILON)
-
-
-def print_actions(actions):
-    """Pretty print actions for an ml framework."""
-    for i, action in enumerate(actions):
-        print("action #: %s" % i)
-        for k, v in action.items():
-            print("%s: %s" % (k, v))

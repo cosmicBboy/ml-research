@@ -17,7 +17,7 @@ import torch.nn.functional as F
 from collections import defaultdict
 from torch.distributions import Categorical
 
-from .data_types import CASHComponent
+from .data_types import CASHComponent, TargetType
 from .components.algorithm_component import EXCLUDE_ALL
 
 
@@ -84,6 +84,7 @@ class MetaLearnController(nn.Module):
         self.hyperparam_exclude_conditions = defaultdict(dict)
 
         # buffers needed for backprop
+        self.value_buffer = []
         self.log_prob_buffer = []
         self.reward_buffer = []
         self.entropy_buffer = []
@@ -106,7 +107,12 @@ class MetaLearnController(nn.Module):
         self.metafeature_dense = nn.Linear(
             self.metafeature_size, self.metafeature_encoding_size)
 
-        # micro action rnn takes meta-rnn representation and selects
+        # critic layer that produces value estimate
+        self.critic_linear1 = nn.Linear(self.output_size, self.hidden_size)
+        self.critic_dropout = nn.Dropout(self.dropout_rate)
+        self.critic_linear2 = nn.Linear(self.hidden_size, 1)
+
+        # micro action policy rnn takes meta-rnn representation and selects
         # hyperparameters to specify an ML Framework.
         self.micro_action_rnn = nn.GRU(
             self.input_size,
@@ -126,7 +132,7 @@ class MetaLearnController(nn.Module):
             self.a_space.ALL_COMPONENTS if self._mlf_signature is None
             else self._mlf_signature)
         idx = 0
-        # TODO: this logic should be in algorithm_space
+
         for atype, acomponents in all_components.items():
             # action classifier
             self._add_action_classifier(
@@ -192,8 +198,8 @@ class MetaLearnController(nn.Module):
             "exclude_masks": exclude_masks,
         })
 
-    def forward(self, action, hidden, action_classifier, mask=None):
-        """Forward pass through controller."""
+    def get_policy_dist(self, action, hidden, action_classifier, mask=None):
+        """Get action distribution from policy."""
         rnn_output, hidden = self.micro_action_rnn(action, hidden)
         rnn_output = self.micro_action_dropout(
             self.micro_action_decoder(rnn_output))
@@ -212,17 +218,38 @@ class MetaLearnController(nn.Module):
         action_probs = softmax(logits)
         return action_probs, hidden
 
-    def decode(self, prev_action, prev_reward, metafeatures,
-               hidden, target_type):
+    def get_value(self, state):
+        """Get value estimate from state.
+
+        The state includes dataset metafeatures, previous action, and previous
+        reward.
+        """
+        return self.critic_linear2(
+            self.critic_dropout(F.relu(self.critic_linear1(state)))
+        )
+
+    def forward(
+            self,
+            prev_action: torch.FloatTensor,
+            prev_reward: torch.FloatTensor,
+            metafeatures: torch.FloatTensor,
+            hidden: torch.FloatTensor,
+            target_type: TargetType):
         """Decode a metafeature tensor to sequence of actions.
 
         Where the actions are a sequence of algorithm components and
         hyperparameter settings.
+
+        :prev_action: tensor of action distribution at previous time step.
+        :prev_reward: single-element tensor of reward at previous time step.
+        :metafeatures: tensor of dataset feature representation.
+        :hidden: hidden state of previous time step.
+        :target_type: type of supervision target
         """
         actions = []
 
         # first process inputs with metalearning rnn
-        action_tensor, hidden = self.meta_rnn(
+        state, hidden = self.meta_rnn(
             torch.cat(
                 [
                     prev_action,
@@ -232,7 +259,11 @@ class MetaLearnController(nn.Module):
                 dim=2
             ),
             hidden)
-        action_tensor = self.meta_dropout(self.meta_decoder(action_tensor))
+        action_tensor = state = self.meta_dropout(
+            self.meta_decoder(state))
+
+        # get value estimate
+        value = self.get_value(state)
 
         # create attribute dictionary that maps hyperparameter names to
         # conditional masks
@@ -244,6 +275,7 @@ class MetaLearnController(nn.Module):
         else:
             algorithm_components = \
                 self.a_space.component_dict_from_signature(self._mlf_signature)
+
         for atype in algorithm_components:
             action, action_tensor, hidden = self._decode_action(
                 action_tensor, hidden, action_index=self.atype_map[atype])
@@ -271,7 +303,7 @@ class MetaLearnController(nn.Module):
                     )
                     continue
                 actions.append(hyperparameter_action)
-        return actions, action_tensor, hidden
+        return value, actions, action_tensor, hidden
 
     def _get_exclusion_mask(self, action_name):
         if action_name in self._exclude_masks:
@@ -302,7 +334,7 @@ class MetaLearnController(nn.Module):
                 "all actions are masked for action_classifier %s" %
                 action_classifier)
             return None, action_tensor, hidden
-        action_probs, hidden = self.forward(
+        action_probs, hidden = self.get_policy_dist(
             action_tensor, hidden, action_classifier, mask)
         action = self._select_action(action_probs, action_classifier, mask)
         if action is None:

@@ -170,7 +170,7 @@ class CASHInference(object):
             self, metafeature_tensor, target_type, prev_reward, prev_action,
             prev_hidden):
         """Given a task state, propose a machine learning framework."""
-        actions, action_activation, hidden = self.controller.decode(
+        value, actions, action_activation, hidden = self.controller(
             prev_action=prev_action,
             prev_reward=utils.aux_tensor(prev_reward),
             metafeatures=metafeature_tensor,

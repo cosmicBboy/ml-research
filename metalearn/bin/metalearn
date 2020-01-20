@@ -29,19 +29,12 @@ def run():
 @click.option("--output_size", default=DEFAULT["output_size"])
 @click.option("--n_layers", default=DEFAULT["n_layers"])
 @click.option("--dropout_rate", default=DEFAULT["dropout_rate"])
-@click.option("--beta", default=DEFAULT["beta"], type=float)
+@click.option("--gamma", default=DEFAULT["gamma"], type=float)
 @click.option("--entropy_coef", default=DEFAULT["entropy_coef"],
               type=float)
 @click.option("--entropy_coef_anneal_by",
               default=DEFAULT["entropy_coef_anneal_by"],
               type=float)
-@click.option("--with_baseline/--without_baseline",
-              default=DEFAULT["with_baseline"])
-@click.option("--single_baseline/--multi_baseline",
-              default=DEFAULT["single_baseline"])
-@click.option("--normalize_reward",
-              default=DEFAULT["normalize_reward"],
-              is_flag=True)
 @click.option("--n_episodes", default=DEFAULT["n_episodes"])
 @click.option("--n_iter", default=DEFAULT["n_iter"])
 @click.option("--learning_rate",

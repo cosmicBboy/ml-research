@@ -187,10 +187,3 @@ def _diversity_metric(n_unique, n_total):
 
 def _hyperparameter_string(hyperparameters):
     return "[%d hyperparams]" % len(hyperparameters)
-
-
-def _exponential_mean(x, x_prev, beta=0.99):
-    # TODO: implement bias correction factor to account for underestimate of
-    # the moving average with term `exp_mean / (1 - beta^t)` where `t` is a
-    # counter of number of time-steps.
-    return (x * beta) + (x_prev * (1 - beta))
