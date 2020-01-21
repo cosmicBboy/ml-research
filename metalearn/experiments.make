@@ -20,3 +20,6 @@ metalearn-all-tasks:
 
 metalearn-binary-tuning:
 	@${CMD} ${CONF}/experiment_2019-12-26-23-34-27_metalearn_binary_tuning.yml metalearn_binary_tuning
+
+metalearn-a2c-binary-tuning:
+	@${CMD} ${CONF}/experiment_2020-01-20-16-56-31_metalearn_a2c_binary.yml metalearn_a2c_binary

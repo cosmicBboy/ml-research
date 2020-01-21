@@ -258,32 +258,38 @@ class MetaLearnReinforce(object):
             self.controller.reward_buffer,
             self.controller.entropy_buffer)
 
-        self.optim.zero_grad()
         n = len(self.controller.reward_buffer)
+
+        # reset gradient
+        self.optim.zero_grad()
 
         # compute Q values
         Q_values = torch.zeros(len(self.controller.value_buffer))
-        Q_val = self.controller.value_buffer[-1]
+        Q_val = self.controller.value_buffer[-1].detach()
         for t in reversed(range(n)):
             Q_val = self.controller.reward_buffer[t] + self._gamma * Q_val
             Q_values[t] = Q_val
 
-        values = torch.FloatTensor(self.controller.value_buffer)
+        values = torch.cat(self.controller.value_buffer).squeeze()
         advantage = Q_values - values
 
         # compute loss
         actor_loss = [
-            -l * a - entropy_coef * e
-            for log_probs, a, entropies in zip(
-                self.controller.log_prob_buffer, advantage,
-                self.controller.entropy_buffer)
-            for l, e in zip(log_probs, entropies)
+            -l * a
+            for log_probs, a in zip(self.controller.log_prob_buffer, advantage)
+            for l in log_probs
         ]
 
-        actor_loss = torch.cat(actor_loss).sum().div(n)
+        actor_loss = torch.cat(actor_loss).mean()
         critic_loss = 0.5 * advantage.pow(2).mean()
 
-        actor_critic_loss = actor_loss + critic_loss
+        # entropy loss term
+        entropy_term = -sum([
+            entropy_coef * e for entropies in self.controller.entropy_buffer
+            for e in entropies
+        ])
+
+        actor_critic_loss = actor_loss + critic_loss + entropy_term
 
         # one step of gradient descent
         actor_critic_loss.backward()

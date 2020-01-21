@@ -1,4 +1,4 @@
-name: metalearn_a2c_binary_tuning
+name: metalearn_a2c_binary
 experiment_type: METALEARN_REINFORCE
 description: metalearning with A2C architecture
 created_at: 2020-01-20-16-56-31
