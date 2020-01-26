@@ -5,8 +5,11 @@ import numpy as np
 
 def _metrics():
     return [
-        "losses",
-        "aggregate_gradients",
+        "total_losses",
+        "actor_losses",
+        "critic_losses",
+        "entropy_losses",
+        "gradient_norms",
         "mean_rewards",
         "mean_validation_scores",
         "std_validation_scores",
@@ -31,8 +34,16 @@ def _log_floyd(metric, value, step):
 
 def default_logger(tracker, prefix=""):
 
-    metrics = ["losses", "mean_validation_scores", "mean_rewards",
-               "aggregate_gradients", "mlf_diversity"]
+    metrics = [
+        "total_losses",
+        "actor_losses",
+        "critic_losses",
+        "entropy_losses",
+        "gradient_norms",
+        "mean_validation_scores",
+        "mean_rewards",
+        "mlf_diversity"
+    ]
     if prefix:
         display_names = ["%s__%s" % (prefix, m) for m in metrics]
     else:

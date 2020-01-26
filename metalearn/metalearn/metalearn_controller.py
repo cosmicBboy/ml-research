@@ -7,6 +7,7 @@ has to predict either an algorithm to add to the pipeline or a hyperparameter
 for the most recently chosen algorithm.
 """
 
+from collections import defaultdict
 
 import dill
 import logging
@@ -14,7 +15,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from collections import defaultdict
 from torch.distributions import Categorical
 
 from .data_types import CASHComponent, TargetType
@@ -108,9 +108,11 @@ class MetaLearnController(nn.Module):
             self.metafeature_size, self.metafeature_encoding_size)
 
         # critic layer that produces value estimate
-        self.critic_linear1 = nn.Linear(self.output_size, self.hidden_size)
         self.critic_dropout = nn.Dropout(self.dropout_rate)
-        self.critic_linear2 = nn.Linear(self.hidden_size, 1)
+        self.critic_linear1 = nn.Linear(self.output_size, self.hidden_size)
+        self.critic_linear2 = nn.Linear(self.hidden_size, self.hidden_size)
+        self.critic_linear3 = nn.Linear(self.hidden_size, self.hidden_size)
+        self.critic_output = nn.Linear(self.hidden_size, 1)
 
         # micro action policy rnn takes meta-rnn representation and selects
         # hyperparameters to specify an ML Framework.
@@ -224,9 +226,10 @@ class MetaLearnController(nn.Module):
         The state includes dataset metafeatures, previous action, and previous
         reward.
         """
-        return self.critic_linear2(
-            self.critic_dropout(F.relu(self.critic_linear1(state)))
-        )
+        value = self.critic_dropout(F.relu(self.critic_linear1(state)))
+        value = self.critic_dropout(F.relu(self.critic_linear2(value)))
+        value = self.critic_dropout(F.relu(self.critic_linear3(value)))
+        return self.critic_output(value)
 
     def forward(
             self,
@@ -346,8 +349,9 @@ class MetaLearnController(nn.Module):
     def _select_action(self, action_probs, action_classifier, mask):
         """Select action based on action probability distribution."""
         # compute unmasked log probabilitises.
-        choice_index = Categorical(action_probs).sample()
-        _choice_index = int(choice_index.data)
+        policy_dist = Categorical(action_probs)
+        choice_index = policy_dist.sample()
+        _choice_index = choice_index.data.item()
         choice = action_classifier["choices"][_choice_index]
 
         # for current choice, accumulate exclusion masks if any
@@ -356,23 +360,14 @@ class MetaLearnController(nn.Module):
             for _, masks in action_classifier["exclude_masks"].items():
                 self._accumulate_exclusion_mask(masks)
 
-        # add small number to action probs so that zero-probability
-        # entries are large negative number instead of nan.
-        log_action_probs = (action_probs + 1e-45).log()
-        if mask is not None:
-            entropy = log_action_probs * action_probs
-            entropy[entropy != entropy] = 0
-            entropy = entropy.sum(1, keepdim=True)
-        else:
-            entropy = -(log_action_probs * action_probs).sum(1, keepdim=True)
         return {
             "action_type": action_classifier["action_type"],
             "action_name": action_classifier["name"],
             "choices": action_classifier["choices"],
             "choice_index": _choice_index,
             "choice": choice,
-            "log_prob": log_action_probs.index_select(1, choice_index),
-            "entropy": entropy,
+            "log_prob": policy_dist.log_prob(choice_index),
+            "entropy": policy_dist.entropy(),
         }
 
     def encode_embedding(self, action_index, choice_index):

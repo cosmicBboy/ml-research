@@ -74,7 +74,8 @@ def from_config(config_fp):
     print("running experiment from config %s" % config_fp)
     config = experiment.read_config(config_fp)
     # write config to output directory
-    experiment.write_config(config, config.parameters["output_fp"])
+    experiment.write_config(
+        config, config.parameters["output_fp"], fname="experiment_config.yml")
     print("\nparameters:")
     for k, v in config.parameters.items():
         print("\t%s: %s" % (k, v))

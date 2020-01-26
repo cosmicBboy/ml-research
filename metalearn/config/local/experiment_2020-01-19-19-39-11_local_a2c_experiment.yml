@@ -6,7 +6,7 @@ git_hash: 633ce78
 parameters:
   datasets: null
   test_datasets: null
-  output_fp: /Users/Niels/git/ml-research/metalearn/metalearn/../output
+  output_fp: ./output
   input_size: 30
   hidden_size: 30
   output_size: 30
@@ -15,6 +15,7 @@ parameters:
   entropy_coef: 0.0
   entropy_coef_anneal_to: 0.0
   entropy_coef_anneal_by: null
+  normalize_reward: True
   gamma: 0.99
   meta_reward_multiplier: 1.0
   n_episodes: 10
@@ -49,5 +50,5 @@ parameters:
   controller_seed: 1000
   task_environment_seed: 100
   hyperparameters:
-    entropy_coef_anneal_to: [0.0]
+    entropy_coef: [0.0]
     learning_rate: [0.005]

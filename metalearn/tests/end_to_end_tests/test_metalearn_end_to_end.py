@@ -82,7 +82,7 @@ def test_metalearn_reinforce_fit():
     t_env = _task_environment()
     a_space = _algorithm_space()
     controller = _metalearn_controller(a_space, t_env)
-    reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
+    reinforce = _metalearn_reinforce(controller, t_env)
     reinforce.fit(
         n_episodes=n_episodes,
         **_fit_kwargs())
@@ -99,8 +99,11 @@ def test_metalearn_reinforce_fit():
             "episode",
             "data_env_names",
             "scorers",
-            "losses",
-            "aggregate_gradients",
+            "total_losses",
+            "actor_losses",
+            "critic_losses",
+            "entropy_losses",
+            "gradient_norms",
             "std_validation_scores",
             "n_successful_mlfs",
             "n_unique_mlfs",
@@ -129,9 +132,9 @@ def test_metalearn_entropy_regularizer():
         reinforce.fit(
             n_episodes=n_episodes,
             **_fit_kwargs())
-        losses[model] = reinforce.tracker.history["losses"]
+        losses[model] = reinforce.tracker.history["total_losses"]
     assert (
-        np.array(losses["entropy_regularized"]) <
+        np.array(losses["entropy_regularized"]) >
         np.array(losses["baseline"])).all()
 
 
@@ -145,7 +148,7 @@ def test_metalearn_reinforce_regressor():
             dataset_names=[dataset])
         a_space = _algorithm_space()
         controller = _metalearn_controller(a_space, t_env)
-        reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
+        reinforce = _metalearn_reinforce(controller, t_env)
         reinforce.fit(
             n_episodes=n_episodes,
             **_fit_kwargs())
@@ -192,7 +195,7 @@ def test_kaggle_regression_data():
             dataset_names=[dataset_name],
             n_samples=500)
         controller = _metalearn_controller(a_space, t_env)
-        reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
+        reinforce = _metalearn_reinforce(controller, t_env)
         reinforce.fit(
             n_episodes=n_episodes,
             **_fit_kwargs())
@@ -221,7 +224,7 @@ def test_kaggle_classification_data():
             dataset_names=[dataset_name],
             n_samples=500)
         controller = _metalearn_controller(a_space, t_env)
-        reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
+        reinforce = _metalearn_reinforce(controller, t_env)
         reinforce.fit(
             n_episodes=n_episodes,
             **_fit_kwargs())
@@ -244,7 +247,7 @@ def test_openml_regression_data():
             dataset_names=[dataset_name],
             n_samples=500)
         controller = _metalearn_controller(a_space, t_env)
-        reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
+        reinforce = _metalearn_reinforce(controller, t_env)
         reinforce.fit(
             n_episodes=n_episodes,
             **_fit_kwargs())
@@ -267,7 +270,7 @@ def test_openml_classification_data():
             dataset_names=[dataset_name],
             n_samples=1000)
         controller = _metalearn_controller(a_space, t_env)
-        reinforce = _metalearn_reinforce(controller, t_env, with_baseline=True)
+        reinforce = _metalearn_reinforce(controller, t_env)
         reinforce.fit(
             n_episodes=n_episodes,
             **_fit_kwargs())

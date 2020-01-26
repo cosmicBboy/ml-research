@@ -79,11 +79,12 @@ def create_config(name, experiment_type, description=None,
         parameters=parameters)
 
 
-def write_config(config, dir_path):
+def write_config(config, dir_path, fname=None):
     dir_path = Path(dir_path)
     dir_path.mkdir(exist_ok=True)
-    fp = _config_filepath(dir_path, config)
-    with open(str(fp), "w") as f:
+    fp = _config_filepath(dir_path, config) if fname is None \
+        else dir_path / fname
+    with fp.open("w") as f:
         yaml.dump(config._asdict(), f, Dumper=yamlordereddictloader.Dumper,
                   default_flow_style=False)
     print("wrote experiment config file to %s" % fp)
@@ -113,6 +114,8 @@ def create_hyperparameter_grid(hyperparameters):
         "entropy_coef_anneal_to",
         "learning_rate",
         "meta_reward_multiplier",
+        "normalize_reward",
+        "error_reward",
     ]
     hyperparameters = {
         k: v for k, v in hyperparameters.items() if v is not None
@@ -137,6 +140,7 @@ def run_experiment(
         entropy_coef=0.0,
         entropy_coef_anneal_to=0.0,
         entropy_coef_anneal_by=None,
+        normalize_reward=True,
         gamma=0.99,
         meta_reward_multiplier=1.,
         n_episodes=100,
@@ -206,7 +210,7 @@ def run_experiment(
 
         evaluation_results = evaluate_controller(
             reinforce.controller,
-            reinforce.t_env, 
+            reinforce.t_env,
             meta_reward_multiplier=hyperparameters.get(
                 "meta_reward_multiplier", meta_reward_multiplier),
             n=n_eval_iter)
@@ -239,7 +243,7 @@ def run_experiment(
             per_framework_memory_limit=per_framework_memory_limit,
             dataset_names=datasets,
             test_dataset_names=test_datasets,
-            error_reward=error_reward,
+            error_reward=_hyperparameters.get("error_reward", error_reward),
             n_samples=n_samples)
 
         a_space = AlgorithmSpace(
@@ -264,6 +268,8 @@ def run_experiment(
             entropy_coef_anneal_to=_hyperparameters.get(
                 "entropy_coef_anneal_to", entropy_coef_anneal_to),
             entropy_coef_anneal_by=entropy_coef_anneal_by,
+            normalize_reward=_hyperparameters.get(
+                "normalize_reward", normalize_reward),
             meta_reward_multiplier=_hyperparameters.get(
                 "meta_reward_multiplier", meta_reward_multiplier),
             metrics_logger=partial(
