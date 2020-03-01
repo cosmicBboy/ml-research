@@ -171,16 +171,14 @@ def run_experiment(
         fit_verbose=1,
         controller_seed=1000,
         task_environment_seed=100,
-        hyperparameters={
-            "entropy_coef_anneal_to": [0.0, 0.2],
-            "learning_rate": [0.0, 0.0005, 0.005, 0.05],
-        }):
+        hyperparameters=None):
     """Run deep cash experiment with single configuration."""
     torch.manual_seed(controller_seed)
     output_fp = os.path.dirname(__file__) + "/../output" if \
         output_fp is None else output_fp
     data_path = Path(output_fp)
     data_path.mkdir(exist_ok=True)
+    hyperparameters = {} if hyperparameters is None else hyperparameters
 
     # initialize error logging (this is to log fit/predict/score errors made
     # when evaluating a proposed MLF)

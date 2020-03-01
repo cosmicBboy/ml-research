@@ -56,7 +56,11 @@ def evaluate_controller(controller, task_env, meta_reward_multiplier, n=20):
             n=n, datasets=[train_data_env.name], verbose=True)
         train_env_inference_results.append(
             create_inference_result_df(inference_results)
-            .assign(data_env=train_data_env.name))
+            .assign(
+                data_env=train_data_env.name,
+                target_type=train_data_env.target_type.name,
+            )
+        )
     train_env_inference_results = \
         None if len(train_env_inference_results) == 0 \
         else pd.concat(train_env_inference_results)
@@ -68,7 +72,11 @@ def evaluate_controller(controller, task_env, meta_reward_multiplier, n=20):
             n=n, datasets=[test_data_env.name], verbose=True)
         test_env_inference_results.append(
             create_inference_result_df(inference_results)
-            .assign(data_env=test_data_env.name))
+            .assign(
+                data_env=test_data_env.name,
+                target_type=train_data_env.target_type.name,
+            )
+        )
     test_env_inference_results = None if len(test_env_inference_results) == 0 \
         else pd.concat(test_env_inference_results)
 

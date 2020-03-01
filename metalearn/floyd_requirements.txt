@@ -3,7 +3,7 @@ click
 cytoolz
 dill==0.3.1.1
 kaggle
-pandas
+pandas==0.24.2
 matplotlib
 nose
 numpy

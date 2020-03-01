@@ -1,6 +1,6 @@
 .PHONY: metalearning-experiment
 
-CMD=./floyd_jobs/train-metalearn.sh
+CMD=./floyd_scripts/train-metalearn.sh
 CONF=config/floyd
 
 
@@ -23,3 +23,6 @@ metalearn-binary-tuning:
 
 metalearn-a2c-binary:
 	@${CMD} ${CONF}/experiment_2020-01-20-16-56-31_metalearn_a2c_binary.yml metalearn_a2c_binary
+
+metalearn-a2c-all-tasks:
+	@${CMD} ${CONF}/experiment_2020-01-31-21-11-49_metalearn_a2c_binary_multiclass_regression.yml metalearn_a2c_all_tasks

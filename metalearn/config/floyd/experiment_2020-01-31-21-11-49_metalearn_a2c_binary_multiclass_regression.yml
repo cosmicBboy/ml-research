@@ -1,8 +1,8 @@
-name: metalearn_a2c_binary
+name: metalearn_a2c_binary_multiclass_regression
 experiment_type: METALEARN_REINFORCE
-description: metalearning with A2C architecture
-created_at: 2020-01-20-16-56-31
-git_hash: 633ce78
+description: metalearn with A2C on binary, multiclass, regression tasks
+created_at: 2020-01-31-21-11-49
+git_hash: ae0437a
 parameters:
   datasets: null
   test_datasets: null
@@ -33,13 +33,15 @@ parameters:
   - KAGGLE
   target_types:
   - BINARY
+  - MULTICLASS
+  - REGRESSION
   test_env_target_types:
   - BINARY
   - MULTICLASS
   - REGRESSION
   error_reward: -1
   n_samples: 10000
-  per_framework_time_limit: 180
+  per_framework_time_limit: 360
   per_framework_memory_limit: 5000
   metric_logger: floyd
   fit_verbose: 0
@@ -48,6 +50,6 @@ parameters:
   hyperparameters:
     learning_rate:
     - 0.0
+    - 0.00005
     - 0.0005
     - 0.005
-    - 0.05

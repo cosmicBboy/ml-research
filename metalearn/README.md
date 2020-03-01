@@ -61,7 +61,7 @@ $ metalearn run from-config config/local/experiment_2018-37-25-21:37:11_my_exper
 run an experiment using floydhub:
 
 ```
-$ floyd_jobs/train-metalearn.sh path/to/config/file 'optional job run message'
+$ floyd_scripts/train-metalearn.sh path/to/config/file 'optional job run message'
 ```
 
 

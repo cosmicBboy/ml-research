@@ -26,6 +26,7 @@ class MetricsTracker(TrackerBase):
         super(MetricsTracker, self).__init__([
             "episode",
             "data_env_names",
+            "target_type",
             "scorers",
             "total_losses",
             "actor_losses",

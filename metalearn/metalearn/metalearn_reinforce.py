@@ -10,6 +10,7 @@ from . import utils, loggers
 from .tracking import MetricsTracker
 
 EPSILON = np.finfo(np.float32).eps.item()
+CLIP_GRAD = 1.0
 
 Losses = namedtuple(
     "Losses", ["total", "actor", "critic", "entropy", "grad_norm"])
@@ -144,6 +145,7 @@ class MetaLearnReinforce(object):
             self.tracker.update_metrics({
                 "episode": i_episode + 1,
                 "data_env_names": self.t_env.current_data_env.name,
+                "target_type": self.t_env.current_data_env.target_type.name,
                 "scorers": self.t_env.scorer.name,
                 "total_losses": losses.total,
                 "actor_losses": losses.actor,
@@ -308,7 +310,7 @@ class MetaLearnReinforce(object):
         # one step of gradient descent
         actor_critic_loss.backward()
         # gradient clipping to prevent exploding gradient
-        nn.utils.clip_grad_norm_(self.controller.parameters(), 20)
+        nn.utils.clip_grad_norm_(self.controller.parameters(), CLIP_GRAD)
         self.optim.step()
 
         grad_norm = 0.

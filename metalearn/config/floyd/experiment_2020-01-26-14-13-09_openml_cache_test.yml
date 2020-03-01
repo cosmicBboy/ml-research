@@ -1,12 +1,12 @@
-name: local_a2c_experiment
+name: openml_cache_test
 experiment_type: METALEARN_REINFORCE
-description: local config for A2C implementation
-created_at: 2020-01-19-19-39-11
-git_hash: 633ce78
+description: test out caching of openml datasets
+created_at: 2020-01-26-14-13-09
+git_hash: ae0437a
 parameters:
   datasets: null
   test_datasets: null
-  output_fp: ./output
+  output_fp: /output
   input_size: 30
   hidden_size: 30
   output_size: 30
@@ -15,7 +15,7 @@ parameters:
   entropy_coef: 0.0
   entropy_coef_anneal_to: 0.0
   entropy_coef_anneal_by: null
-  normalize_reward: True
+  normalize_reward: true
   gamma: 0.99
   meta_reward_multiplier: 1.0
   n_episodes: 3
@@ -24,9 +24,10 @@ parameters:
   optim_beta1: 0.9
   optim_beta2: 0.999
   env_sources:
-  - SKLEARN
+  - OPEN_ML
+  - AUTOSKLEARN_BENCHMARK
   test_env_sources:
-  - SKLEARN
+  - OPEN_ML_BENCHMARK_CC18
   n_eval_iter: 3
   target_types:
   - BINARY
@@ -45,7 +46,7 @@ parameters:
   n_samples: 5000
   per_framework_time_limit: 180
   per_framework_memory_limit: 5000
-  metric_logger: null
-  fit_verbose: 1
+  metric_logger: floyd
+  fit_verbose: 0
   controller_seed: 1000
   task_environment_seed: 100

@@ -134,7 +134,7 @@ def test_metalearn_entropy_regularizer():
             **_fit_kwargs())
         losses[model] = reinforce.tracker.history["total_losses"]
     assert (
-        np.array(losses["entropy_regularized"]) >
+        np.array(losses["entropy_regularized"]) <
         np.array(losses["baseline"])).all()
 
 

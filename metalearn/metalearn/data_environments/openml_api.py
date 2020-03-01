@@ -23,9 +23,9 @@ from ..data_types import FeatureType, TargetType, OpenMLTaskType, \
     DataSourceType
 
 
-# TODO: test caching and create floyd dataset to mount onto jobs
 config.set_cache_directory(
     os.getenv("OPEN_ML_CACHE_DIR", Path.home() / ".openml" / "cache"))
+
 logger = logging.getLogger(__name__)
 
 
@@ -66,7 +66,8 @@ def openml_to_data_env(
         openml_dataset, target_column, target_type,
         data_source_type, test_size, random_state, target_preprocessor=None,
         include_features_with_na=False):
-    print("fetching openml dataset: %s" % openml_dataset.name)
+    print("fetching openml dataset id=%d: '%s'" %
+          (openml_dataset.dataset_id, openml_dataset.name))
     if openml_dataset.format == SPARSE_DATA_FORMAT:
         raise TypeError("cannot handle sparse data.")
     if data_source_type not in DATASOURCE_TYPES:
