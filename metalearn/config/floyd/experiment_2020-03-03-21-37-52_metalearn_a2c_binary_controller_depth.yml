@@ -1,33 +1,35 @@
-name: local_a2c_experiment
+name: metalearn_a2c_binary_controller_depth
 experiment_type: METALEARN_REINFORCE
-description: local config for A2C implementation
-created_at: 2020-01-19-19-39-11
-git_hash: 633ce78
+description: 'metalearning with A2C architecture: controller depth experiments'
+created_at: 2020-03-03-21-37-52
+git_hash: 677b7cc
 parameters:
   datasets: null
   test_datasets: null
-  output_fp: ./output
-  input_size: 30
-  hidden_size: 30
-  output_size: 30
+  output_fp: /output
+  input_size: 60
+  hidden_size: 60
+  output_size: 60
   n_layers: 3
   dropout_rate: 0.2
   entropy_coef: 0.0
   entropy_coef_anneal_to: 0.0
   entropy_coef_anneal_by: null
-  normalize_reward: True
+  normalize_reward: true
   gamma: 0.99
   meta_reward_multiplier: 1.0
-  n_episodes: 3
-  n_iter: 3
+  n_episodes: 100
+  n_iter: 16
   learning_rate: 0.005
   optim_beta1: 0.9
   optim_beta2: 0.999
   env_sources:
   - SKLEARN
+  - OPEN_ML
+  - KAGGLE
   test_env_sources:
-  - SKLEARN
-  n_eval_iter: 3
+  - AUTOSKLEARN_BENCHMARK
+  n_eval_iter: 10
   target_types:
   - BINARY
   - MULTICLASS
@@ -45,11 +47,13 @@ parameters:
   n_samples: 5000
   per_framework_time_limit: 180
   per_framework_memory_limit: 5000
-  metric_logger: null
-  fit_verbose: 1
+  metric_logger: floyd
+  fit_verbose: 0
   controller_seed: 1000
   task_environment_seed: 100
   hyperparameters:
-    n_episodes:
-    - 1
-    - 2
+    n_layers:
+    - 3
+    - 6
+    - 9
+    - 12

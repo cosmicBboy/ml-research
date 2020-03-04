@@ -26,3 +26,12 @@ metalearn-a2c-binary:
 
 metalearn-a2c-all-tasks:
 	@${CMD} ${CONF}/experiment_2020-01-31-21-11-49_metalearn_a2c_binary_multiclass_regression.yml metalearn_a2c_all_tasks
+
+metalearn-a2c-n-episodes:
+	@${CMD} ${CONF}/experiment_2020-03-03-21-02-38_metalearn_a2c_binary_n_episodes.yml metalearn_a2c_binary_tune_n_episodes
+
+metalearn-a2c-layer-size:
+	@${CMD} ${CONF}/experiment_2020-03-03-21-36-48_metalearn_a2c_binary_layer_sizes.yml
+
+metalearn-a2c-controller-depth:
+	@${CMD} ${CONF}/experiment_2020-03-03-21-37-52_metalearn_a2c_binary_controller_depth.yml

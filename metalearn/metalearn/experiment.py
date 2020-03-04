@@ -105,11 +105,19 @@ def save_best_mlfs(data_path, best_mlfs, proc_num):
     mlf_path = data_path / ("metalearn_controller_mlfs_trial_%d" % proc_num)
     mlf_path.mkdir(exist_ok=True)
     for i, mlf in enumerate(best_mlfs):
-        joblib.dump(mlf, mlf_path / ("best_mlf_episode_%d.pkl" % (i + 1)))
+        joblib.dump(
+            mlf, mlf_path / ("best_mlf_episode_%d.pkl.gz" % (i + 1)),
+            compress=3,
+        )
 
 
 def create_hyperparameter_grid(hyperparameters):
     allowable_hyperparameters = [
+        "input_size",
+        "hidden_size",
+        "output_size",
+        "n_layers",
+        "n_episodes",
         "entropy_coef",
         "entropy_coef_anneal_to",
         "learning_rate",
@@ -117,15 +125,27 @@ def create_hyperparameter_grid(hyperparameters):
         "normalize_reward",
         "error_reward",
     ]
-    hyperparameters = {
-        k: v for k, v in hyperparameters.items() if v is not None
-    }
-    hyperparameter_grid = itertools.product(*[
-        [(hyperparameter, value) for value in hyperparameters[hyperparameter]]
-        for hyperparameter in allowable_hyperparameters
-        if hyperparameter in hyperparameters
-    ])
-    return list(map(dict, hyperparameter_grid))
+
+    if isinstance(hyperparameters, dict):
+        hyperparameters = {
+            k: v for k, v in hyperparameters.items() if v is not None
+        }
+        hyperparameter_grid = itertools.product(*[
+            [(hyperparameter, value)
+             for value in hyperparameters[hyperparameter]]
+            for hyperparameter in allowable_hyperparameters
+            if hyperparameter in hyperparameters
+        ])
+        return list(map(dict, hyperparameter_grid))
+    elif isinstance(hyperparameters, list):
+        return [
+            {k: v for k, v in h_dict if k in allowable_hyperparameters}
+            for h_dict in hyperparameters
+        ]
+    else:
+        raise ValueError(
+            "hyperparameters type %s not recognized" % type(hyperparameters)
+        )
 
 
 def run_experiment(
@@ -196,7 +216,7 @@ def run_experiment(
                 "lr": hyperparameters.get("learning_rate", learning_rate),
                 "betas": (optim_beta1, optim_beta2),
             },
-            n_episodes=n_episodes,
+            n_episodes=hyperparameters.get("n_episodes", n_episodes),
             n_iter=n_iter,
             verbose=bool(int(fit_verbose)),
             procnum=proc_num)
@@ -251,12 +271,13 @@ def run_experiment(
 
         controller = MetaLearnController(
             metafeature_size=t_env.metafeature_dim,
-            input_size=input_size,
-            hidden_size=hidden_size,
-            output_size=output_size,
+            input_size=_hyperparameters.get("input_size", input_size),
+            hidden_size=_hyperparameters.get("hidden_size", hidden_size),
+            output_size=_hyperparameters.get("output_size", output_size),
             a_space=a_space,
             dropout_rate=dropout_rate,
-            num_rnn_layers=n_layers)
+            num_rnn_layers=_hyperparameters.get("n_layers", n_layers),
+        )
 
         reinforce = MetaLearnReinforce(
             controller,
