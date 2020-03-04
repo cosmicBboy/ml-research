@@ -139,7 +139,7 @@ def create_hyperparameter_grid(hyperparameters):
         return list(map(dict, hyperparameter_grid))
     elif isinstance(hyperparameters, list):
         return [
-            {k: v for k, v in h_dict if k in allowable_hyperparameters}
+            {k: v for k, v in h_dict.items() if k in allowable_hyperparameters}
             for h_dict in hyperparameters
         ]
     else:
