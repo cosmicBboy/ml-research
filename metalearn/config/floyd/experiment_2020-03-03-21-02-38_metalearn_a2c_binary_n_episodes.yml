@@ -19,17 +19,18 @@ parameters:
   gamma: 0.99
   meta_reward_multiplier: 1.0
   n_episodes: 100
-  n_iter: 16
+  n_iter: 50
   learning_rate: 0.005
   optim_beta1: 0.9
   optim_beta2: 0.999
   env_sources:
   - SKLEARN
   - OPEN_ML
-  - KAGGLE
-  test_env_sources:
   - AUTOSKLEARN_BENCHMARK
-  n_eval_iter: 10
+  test_env_sources:
+  - OPEN_ML_BENCHMARK_CC18
+  - KAGGLE
+  n_eval_iter: 100
   target_types:
   - BINARY
   - MULTICLASS

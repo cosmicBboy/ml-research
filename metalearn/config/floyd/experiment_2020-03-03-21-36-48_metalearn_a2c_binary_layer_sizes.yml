@@ -15,21 +15,22 @@ parameters:
   entropy_coef: 0.0
   entropy_coef_anneal_to: 0.0
   entropy_coef_anneal_by: null
-  normalize_reward: true
+  normalize_reward: False
   gamma: 0.99
   meta_reward_multiplier: 1.0
-  n_episodes: 100
-  n_iter: 16
+  n_episodes: 1000
+  n_iter: 50
   learning_rate: 0.005
   optim_beta1: 0.9
   optim_beta2: 0.999
   env_sources:
   - SKLEARN
   - OPEN_ML
-  - KAGGLE
-  test_env_sources:
   - AUTOSKLEARN_BENCHMARK
-  n_eval_iter: 10
+  test_env_sources:
+  - OPEN_ML_BENCHMARK_CC18
+  - KAGGLE
+  n_eval_iter: 100
   target_types:
   - BINARY
   - MULTICLASS
@@ -55,16 +56,12 @@ parameters:
     - input_size: 60
       hidden_size: 60
       output_size: 60
-      n_layers: 3
     - input_size: 120
       hidden_size: 120
       output_size: 120
-      n_layers: 3
     - input_size: 240
       hidden_size: 240
       output_size: 240
-      n_layers: 3
     - input_size: 480
       hidden_size: 480
       output_size: 480
-      n_layers: 3
