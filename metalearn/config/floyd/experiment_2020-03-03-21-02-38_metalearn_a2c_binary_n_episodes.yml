@@ -12,10 +12,10 @@ parameters:
   output_size: 30
   n_layers: 3
   dropout_rate: 0.2
-  entropy_coef: 0.0
+  entropy_coef: 0.1
   entropy_coef_anneal_to: 0.0
   entropy_coef_anneal_by: null
-  normalize_reward: true
+  normalize_reward: False
   gamma: 0.99
   meta_reward_multiplier: 1.0
   n_episodes: 100
