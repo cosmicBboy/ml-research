@@ -53,15 +53,15 @@ parameters:
   controller_seed: 1000
   task_environment_seed: 100
   hyperparameters:
+    - input_size: 30
+      hidden_size: 30
+      output_size: 30
     - input_size: 60
       hidden_size: 60
       output_size: 60
+    - input_size: 90
+      hidden_size: 90
+      output_size: 90
     - input_size: 120
       hidden_size: 120
       output_size: 120
-    - input_size: 240
-      hidden_size: 240
-      output_size: 240
-    - input_size: 480
-      hidden_size: 480
-      output_size: 480
