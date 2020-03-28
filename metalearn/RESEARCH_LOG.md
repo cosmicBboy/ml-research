@@ -1,5 +1,125 @@
 # Research Log
 
+## 03/28/2020
+
+### Learning Rate Tuning
+
+- floydhub job: [376](https://www.floydhub.com/nielsbantilan/projects/deep-cash/376)
+- analysis notebook: `analysis/20200218_metalearn_a2c_openml_cc18_tune_learning_rate.ipynb`
+
+In this experiment, I tried 4 different learning rate settings over 1000
+episodes of training on binary tasks only, finding that `0.005` is the optimal
+learning rate, all of the other hyperparameters held fixed. I assessed
+meta-training performance with cumulative regret, and meta-test performance with
+cumulative reward.
+
+For meta-test performance, the weights of the controller were frozen, and
+50 ML frameworks proposals were generated for binary classification, multiclass
+classification, and regression tasks.
+
+The optimal learning rate of `0.005` performed the best for binary target types
+in the meta-test datasets with respect to cumulative reward. For regression
+tasks, the controller trained with learning rate `0.0005` initially performed
+better from the 0th to about the 25th shot, but after that the controller
+trained with learning rate `0.005` performed better.
+
+Based on n-shot (0- to 50-shot) learning validation scores, the meta-test reward
+and validation scores for binary and multiclass tasks suggests no evidence of
+meta-learning, as the controller did not demonstrate the ability to improve the
+validation scores of its proposed ML frameworks over time.
+
+However, its validation performance on the regression tasks do suggest that
+it was able to improve validation scores from the 0th to the 50th shot. These
+are preliminary results to be explored further. One explanation for this is that
+since binary and multiclass tasks use the same underlying sklearn estimators,
+it could be that the system has found the optimal estimators on average and
+can do no better given the hyperparameter ranges and estimators in the
+controller's action space. The action space could be expanded in three ways:
+
+- expand the available hyperparameter settings
+- expand the action space to new estimator types
+- expand the action space to propose multiple estimators and ensemble them.
+
+Another concurrent explanation would be that regression tasks require the
+controller to access a fundamentally different region of its action space and
+it was here that it demonstrated meta-learning ability by finding better
+regressors over time.
+
+### Entropy Coefficient Tuning
+
+- floydhub job: [371](https://www.floydhub.com/nielsbantilan/projects/deep-cash/371)
+
+I performed the same analysis, this time holding the learning rate fixed at
+`0.005` and tuning various entropy coefficient settings. The higher this
+setting, the more the controller is discouraged from pre-maturely settling on
+a potentially sub-optimal set of actions.
+
+Based on the cumulative reward on the meta-test datasets, I found mixed results,
+with `0.01` performing best on binary tasks, `0.03` on multiclass tasks,
+and `0.03` and `0.01` performing equally well on regression tasks. The
+experiment was unable to recover the meta-learning result in the regression
+validation scores from 0-50 shots of meta-test learning, so that observation
+from the learning rate tuning experiment would need to be tested more
+systematically.
+
+### Training Capacity Tuning
+
+- floydhub jobs:
+  - [n episodes](https://www.floydhub.com/nielsbantilan/projects/deep-cash/388)
+  - [n layers](https://www.floydhub.com/nielsbantilan/projects/deep-cash/390)
+  - [n units per layer](https://www.floydhub.com/nielsbantilan/projects/deep-cash/391)
+
+Here I performed a similar analysis, tuning three types of hyperparameters
+in separate experiments: meta-training time (number of episodes), number of
+layers, and layer unit size. For all of these experiments I set learning rate
+to `0.005` and the entropy coefficient to `0.1`.
+
+For these experiments I did not assess the meta-test performance of the
+controller on regression tasks.
+
+#### Training Time
+
+Interestingly, the controller trained for 2000 episodes performs the best in
+the binary meta-test datasets but not on the multiclass classification
+datasets.
+
+#### Number of Layers
+
+Controllers with layer size = 6 performed the best on the binary meta-test
+datasets but performed roughly on par with controller layer size = 3 on the
+multiclass dataset.
+
+#### Hidden Layer Size
+
+For input, hidden, and output unit sizes, 120 units performed the best for
+both binary and multiclass classification tasks.
+
+
+### Next Steps
+
+The next steps of this project has several paths ahead:
+
+1. **To improve experimentation and iteration**, it might be good to find a
+   smaller subset of datasets for each task to train and test on. Research on
+   meta-learning typically trains on a small number of similarly structured
+   tasks, whereas so far I've been using tens of different datasets to train
+   on. Before scaling up to many datasets, it might be expedient to select
+   a smaller set of datasets of varying difficulty. This would speed up
+   time-to-result for any given experiment.
+2. (1) would enable more conclusive experiments for the meta-learning
+   capabilities of the metalearn architecture. It seems like the most promising
+   direction for this would be to train classification task types (binary and
+   multiclass), and then to meta-test on regression tasks, since the controller
+   will have to access a previously un-traversed part of the action space.
+3. **To further improve performance**, extend the controller to ensemble a
+   set of ML frameworks proposed in parallel per iteration.
+4. **Improve inner-loop interface** so that the system is easier to maintain
+   and extend. This would involve some refactoring of the way that datasets
+   are handled for training in the inner loop, e.g. support text data. Make it
+   more flexible to use different training and validation procedure, not just
+   bootstrap sampling, i.e. also support cross-validation.
+
+
 ## 12/04/2019
 
 ### Single RNN Does not Meta-learn
@@ -13,7 +133,7 @@ frozen. Consider two hypotheses:
    passed along to the next time step. In a sequence decoder setting,
    does this even make sense to do? The gradient should be backpropped along all
    the way back to the beginning of the episode, so I think the current
-   implementation is preventing the controller from learning anything time scales
+   implementation is preventing the controller from learning time scales
    beyond selecting the actions that specify an ML Framework.
 2. Right now the RNN has to model two things: the sequences of actions that
    produce high rewards, and how previous action and reward `(a_prev, r_prev)`
