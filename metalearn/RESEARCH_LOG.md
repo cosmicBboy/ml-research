@@ -111,6 +111,10 @@ The next steps of this project has several paths ahead:
    direction for this would be to train classification task types (binary and
    multiclass), and then to meta-test on regression tasks, since the controller
    will have to access a previously un-traversed part of the action space.
+3. Expand metafeature set to include more comprehensive set of dataset
+   statistics. See [this paper][supp-efficient-robust-auto-ml] for examples
+   of such statistics. This would provide the controller with a richer feature
+   set to learn the meta-learning algorithm in the outer loop.
 3. **To further improve performance**, extend the controller to ensemble a
    set of ML frameworks proposed in parallel per iteration.
 4. **Improve inner-loop interface** so that the system is easier to maintain
@@ -387,3 +391,6 @@ In [this implementation](https://github.com/titu1994/neural-architecture-search/
 of the NAS RNN controller, each timestep gets it's own classifier, based on the
 state space of the hyperparameter that the controller is trying to predict at
 that time step.
+
+
+[supp-efficient-robust-auto-ml]: https://ml.informatik.uni-freiburg.de/papers/15-NIPS-auto-sklearn-supplementary.pdf
