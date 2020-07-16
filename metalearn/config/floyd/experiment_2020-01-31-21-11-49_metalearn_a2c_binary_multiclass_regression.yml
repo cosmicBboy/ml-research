@@ -19,28 +19,24 @@ parameters:
   gamma: 0.99
   meta_reward_multiplier: 1.0
   n_episodes: 1000
-  n_iter: 50
-  n_eval_iter: 50
+  n_iter: 100
+  n_eval_iter: 100
   learning_rate: 0.005
   optim_beta1: 0.9
   optim_beta2: 0.999
   env_sources:
-  - SKLEARN
-  - OPEN_ML
-  - AUTOSKLEARN_BENCHMARK
-  test_env_sources:
   - OPEN_ML_BENCHMARK_CC18
+  test_env_sources:
   - KAGGLE
+  - SKLEARN
   target_types:
   - BINARY
-  - MULTICLASS
-  - REGRESSION
   test_env_target_types:
   - BINARY
   - MULTICLASS
   - REGRESSION
   error_reward: -1
-  n_samples: 10000
+  n_samples: 100000
   per_framework_time_limit: 360
   per_framework_memory_limit: 5000
   metric_logger: floyd

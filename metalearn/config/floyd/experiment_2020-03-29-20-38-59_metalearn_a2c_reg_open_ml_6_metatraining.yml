@@ -1,0 +1,56 @@
+name: metalearn_a2c_reg_open_ml_6_metatraining
+experiment_type: METALEARN_REINFORCE
+description: 'small dataset distribution: regression meta-train, classification meta-test'
+created_at: 2020-03-29-20-38-59
+git_hash: 9675b3b
+parameters:
+  datasets: null
+  test_datasets: null
+  output_fp: /output
+  input_size: 128
+  hidden_size: 128
+  output_size: 128
+  n_layers: 1
+  dropout_rate: 0.2
+  entropy_coef: 0.5
+  entropy_coef_anneal_to: 0.1
+  entropy_coef_anneal_by: 0.75
+  normalize_reward: true
+  gamma: 0.99
+  meta_reward_multiplier: 1.0
+  n_episodes: 500
+  n_iter: 50
+  n_eval_iter: 50
+  n_eval_samples: 10
+  learning_rate: 0.005
+  optim_beta1: 0.9
+  optim_beta2: 0.999
+  env_sources:
+  - OPEN_ML
+  - KAGGLE
+  test_env_sources:
+  - SKLEARN
+  - OPEN_ML_BENCHMARK_CC18
+  target_types:
+  - REGRESSION
+  test_env_target_types:
+  - BINARY
+  - REGRESSION
+  - MULTICLASS
+  test_set_config:
+    OPEN_ML:
+      n: 5
+      random_state: 100
+  error_reward: 0
+  n_samples: 10000
+  per_framework_time_limit: 180
+  per_framework_memory_limit: 5000
+  metric_logger: floyd
+  fit_verbose: 0
+  controller_seed: 1000
+  task_environment_seed: 100
+  hyperparameters:
+    entropy_coef_anneal_to: [0.01, 0.03, 0.1, 0.3]
+notes:
+- initial experiment, train on 6 of the open-ml cc18 datasets, binary and
+  multiclass tasks

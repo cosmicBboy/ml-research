@@ -97,7 +97,7 @@ def create():
 @click.argument("dir-path")
 @click.option("--experiment-type",
               type=click.Choice([x.name for x in ExperimentType]),
-              required=True)
+              default="METALEARN_REINFORCE")
 @click.option("--description", default="")
 @click.option("--floyd", is_flag=True)
 def create_config(name, dir_path, experiment_type, description, floyd):

@@ -45,7 +45,7 @@ DATASOURCE_TYPES = [
     DataSourceType.OPEN_ML_BENCHMARK_CC18,
 ]
 
-AUTOSKLEARN_BENCHMARN_TASK_IDS = frozenset(autosklearn_clf_task_ids.TASK_IDS)
+AUTOSKLEARN_BENCHMARK_TASK_IDS = frozenset(autosklearn_clf_task_ids.TASK_IDS)
 
 
 def _map_feature(feature):
@@ -220,7 +220,7 @@ def classification_envs(
         _filter_out_ids(
             openml.tasks.list_tasks(task_type_id=task_type.value, size=n),
             # exclude any benchmark tasks
-            AUTOSKLEARN_BENCHMARN_TASK_IDS.union(
+            AUTOSKLEARN_BENCHMARK_TASK_IDS.union(
                 set(openml.study.get_suite('OpenML-CC18').tasks)
             )),
         task_type)
@@ -239,7 +239,7 @@ def regression_envs(
         _filter_out_ids(
             openml.tasks.list_tasks(task_type_id=task_type.value, size=n),
             # exclude any benchmark tasks
-            AUTOSKLEARN_BENCHMARN_TASK_IDS.union(
+            AUTOSKLEARN_BENCHMARK_TASK_IDS.union(
                 set(openml.study.get_suite('OpenML-CC18').tasks)
             )),
         task_type)

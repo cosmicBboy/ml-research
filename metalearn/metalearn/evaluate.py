@@ -45,40 +45,54 @@ def load_eval_task_env():
         target_types=["BINARY"])
 
 
-def evaluate_controller(controller, task_env, meta_reward_multiplier, n=20):
+def _compute_inference_results(
+        task_env, inference_engine, n_shots, n_eval_samples,
+        evaluate_test_env=False):
+
+    if evaluate_test_env:
+        data_distribution = task_env.test_data_distribution
+        inference_fn = inference_engine.evaluate_test_data_envs
+    else:
+        data_distribution = task_env.data_distribution
+        inference_fn = inference_engine.evaluate_training_data_envs
+
+    data_dist_inference_results = []
+    for data_env in data_distribution:
+        for i in range(n_eval_samples):
+            inference_results = inference_fn(
+                n=n_shots, datasets=[data_env.name], verbose=True)
+            data_dist_inference_results.append(
+                create_inference_result_df(inference_results)
+                .assign(
+                    data_env=data_env.name,
+                    target_type=data_env.target_type.name,
+                    n_eval_sample=i,
+                )
+            )
+    data_dist_inference_results = \
+        None if len(data_dist_inference_results) == 0 \
+        else pd.concat(data_dist_inference_results)
+
+    return data_dist_inference_results
+
+
+def evaluate_controller(
+        controller, task_env, meta_reward_multiplier, n_shots=20,
+        n_eval_samples=5):
+
     inference_engine = CASHInference(
         controller, task_env, meta_reward_multiplier)
 
     # evaluate controller on training data envs
-    train_env_inference_results = []
-    for train_data_env in task_env.data_distribution:
-        inference_results = inference_engine.evaluate_training_data_envs(
-            n=n, datasets=[train_data_env.name], verbose=True)
-        train_env_inference_results.append(
-            create_inference_result_df(inference_results)
-            .assign(
-                data_env=train_data_env.name,
-                target_type=train_data_env.target_type.name,
-            )
-        )
-    train_env_inference_results = \
-        None if len(train_env_inference_results) == 0 \
-        else pd.concat(train_env_inference_results)
+    train_env_inference_results = _compute_inference_results(
+        task_env, inference_engine, n_shots, n_eval_samples,
+    )
 
     # evaluate controller on test data environments
-    test_env_inference_results = []
-    for test_data_env in task_env.test_data_distribution:
-        inference_results = inference_engine.evaluate_test_data_envs(
-            n=n, datasets=[test_data_env.name], verbose=True)
-        test_env_inference_results.append(
-            create_inference_result_df(inference_results)
-            .assign(
-                data_env=test_data_env.name,
-                target_type=train_data_env.target_type.name,
-            )
-        )
-    test_env_inference_results = None if len(test_env_inference_results) == 0 \
-        else pd.concat(test_env_inference_results)
+    test_env_inference_results = _compute_inference_results(
+        task_env, inference_engine, n_shots, n_eval_samples,
+        evaluate_test_env=True,
+    )
 
     return {
         "training_env": train_env_inference_results,
@@ -87,20 +101,16 @@ def evaluate_controller(controller, task_env, meta_reward_multiplier, n=20):
 
 
 def create_inference_result_df(inference_results):
+
     def _tabulate_results(fn, key):
-        df = pd.DataFrame(
-            {k: [fn(x) for x in v]
-             for k, v in inference_results.items()})
+        df = pd.DataFrame({
+            k: [fn(x) for x in v]
+            for k, v in inference_results.items()
+        })
         df = df.unstack().reset_index([0, 1])
         df.columns = ["data_env", "n_inference_steps", "value"]
         df["key"] = key
         return df[["data_env", "n_inference_steps", "key", "value"]]
-
-    def _tabulate_mlf(mlf):
-        if mlf is None:
-            return mlf
-        else:
-            return str(mlf.named_steps)
 
     return pd.concat([
         _tabulate_results(lambda x: x.validation_score, "validation_score"),

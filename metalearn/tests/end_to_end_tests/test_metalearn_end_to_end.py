@@ -78,7 +78,7 @@ def _fit_kwargs():
 
 def test_metalearn_reinforce_fit():
     """Ensure MetaLearn training routine executes."""
-    n_episodes = 20
+    n_episodes = 10
     t_env = _task_environment()
     a_space = _algorithm_space()
     controller = _metalearn_controller(a_space, t_env)
@@ -140,7 +140,7 @@ def test_metalearn_entropy_regularizer():
 
 def test_metalearn_reinforce_regressor():
     """Test cash reinforce regression data environments."""
-    n_episodes = 50
+    n_episodes = 10
     for dataset in ["sklearn.boston", "sklearn.diabetes", "sklearn.linnerud"]:
         a_space = _algorithm_space()
         t_env = _task_environment(
@@ -178,7 +178,7 @@ def test_cash_missing_data():
 
 def test_kaggle_regression_data():
     """Test regression dataset from kaggle."""
-    n_episodes = 3
+    n_episodes = 10
     a_space = _algorithm_space(
         classifiers=[components.regressors.lasso_regression()],
     )
@@ -207,7 +207,7 @@ def test_kaggle_regression_data():
 def test_kaggle_classification_data():
     """Test classification dataset from kaggle."""
     torch.manual_seed(100)
-    n_episodes = 3
+    n_episodes = 10
     a_space = _algorithm_space(
         classifiers=[components.classifiers.logistic_regression()],
     )
@@ -234,7 +234,7 @@ def test_kaggle_classification_data():
 
 
 def test_openml_regression_data():
-    n_episodes = 3
+    n_episodes = 10
     a_space = _algorithm_space(
         classifiers=[components.regressors.lasso_regression()],
     )

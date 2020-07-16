@@ -42,6 +42,7 @@ ExperimentConfig = namedtuple(
         "created_at",
         "git_hash",
         "parameters",
+        "notes",
     ])
 
 
@@ -76,7 +77,9 @@ def create_config(name, experiment_type, description=None,
         description=description,
         created_at=created_at.strftime(date_format),
         git_hash=git_hash.strip().decode("utf-8"),
-        parameters=parameters)
+        parameters=parameters,
+        notes=None,
+    )
 
 
 def write_config(config, dir_path, fname=None):
@@ -92,8 +95,10 @@ def write_config(config, dir_path, fname=None):
 
 def read_config(fp):
     with open(fp, "r") as f:
-        return ExperimentConfig(
-            **yaml.load(f, Loader=yamlordereddictloader.Loader))
+        config_dict = yaml.load(f, Loader=yamlordereddictloader.Loader)
+    if "notes" not in config_dict:
+        config_dict["notes"] = None
+    return ExperimentConfig(**config_dict)
 
 
 def _config_filepath(dir_path, config):
@@ -165,12 +170,13 @@ def run_experiment(
         meta_reward_multiplier=1.,
         n_episodes=100,
         n_iter=16,
+        n_eval_iter=10,
+        n_eval_samples=5,
         learning_rate=0.005,
         optim_beta1=0.9,
         optim_beta2=0.999,
         env_sources=["SKLEARN", "OPEN_ML", "KAGGLE"],
         test_env_sources=["AUTOSKLEARN_BENCHMARK"],
-        n_eval_iter=10,
         target_types=["BINARY", "MULTICLASS"],
         test_env_target_types=["BINARY", "MULTICLASS"],
         test_set_config={
@@ -220,9 +226,11 @@ def run_experiment(
             n_iter=n_iter,
             verbose=bool(int(fit_verbose)),
             procnum=proc_num)
-        # serialize reinforce controller here
+
+        # serialize reinforce controller
         reinforce.controller.save(
             data_path / f"controller_trial_{proc_num}.pt")
+
         # serialize best mlfs
         save_best_mlfs(data_path, reinforce.best_mlfs, proc_num)
 
@@ -231,7 +239,9 @@ def run_experiment(
             reinforce.t_env,
             meta_reward_multiplier=hyperparameters.get(
                 "meta_reward_multiplier", meta_reward_multiplier),
-            n=n_eval_iter)
+            n_shots=n_eval_iter,
+            n_eval_samples=n_eval_samples,
+        )
 
         for env_key, results in evaluation_results.items():
             if results is None:

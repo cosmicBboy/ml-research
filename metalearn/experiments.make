@@ -35,3 +35,9 @@ metalearn-a2c-layer-size:
 
 metalearn-a2c-controller-depth:
 	@${CMD} ${CONF}/experiment_2020-03-03-21-37-52_metalearn_a2c_binary_controller_depth.yml metalearn_a2c_binary_controller_depth
+
+metalearn-a2c-small-envs-clf:
+	@${CMD} ${CONF}/experiment_2020-03-29-20-04-24_metalearn_a2c_clf_open_ml_6_metatraining.yml small_task_env_clf
+
+metalearn-a2c-small-task-env-reg:
+	@${CMD} ${CONF}/experiment_2020-03-29-20-38-59_metalearn_a2c_reg_open_ml_6_metatraining.yml small_task_env_reg
