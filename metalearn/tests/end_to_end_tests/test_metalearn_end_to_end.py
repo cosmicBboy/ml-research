@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+import pytest
 import torch
 
 from metalearn import components
@@ -39,8 +40,8 @@ def _task_environment(
 
 def _algorithm_space(classifiers=None, regressors=None):
     return AlgorithmSpace(
-        classifiers=None,
-        regressors=None,
+        classifiers=classifiers,
+        regressors=regressors,
         with_end_token=False,
         hyperparam_with_start_token=False,
         hyperparam_with_none_token=False,
@@ -146,7 +147,6 @@ def test_metalearn_reinforce_regressor():
         t_env = _task_environment(
             target_types=["REGRESSION", "MULTIREGRESSION"],
             dataset_names=[dataset])
-        a_space = _algorithm_space()
         controller = _metalearn_controller(a_space, t_env)
         reinforce = _metalearn_reinforce(controller, t_env)
         reinforce.fit(
@@ -179,16 +179,14 @@ def test_cash_missing_data():
 def test_kaggle_regression_data():
     """Test regression dataset from kaggle."""
     n_episodes = 10
-    a_space = _algorithm_space(
-        classifiers=[components.regressors.lasso_regression()],
-    )
+    a_space = _algorithm_space()
     for dataset_name in [
-                "kaggle.restaurant_revenue_prediction",
-                "kaggle.nyc_taxi_trip_duration",
-                "kaggle.mercedes_benz_greener_manufacturing",
-                "kaggle.allstate_claims_severity",
-                "kaggle.house_prices_advanced_regression_techniques",
-            ]:
+        "kaggle.restaurant_revenue_prediction",
+        "kaggle.nyc_taxi_trip_duration",
+        "kaggle.mercedes_benz_greener_manufacturing",
+        "kaggle.allstate_claims_severity",
+        "kaggle.house_prices_advanced_regression_techniques",
+    ]:
         t_env = _task_environment(
             env_sources=["KAGGLE"],
             target_types=["REGRESSION"],
@@ -208,16 +206,14 @@ def test_kaggle_classification_data():
     """Test classification dataset from kaggle."""
     torch.manual_seed(100)
     n_episodes = 10
-    a_space = _algorithm_space(
-        classifiers=[components.classifiers.logistic_regression()],
-    )
+    a_space = _algorithm_space()
     for dataset_name in [
-                "kaggle.homesite_quote_conversion",
-                "kaggle.santander_customer_satisfaction",
-                "kaggle.bnp_paribas_cardif_claims_management",
-                "kaggle.poker_rule_induction",
-                "kaggle.costa_rican_household_poverty_prediction",
-            ]:
+        "kaggle.homesite_quote_conversion",
+        "kaggle.santander_customer_satisfaction",
+        "kaggle.bnp_paribas_cardif_claims_management",
+        "kaggle.poker_rule_induction",
+        "kaggle.costa_rican_household_poverty_prediction",
+    ]:
         t_env = _task_environment(
             env_sources=["KAGGLE"],
             target_types=["BINARY", "MULTICLASS"],
@@ -234,10 +230,8 @@ def test_kaggle_classification_data():
 
 
 def test_openml_regression_data():
-    n_episodes = 10
-    a_space = _algorithm_space(
-        classifiers=[components.regressors.lasso_regression()],
-    )
+    n_episodes = 3
+    a_space = _algorithm_space()
     datasets = openml_api.regression_envs(
         n=openml_api.N_REGRESSION_ENVS)
     for dataset_name in datasets.keys():
@@ -245,7 +239,7 @@ def test_openml_regression_data():
             env_sources=["OPEN_ML"],
             target_types=["REGRESSION"],
             dataset_names=[dataset_name],
-            n_samples=500)
+            n_samples=100)
         controller = _metalearn_controller(a_space, t_env)
         reinforce = _metalearn_reinforce(controller, t_env)
         reinforce.fit(
@@ -258,9 +252,7 @@ def test_openml_regression_data():
 
 def test_openml_classification_data():
     n_episodes = 10
-    a_space = _algorithm_space(
-        classifiers=[components.classifiers.logistic_regression()],
-    )
+    a_space = _algorithm_space()
     datasets = openml_api.classification_envs(
         n=openml_api.N_CLASSIFICATION_ENVS)
     for dataset_name in datasets.keys():
@@ -326,7 +318,8 @@ def test_cash_classifier_exclusion_masks():
             "feature_preprocessors": [components.feature_preprocessors.pca()],
             "classifiers": [
                 components.classifiers.logistic_regression(),
-                components.classifiers.support_vector_classifier_linear()]
+                components.classifiers.support_vector_classifier_linear()
+            ]
         },
         t_env_kwargs={
             "target_types": ["BINARY"],
@@ -341,7 +334,8 @@ def test_cash_regressor_exclusion_masks():
         a_space_kwargs={
             "feature_preprocessors": [components.feature_preprocessors.pca()],
             "regressors": [
-                components.regressors.support_vector_regression_nonlinear()]
+                components.regressors.support_vector_regression_nonlinear()
+            ]
         },
         t_env_kwargs={
             "target_types": ["REGRESSION"],
@@ -356,10 +350,12 @@ def test_cash_feature_processor_exclusion_masks():
         a_space_kwargs={
             "feature_preprocessors": [
                 components.feature_preprocessors.kernel_pca(),
-                components.feature_preprocessors.nystroem_sampler()],
+                components.feature_preprocessors.nystroem_sampler()
+            ],
             "classifiers": [components.classifiers.k_nearest_neighbors()],
             "regressors": [
-                components.regressors.k_nearest_neighbors_regression()]
+                components.regressors.k_nearest_neighbors_regression()
+            ]
         },
         t_env_kwargs={
             "target_types": ["BINARY", "REGRESSION"],

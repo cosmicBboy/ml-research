@@ -1,3 +1,8 @@
 jupyter
 jupyterlab
 pandera
+streamlit
+dash
+dash-core-components
+dash-html-components
+git://github.com/cosmicBboy/floyd-cli.git#egg=floyd-cli
