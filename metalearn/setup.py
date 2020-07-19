@@ -27,6 +27,7 @@ setup(
         "numpy",
         "openml==0.9.0",
         "pandas==1.0.5",
+        "plotly",
         "psutil",
         "pynisher",
         "torch==1.5.0",
