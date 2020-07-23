@@ -18,12 +18,11 @@ N_VALUES = 5  # number of values to generate for int/float state spaces
 
 class HyperparameterBase(object):
 
-    def __init__(self, hname, state_space, default, exclude_conditions=None):
+    def __init__(self, hname, state_space, default):
         """Create hyperparameter base class."""
         self.hname = hname
         self._state_space = list(state_space)
         self.default = default
-        self.exclude_conditions = exclude_conditions
 
     def __repr__(self):
         return "<%s: \"%s\">" % (type(self).__name__, self.hname)
@@ -47,21 +46,19 @@ class HyperparameterBase(object):
 
 class CategoricalHyperparameter(HyperparameterBase):
 
-    def __init__(self, hname, state_space, default, exclude_conditions=None):
-        super().__init__(hname, state_space, default, exclude_conditions)
+    def __init__(self, hname, state_space, default):
+        super().__init__(hname, state_space, default)
 
 
 class NumericalHyperparameter(HyperparameterBase):
 
-    def __init__(self, hname, min, max, dtype, default, log, n,
-                 exclude_conditions=None):
+    def __init__(self, hname, min, max, dtype, default, log, n):
         self.min = dtype(min)
         self.max = dtype(max)
         self.dtype = dtype
         self.n = n
         self.log = log
-        super().__init__(hname, self._init_state_space(), default,
-                         exclude_conditions)
+        super().__init__(hname, self._init_state_space(), default)
 
     def _init_state_space(self):
         if self.log:
@@ -75,18 +72,14 @@ class NumericalHyperparameter(HyperparameterBase):
 
 class UniformIntHyperparameter(NumericalHyperparameter):
 
-    def __init__(self, hname, min, max, default, log=False, n=N_VALUES,
-                 exclude_conditions=None):
-        super().__init__(hname, min, max, int, default, log, n=n,
-                         exclude_conditions=exclude_conditions)
+    def __init__(self, hname, min, max, default, log=False, n=N_VALUES):
+        super().__init__(hname, min, max, int, default, log, n=n)
 
 
 class UniformFloatHyperparameter(NumericalHyperparameter):
 
-    def __init__(self, hname, min, max, default, log=False, n=N_VALUES,
-                 exclude_conditions=None):
-        super().__init__(hname, min, max, float, default, log, n=n,
-                         exclude_conditions=exclude_conditions)
+    def __init__(self, hname, min, max, default, log=False, n=N_VALUES):
+        super().__init__(hname, min, max, float, default, log, n=n)
 
 
 class TuplePairHyperparameter(HyperparameterBase):
@@ -95,11 +88,9 @@ class TuplePairHyperparameter(HyperparameterBase):
     For hyperparameters in the form: `(x, y)`
     """
 
-    def __init__(self, hname, hyperparameters, default,
-                 exclude_conditions=None):
+    def __init__(self, hname, hyperparameters, default):
         self.hyperparameters = hyperparameters
-        super().__init__(hname, self._init_state_space(), default,
-                         exclude_conditions)
+        super().__init__(hname, self._init_state_space(), default)
 
     def _init_state_space(self):
         return list(
@@ -113,12 +104,10 @@ class TupleRepeatingHyperparameter(HyperparameterBase):
     For hyperparameters in the form: `(x0, x1, ... , xn)`
     """
 
-    def __init__(self, hname, hyperparameter, max_nrepeats, default,
-                 exclude_conditions=None):
+    def __init__(self, hname, hyperparameter, max_nrepeats, default):
         self.hyperparameter = hyperparameter
         self.max_nrepeats = max_nrepeats
-        super().__init__(hname, self._init_state_space(), default,
-                         exclude_conditions)
+        super().__init__(hname, self._init_state_space(), default)
 
     def _state_space_n(self, nrepeats):
         return list(
@@ -141,13 +130,11 @@ class BaseEstimatorHyperparameter(HyperparameterBase):
     For example, for AdaBoost or Bagging estimators.
     """
 
-    def __init__(self, hname, base_estimator, hyperparameters, default,
-                 exclude_conditions=None):
+    def __init__(self, hname, base_estimator, hyperparameters, default):
         """Initialize base estimator hyperparameter."""
         self.base_estimator = base_estimator
         self.hyperparameters = hyperparameters
-        super().__init__(hname, self._init_state_space(), default,
-                         exclude_conditions)
+        super().__init__(hname, self._init_state_space(), default)
 
     def default_in_state_space(self):
         for base_est in self._state_space:
@@ -174,15 +161,13 @@ class EmbeddedEstimatorHyperparameter(HyperparameterBase):
     For example, in the ColumnTransformer ``transformer`` argument.
     """
 
-    def __init__(self, estimator_name, hyperparameter,
-                 exclude_conditions=None):
+    def __init__(self, estimator_name, hyperparameter):
         self.hyperparameter = hyperparameter
         self.estimator_name = estimator_name
         super().__init__(
             f"{self.estimator_name}__{self.hyperparameter.hname}",
             hyperparameter.get_state_space(),
-            hyperparameter.default,
-            exclude_conditions)
+            hyperparameter.default)
 
 
 class MultiBaseEstimatorHyperparameter(HyperparameterBase):

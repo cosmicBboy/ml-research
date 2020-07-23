@@ -11,6 +11,7 @@ class AlgorithmType(Enum):
     FEATURE_PREPROCESSOR = "feature_preprocessor"
     CLASSIFIER = "classifier"
     REGRESSOR = "regressor"
+    ESTIMATOR = "estimator"
 
 
 class FeatureType(Enum):
