@@ -1,4 +1,7 @@
-"""Enforce fit limit."""
+"""Enforce fit limit.
+
+This module was adapted from https://github.com/sfalkner/pynisher
+"""
 
 import resource
 import signal
@@ -205,7 +208,7 @@ class enforce_limits (object):
                 self2.result = None
                 self2.exit_status = None
                 self2.resources_function = None
-                self2.resources_pynisher = None
+                self2.resources_parent = None
                 self2.wall_clock_time = None
                 self2.stdout = None
                 self2.stderr = None
@@ -227,7 +230,7 @@ class enforce_limits (object):
                 # create and start the process
                 subproc = multiprocessing.Process(
                     target=subprocess_func,
-                    name="pynisher function call",
+                    name="subprocess function call",
                     args=(
                         self2.func,
                         child_conn,
@@ -273,7 +276,7 @@ class enforce_limits (object):
                 finally:
                     self2.resources_function = resource.getrusage(
                         resource.RUSAGE_CHILDREN)
-                    self2.resources_pynisher = resource.getrusage(
+                    self2.resources_parent = resource.getrusage(
                         resource.RUSAGE_SELF)
                     self2.wall_clock_time = time.time()-start
                     self2.exit_status = 5 if self2.exit_status is None \

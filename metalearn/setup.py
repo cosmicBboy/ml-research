@@ -6,7 +6,7 @@ with open('README.md') as f:
 
 setup(
     name="meta-ml",
-    version="0.0.18",
+    version="0.0.19",
     description="MetaRL-based Estimator using Task-encodings for AutoML",
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -29,7 +29,6 @@ setup(
         "pandas==1.0.5",
         "plotly",
         "psutil",
-        "pynisher",
         "torch==1.5.0",
         "scikit-learn==0.21.2",
         "scipy",

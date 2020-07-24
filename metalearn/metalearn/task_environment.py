@@ -7,8 +7,6 @@ import warnings
 
 from functools import partial
 
-from pynisher import TimeoutException, MemorylimitException, \
-    CpuTimeoutException, SubprocessException, AnythingException
 from sklearn.base import clone
 from sklearn.preprocessing import label_binarize
 from sklearn.utils.validation import check_is_fitted
@@ -19,11 +17,13 @@ from .data_types import FeatureType, TargetType, DataSourceType
 from .errors import is_valid_fit_error, is_valid_predict_error, \
     FIT_WARNINGS, SCORE_WARNINGS, SCORE_ERRORS
 from . import enforce_fit_limits, scorers, utils
+from .enforce_fit_limits import TimeoutException, MemorylimitException, \
+    CpuTimeoutException, SubprocessException, AnythingException
 
 logger = logging.getLogger(__name__)
 
 
-PYNISHER_EXCEPTION = TimeoutException, MemorylimitException, \
+FIT_LIMIT_EXCEPTIONS = TimeoutException, MemorylimitException, \
     CpuTimeoutException, SubprocessException, AnythingException
 
 
@@ -98,8 +98,7 @@ class TaskEnvironment(object):
             https://stackoverflow.com/questions/3274385/how-to-limit-memory-of-a-os-x-program-ulimit-v-neither-m-are-working  # noqa E53
         :param int fit_grace_period: grace period in seconds that enables
             fit process to end properly so that subprocess that fits model
-            can correctly identify cause of error if any. For more details
-            see: https://github.com/sfalkner/pynisher
+            can correctly identify cause of error if any.
         :param list[str] dataset_names: names of datasets to include in the
             task environment.
         :param list[str] test_dataset_names: names of datasets to exclude from
@@ -344,7 +343,7 @@ class TaskEnvironment(object):
         if fit_error is None:
             return mlf
         elif self.enforce_limits and any(
-                [isinstance(fit_error, i) for i in PYNISHER_EXCEPTION]):
+                [isinstance(fit_error, i) for i in FIT_LIMIT_EXCEPTIONS]):
             # if mlf fit routine incurred memory and runtime limit, task
             # environment should evaluate this as a negative reward.
             logger.info(
@@ -475,7 +474,6 @@ def _ml_framework_fitter(mlf, X, y):
         BaseException if calling `mlf.fit` fails and None if it fit
         successfully.
     """
-    # TODO: handle MemoryError due to pynisher limits.
     # raise numpy overflow errors
     with warnings.catch_warnings():
         # TODO: calling this every time an mlf is evaluated seems
