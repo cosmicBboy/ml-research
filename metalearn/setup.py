@@ -6,7 +6,7 @@ with open('README.md') as f:
 
 setup(
     name="meta-ml",
-    version="0.0.20",
+    version="0.0.21",
     description="MetaRL-based Estimator using Task-encodings for AutoML",
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -29,9 +29,13 @@ setup(
         "plotly",
         "psutil",
         "torch==1.5.0",
-        "scikit-learn==0.21.2",
         "scipy",
         "yamlordereddictloader",
     ],
+    extras_require={
+        "sklearn": [
+            "scikit-learn>=0.21.2",
+        ]
+    },
     scripts=["bin/metalearn"],
 )
