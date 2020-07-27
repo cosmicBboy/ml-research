@@ -4,9 +4,27 @@ with open('README.md') as f:
     long_description = f.read()
 
 
+extras_require = {
+    "sklearn": [
+        "scikit-learn>=0.21.2",
+    ],
+    "tasks": [
+        "openml==0.9.0",
+        "kaggle",
+        "psutil",
+    ],
+    "experiments": [
+        "yamlordereddictloader",
+    ]
+}
+
+extras_require["all"] = sorted(
+    {v for req in extras_require.values() for v in req}
+)
+
 setup(
     name="meta-ml",
-    version="0.0.21",
+    version="0.0.22",
     description="MetaRL-based Estimator using Task-encodings for AutoML",
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -18,24 +36,13 @@ setup(
         "metalearn.data_environments.feature_maps",
         "metalearn.inference"],
     install_requires=[
-        "colorlover",
         "click==7.0",
         "dill==0.3.1.1",
-        "kaggle",
-        "matplotlib",
         "numpy",
-        "openml==0.9.0",
         "pandas==1.0.5",
-        "plotly",
-        "psutil",
         "torch==1.5.0",
         "scipy",
-        "yamlordereddictloader",
     ],
-    extras_require={
-        "sklearn": [
-            "scikit-learn>=0.21.2",
-        ]
-    },
+    extras_require=extras_require,
     scripts=["bin/metalearn"],
 )

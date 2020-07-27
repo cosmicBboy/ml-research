@@ -1,6 +1,9 @@
+colorlover
 jupyter
 jupyterlab
+matplotlib
 pandera
+plotly
 streamlit
 dash
 dash-core-components
