@@ -6,7 +6,7 @@ with open('README.md') as f:
 
 setup(
     name="meta-ml",
-    version="0.0.19",
+    version="0.0.20",
     description="MetaRL-based Estimator using Task-encodings for AutoML",
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -20,7 +20,6 @@ setup(
     install_requires=[
         "colorlover",
         "click==7.0",
-        "cytoolz",
         "dill==0.3.1.1",
         "kaggle",
         "matplotlib",
