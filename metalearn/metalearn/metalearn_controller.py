@@ -70,19 +70,6 @@ class MetaLearnController(nn.Module):
         self.output_size = output_size
         self.metafeature_encoding_size = metafeature_encoding_size
 
-        # an array storing classifiers for algorithm components and
-        # hyperparameter settings
-        self.action_classifiers = []
-        # maps algorithm types to index pointer referring to action classifier
-        # for algorithm components of that type.
-        self.atype_map = {}
-        # maps algorithm component to list of index pointers referring to
-        # action classifier for hyperparameters for that component
-        self.acomponent_to_hyperparams = defaultdict(list)
-        # maps hyperparameter actions to conditional masks that determines what
-        # subsequent actions the agent can make.
-        self.hyperparam_exclude_conditions = defaultdict(dict)
-
         # buffers needed for backprop
         self.value_buffer = []
         self.log_prob_buffer = []
@@ -129,33 +116,65 @@ class MetaLearnController(nn.Module):
         # for each algorithm component and hyperparameter value, create a
         # softmax classifier over the number of unique components/hyperparam
         # values.
-        self._mlf_signature = mlf_signature
+        self.mlf_signature = mlf_signature
+        self.action_modules = nn.ModuleDict()  # map action keys to nn.Modules
+        self.action_meta = {}  # map action keys to action metadata
+        self.action_index = {
+            # map algorithm type to algorithm components
+            "algo_type": {},
+            # map algorithm component to list of keys of its hyperparameters
+            "algo_to_hp": defaultdict(list),
+        }
+
         all_components = self.a_space.component_dict_from_signature(
-            self.a_space.ALL_COMPONENTS if self._mlf_signature is None
-            else self._mlf_signature)
-        idx = 0
+            self.a_space.ALL_COMPONENTS if self.mlf_signature is None
+            else self.mlf_signature)
 
         for atype, acomponents in all_components.items():
             # action classifier
-            self._add_action_classifier(
-                idx, CASHComponent.ALGORITHM, atype, acomponents, None)
-            self.atype_map[atype] = idx
-            idx += 1
-            for acomponent in acomponents:
-                h_state_space = self.a_space.h_state_space([acomponent])
-                h_exclude_cond_map = self.a_space.h_exclusion_conditions(
-                    [acomponent])
-                for hname, hchoices in h_state_space.items():
-                    exclude_masks = self._exclusion_condition_to_mask(
-                        h_state_space, h_exclude_cond_map.get(hname, None))
-                    self._add_action_classifier(
-                        idx, CASHComponent.HYPERPARAMETER, hname, hchoices,
-                        exclude_masks)
-                    self.acomponent_to_hyperparams[acomponent].append(idx)
-                    idx += 1
-        self.n_actions = len(self.action_classifiers)
+            algo_type_key = f"algo_{atype.value}"
+            self.action_modules[algo_type_key] = nn.ModuleDict({
+                "dense": nn.Linear(self.output_size, len(acomponents)),
+                # the continuous-valued action outputs should be handled
+                # with a mu and sigma output (linear -> softplus).
+                "softmax": nn.Softmax(1),
+                "embedding": nn.Embedding(
+                    len(acomponents), self.input_size
+                ),
+            })
+            self.action_meta[algo_type_key] = {
+                "action_type": CASHComponent.ALGORITHM,
+                "name": atype.value,
+                "choices": acomponents,
+                "exclude_masks": None,
+            }
+            self.action_index["algo_type"][atype] = algo_type_key
 
-    def _exclusion_condition_to_mask(self, h_state_space, exclude):
+            for acomponent in acomponents:
+                hp_state_space = self.a_space.h_state_space([acomponent])
+                hp_exclude_cond_map = self.a_space.h_exclusion_conditions(
+                    [acomponent])
+                for hname, hchoices in hp_state_space.items():
+                    exclude_masks = self._exclusion_condition_to_mask(
+                        hp_state_space, hp_exclude_cond_map.get(hname, None)
+                    )
+                    hp_key = f"hp_{hname}"
+                    self.action_modules[hp_key] = nn.ModuleDict({
+                        "dense": nn.Linear(self.output_size, len(hchoices)),
+                        "softmax": nn.Softmax(1),
+                        "embedding": nn.Embedding(
+                            len(hchoices), self.input_size
+                        )
+                    })
+                    self.action_meta[hp_key] = {
+                        "action_type": CASHComponent.HYPERPARAMETER,
+                        "name": hname,
+                        "choices": hchoices,
+                        "exclude_masks": exclude_masks
+                    }
+                    self.action_index["algo_to_hp"][acomponent].append(hp_key)
+
+    def _exclusion_condition_to_mask(self, hp_state_space, exclude):
         """
         Create a mask of the action space to prevent selecting invalid states
         given previous choices. A mask value 1 means to exclude the value from
@@ -169,55 +188,31 @@ class MetaLearnController(nn.Module):
         for choice, exclude_conditions in exclude.items():
             for hname, exclude_values in exclude_conditions.items():
                 if exclude_values == EXCLUDE_ALL:
-                    mask = [1 for _ in h_state_space[hname]]
+                    mask = [1 for _ in hp_state_space[hname]]
                 else:
                     mask = [
-                        int(i in exclude_values) for i in h_state_space[hname]]
+                        int(i in exclude_values) for i in hp_state_space[hname]
+                    ]
                 exclude_masks[choice].update({hname: torch.ByteTensor(mask)})
 
         return exclude_masks
 
-    def _add_action_classifier(
-            self, action_index, action_type, name, choices,
-            exclude_masks):
-        """Add action classifier to the nn.Module."""
-        dense_attr = "action_dense_%s" % action_index
-        softmax_attr = "action_softmax_%s" % action_index
-        embedding_attr = "action_embedding_%s" % action_index
-        # set layer attributes for action classifiers
-        n_choices = len(choices)
-        setattr(self, dense_attr, nn.Linear(self.output_size, n_choices))
-        setattr(self, softmax_attr, nn.Softmax(1))
-        setattr(self, embedding_attr, nn.Embedding(n_choices, self.input_size))
-        # keep track of metadata for lookup purposes
-        self.action_classifiers.append({
-            "action_type": action_type,
-            "name": name,
-            "choices": choices,
-            "dense_attr": dense_attr,
-            "softmax_attr": softmax_attr,
-            "embedding_attr": embedding_attr,
-            "exclude_masks": exclude_masks,
-        })
-
-    def get_policy_dist(self, action, hidden, action_classifier, mask=None):
+    def get_policy_dist(self, action, hidden, action_modules, mask=None):
         """Get action distribution from policy."""
         rnn_output, hidden = self.micro_action_rnn(action, hidden)
         rnn_output = self.micro_action_dropout(
             self.micro_action_decoder(rnn_output))
 
-        dense = getattr(self, action_classifier["dense_attr"])
-        softmax = getattr(self, action_classifier["softmax_attr"])
-
         # obtain action probability distribution
         rnn_output = rnn_output.view(rnn_output.shape[0], -1)
-        logits = dense(rnn_output)
+        logits = action_modules["dense"](rnn_output)
         if mask is not None:
             logger.warning(
                 "applying mask %s to action_classifier %s" %
-                (mask, action_classifier))
+                (mask, action_modules)
+            )
             logits[mask] = float("-inf")
-        action_probs = softmax(logits)
+        action_probs = action_modules["softmax"](logits)
         return action_probs, hidden
 
     def get_value(self, state):
@@ -268,44 +263,50 @@ class MetaLearnController(nn.Module):
         # get value estimate
         value = self.get_value(state)
 
-        # create attribute dictionary that maps hyperparameter names to
-        # conditional masks
-        self._exclude_masks = {}
+        # maps hyperparameter names to conditional masks
+        self._exclude_masks: dict = {}
         # for each algorithm component type, select an algorithm
-        if self._mlf_signature is None:
-            algorithm_components = \
-                self.a_space.component_dict_from_target_type(target_type)
+        if self.mlf_signature is None:
+            algo_components = self.a_space.component_dict_from_target_type(
+                target_type
+            )
         else:
-            algorithm_components = \
-                self.a_space.component_dict_from_signature(self._mlf_signature)
+            algo_components = self.a_space.component_dict_from_signature(
+                self.mlf_signature
+            )
 
-        for atype in algorithm_components:
-            action, action_tensor, hidden = self._decode_action(
-                action_tensor, hidden, action_index=self.atype_map[atype])
-            if action is None:
+        for atype in algo_components:
+            algo_action, action_tensor, hidden = self._decode_action(
+                action_tensor, hidden,
+                action_index=self.action_index["algo_type"][atype]
+            )
+            if algo_action is None:
                 raise RuntimeError(
                     "selected action for algorithm component cannot be None.\n"
                     "exclude masks: %s\n"
                     "algorithm components: %s\n"
                     "algorithm type: %s" % (
                         self._exclude_masks,
-                        algorithm_components,
+                        algo_components,
                         atype,
                     )
                 )
-            actions.append(action)
+            actions.append(algo_action)
+
             # each algorithm is associated with a set of hyperparameters
-            for h_index in self.acomponent_to_hyperparams[action["choice"]]:
-                hyperparameter_action, action_tensor, hidden = \
-                    self._decode_action(
-                        action_tensor, hidden, action_index=h_index)
-                if hyperparameter_action is None:
+            for hp_action_index in (
+                self.action_index["algo_to_hp"][algo_action["choice"]]
+            ):
+                hp_action, action_tensor, hidden = self._decode_action(
+                    action_tensor, hidden, action_index=hp_action_index)
+                if hp_action is None:
                     logger.warning(
-                        "selected action for hyperparameter index %s for "
-                        "algorithm choice %s" % (h_index, action["choice"])
+                        "selected action for hyperparameter index "
+                        f"{hp_action_index} for algorithm choice "
+                        f"{algo_action['choice']}"
                     )
                     continue
-                actions.append(hyperparameter_action)
+                actions.append(hp_action)
         return value, actions, action_tensor, hidden
 
     def _get_exclusion_mask(self, action_name):
@@ -328,42 +329,52 @@ class MetaLearnController(nn.Module):
                 self._exclude_masks[action_name] = acc_mask
 
     def _decode_action(
-            self, action_tensor, hidden, action_index):
-        action_classifier = self.action_classifiers[action_index]
-        mask = self._get_exclusion_mask(action_classifier["name"])
+        self, action_tensor, hidden, action_index
+    ):
+
+        action_modules = self.action_modules[action_index]
+        action_meta = self.action_meta[action_index]
+
+        mask = self._get_exclusion_mask(action_meta["name"])
         if mask is not None and (mask == 1).all():
             # If all actions are masked, then don't select any choice
             logger.warning(
-                "all actions are masked for action_classifier %s" %
-                action_classifier)
+                f"all actions are masked for action {action_meta}"
+            )
             return None, action_tensor, hidden
+
         action_probs, hidden = self.get_policy_dist(
-            action_tensor, hidden, action_classifier, mask)
-        action = self._select_action(action_probs, action_classifier, mask)
+            action_tensor, hidden, action_modules, mask
+        )
+        action = self._select_action(action_probs, action_meta, mask)
         if action is None:
             return None, action_tensor, hidden
+
+        # TODO: this embedding will serve as the previous action in the next
+        # step. Perhaps the action embedding should be the action_probs vector.
         action_tensor = self.encode_embedding(
-            action_index, action["choice_index"])
+            action_index, action["choice_index"]
+        )
         return action, action_tensor, hidden
 
-    def _select_action(self, action_probs, action_classifier, mask):
+    def _select_action(self, action_probs, action_meta, mask):
         """Select action based on action probability distribution."""
         # compute unmasked log probabilitises.
         policy_dist = Categorical(action_probs)
         choice_index = policy_dist.sample()
         _choice_index = choice_index.data.item()
-        choice = action_classifier["choices"][_choice_index]
+        choice = action_meta["choices"][_choice_index]
 
         # for current choice, accumulate exclusion masks if any
-        if action_classifier["exclude_masks"] is not None and \
-                choice in action_classifier["exclude_masks"]:
-            for _, masks in action_classifier["exclude_masks"].items():
+        if action_meta["exclude_masks"] is not None and \
+                choice in action_meta["exclude_masks"]:
+            for _, masks in action_meta["exclude_masks"].items():
                 self._accumulate_exclusion_mask(masks)
 
         return {
-            "action_type": action_classifier["action_type"],
-            "action_name": action_classifier["name"],
-            "choices": action_classifier["choices"],
+            "action_type": action_meta["action_type"],
+            "action_name": action_meta["name"],
+            "choices": action_meta["choices"],
             "choice_index": _choice_index,
             "choice": choice,
             "log_prob": policy_dist.log_prob(choice_index),
@@ -372,8 +383,7 @@ class MetaLearnController(nn.Module):
 
     def encode_embedding(self, action_index, choice_index):
         """Encode action choice into embedding at input for next action."""
-        action_classifier = self.action_classifiers[action_index]
-        embedding = getattr(self, action_classifier["embedding_attr"])
+        embedding = self.action_modules[action_index]["embedding"]
         action_embedding = embedding(torch.LongTensor([choice_index]))
         return action_embedding.view(
             1, action_embedding.shape[0], action_embedding.shape[1])

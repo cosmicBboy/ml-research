@@ -205,7 +205,7 @@ def test_kaggle_regression_data():
 def test_kaggle_classification_data():
     """Test classification dataset from kaggle."""
     torch.manual_seed(100)
-    n_episodes = 10
+    n_episodes = 20
     a_space = _algorithm_space()
     for dataset_name in [
         "kaggle.homesite_quote_conversion",
@@ -230,7 +230,7 @@ def test_kaggle_classification_data():
 
 
 def test_openml_regression_data():
-    n_episodes = 3
+    n_episodes = 10
     a_space = _algorithm_space()
     datasets = openml_api.regression_envs(
         n=openml_api.N_REGRESSION_ENVS)
@@ -251,7 +251,7 @@ def test_openml_regression_data():
 
 
 def test_openml_classification_data():
-    n_episodes = 10
+    n_episodes = 20
     a_space = _algorithm_space()
     datasets = openml_api.classification_envs(
         n=openml_api.N_CLASSIFICATION_ENVS)
