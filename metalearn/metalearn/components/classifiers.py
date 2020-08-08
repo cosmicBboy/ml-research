@@ -11,8 +11,10 @@ from sklearn.tree import DecisionTreeClassifier
 
 from .algorithm_component import AlgorithmComponent, EXCLUDE_ALL
 from .hyperparameter import (
-    CategoricalHyperparameter, UniformIntHyperparameter,
-    UniformFloatHyperparameter, BaseEstimatorHyperparameter)
+    CategoricalHyperparameter,
+    UniformIntHyperparameter,
+    UniformFloatHyperparameter,
+)
 from ..data_types import AlgorithmType
 
 # TODO: add sgd classifier, xgboost classifier
@@ -194,7 +196,7 @@ def support_vector_classifier_nonlinear():
             UniformIntHyperparameter("degree", 2, 5, default=3),
             UniformFloatHyperparameter(
                 "gamma", 3.0517578125e-05, 8, default=0.1, log=True),
-            UniformFloatHyperparameter("coef0", -1, -1, default=0),
+            UniformFloatHyperparameter("coef0", -1, 1, default=0),
             CategoricalHyperparameter(
                 "shrinking", [True, False], default=True),
             UniformFloatHyperparameter(
@@ -270,14 +272,6 @@ def adaboost():
         component_class=AdaBoostClassifier,
         component_type=AlgorithmType.CLASSIFIER,
         hyperparameters=[
-            BaseEstimatorHyperparameter(
-                hname="base_estimator",
-                base_estimator=DecisionTreeClassifier,
-                hyperparameters=[
-                    UniformIntHyperparameter("max_depth", 1, 10, default=1)
-                ],
-                default=DecisionTreeClassifier(max_depth=1)
-            ),
             UniformIntHyperparameter(
                 "n_estimators", 10, 200, default=10, n=10),
             UniformFloatHyperparameter(
@@ -303,7 +297,8 @@ def extra_trees():
             UniformFloatHyperparameter(
                 "max_features", 0., 1., default=0.5),
             UniformIntHyperparameter("min_samples_split", 2, 20, default=2),
-            UniformIntHyperparameter("min_samples_leaf", 1, 20, default=1),
+            UniformFloatHyperparameter(
+                "min_samples_leaf", 0.01, 0.5, default=0.1),
             CategoricalHyperparameter(
                 "bootstrap", [True, False], default=False),
             CategoricalHyperparameter(
@@ -333,7 +328,8 @@ def gradient_boosting():
             CategoricalHyperparameter(
                 "criterion", ["friedman_mse", "mse", "mae"], default="mse"),
             UniformIntHyperparameter("min_samples_split", 2, 20, default=2),
-            UniformIntHyperparameter("min_samples_leaf", 1, 20, default=1),
+            UniformFloatHyperparameter(
+                "min_samples_leaf", 0.01, 0.5, default=0.1),
             UniformFloatHyperparameter("subsample", 0.01, 1.0, default=1.0),
             UniformFloatHyperparameter("max_features", 0.1, 1.0, default=1),
         ],
@@ -360,8 +356,8 @@ def random_forest_classifier():
                 "max_features", 0.1, 1.0, default=1.0),
             UniformIntHyperparameter(
                 "min_samples_split", 2, 20, default=2),
-            UniformIntHyperparameter(
-                "min_samples_leaf", 1, 20, default=1),
+            UniformFloatHyperparameter(
+                "min_samples_leaf", 0.01, 0.5, default=0.1),
             CategoricalHyperparameter(
                 "bootstrap", [True, False], default=True),
             CategoricalHyperparameter(

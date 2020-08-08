@@ -53,4 +53,5 @@ def test_is_valid_fit_error():
                     if raise_unknown_error:
                         assert not errors.is_valid_fit_error(error)
                     else:
+                        import ipdb; ipdb.set_trace()
                         assert errors.is_valid_fit_error(error)

@@ -15,30 +15,36 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torch.distributions import Categorical
+from torch.distributions import Categorical, Normal
 
-from .data_types import CASHComponent, TargetType
+from .data_types import CASHComponent, TargetType, HyperparamType
 from .components.algorithm_component import EXCLUDE_ALL
 
 
 logger = logging.getLogger(__name__)
 
 
+CONTINUOUS_HYPERPARAM_TYPES = {HyperparamType.INTEGER, HyperparamType.REAL}
+
+
 class MetaLearnController(nn.Module):
     """RNN module to generate joint algorithm and hyperparameter controller."""
 
     def __init__(
-            self,
-            metafeature_size,
-            input_size,
-            hidden_size,
-            output_size,
-            a_space,
-            mlf_signature=None,
-            metafeature_encoding_size=20,
-            aux_reward_size=1,
-            dropout_rate=0.1,
-            num_rnn_layers=1):
+        self,
+        metafeature_size,
+        input_size,
+        hidden_size,
+        output_size,
+        a_space,
+        mlf_signature=None,
+        metafeature_encoding_size=20,
+        aux_reward_size=1,
+        dropout_rate=0.1,
+        num_rnn_layers=1,
+        action_meta=None,
+        action_index=None,
+    ):
         """Initialize Cash Controller.
 
         :param int metafeature_size: dimensionality of metafeatures
@@ -50,6 +56,10 @@ class MetaLearnController(nn.Module):
         :param int metafeature_encoding_size: dim of metafeatures embedding
         :param float dropout_rate:
         :param int num_rnn_layers:
+        :param action_meta: dictionary of action metadata for pre-trained
+            controller
+        :param action_index: dictionary of action pointers for pre-trained
+            controller
         :ivar int aux_size: dimensionality of auxiliary inputs (reward and
             action from previous time-step).
         :ivar list[dict] action_classifiers:
@@ -117,8 +127,10 @@ class MetaLearnController(nn.Module):
         # softmax classifier over the number of unique components/hyperparam
         # values.
         self.mlf_signature = mlf_signature
-        self.action_modules = nn.ModuleDict()  # map action keys to nn.Modules
-        self.action_meta = {}  # map action keys to action metadata
+          # map action keys to nn.Modules
+        self.action_modules = nn.ModuleDict()
+         # map action keys to action metadata
+        self.action_meta = {} if action_meta is None else action_meta
         self.action_index = {
             # map algorithm type to algorithm components
             "algo_type": {},
@@ -130,6 +142,7 @@ class MetaLearnController(nn.Module):
             self.a_space.ALL_COMPONENTS if self.mlf_signature is None
             else self.mlf_signature)
 
+        # TODO: make sure values of `all_components` can't be empty lists
         for atype, acomponents in all_components.items():
             # action classifier
             algo_type_key = f"algo_{atype.value}"
@@ -138,7 +151,7 @@ class MetaLearnController(nn.Module):
                 # the continuous-valued action outputs should be handled
                 # with a mu and sigma output (linear -> softplus).
                 "softmax": nn.Softmax(1),
-                "embedding": nn.Embedding(
+                "embedding": nn.Linear(
                     len(acomponents), self.input_size
                 ),
             })
@@ -153,28 +166,66 @@ class MetaLearnController(nn.Module):
             for acomponent in acomponents:
                 hp_state_space = self.a_space.h_state_space([acomponent])
                 hp_exclude_cond_map = self.a_space.h_exclusion_conditions(
-                    [acomponent])
-                for hname, hchoices in hp_state_space.items():
+                    [acomponent]
+                )
+                for hname, h_meta in hp_state_space.items():
+                    if h_meta["type"] == HyperparamType.CATEGORICAL:
+                        action_head_layers = {
+                            "dense": nn.Linear(
+                                self.output_size, len(h_meta["choices"])
+                            ),
+                            "softmax": nn.Softmax(1),
+                            "embedding": nn.Linear(
+                                len(h_meta["choices"]), self.input_size
+                            )
+                        }
+                        action_meta = {
+                            k: v for k, v in h_meta.items()
+                            if k in ["choices"]
+                        }
+                    elif h_meta["type"] in CONTINUOUS_HYPERPARAM_TYPES:
+                        action_head_layers = {
+                            "dense": nn.Linear(
+                                self.output_size, self.hidden_size
+                            ),
+                            "mu": nn.Sequential(
+                                nn.Linear(self.hidden_size, 1),
+                                nn.Softplus()
+                            ),
+                            "sigma": nn.Sequential(
+                                nn.Linear(self.hidden_size, 1),
+                                nn.Softplus()
+                            ),
+                            "embedding": nn.Linear(
+                                # one input unit per estimated parameter
+                                2, self.input_size,
+                            )
+                        }
+                        action_meta = {
+                            k: v for k, v in h_meta.items()
+                            if k in ["min", "max"]
+                        }
                     exclude_masks = self._exclusion_condition_to_mask(
-                        hp_state_space, hp_exclude_cond_map.get(hname, None)
+                        hp_state_space,
+                        h_meta,
+                        hp_exclude_cond_map.get(hname, None)
                     )
                     hp_key = f"hp_{hname}"
-                    self.action_modules[hp_key] = nn.ModuleDict({
-                        "dense": nn.Linear(self.output_size, len(hchoices)),
-                        "softmax": nn.Softmax(1),
-                        "embedding": nn.Embedding(
-                            len(hchoices), self.input_size
-                        )
-                    })
+                    self.action_modules[hp_key] = nn.ModuleDict(
+                        action_head_layers
+                    )
                     self.action_meta[hp_key] = {
                         "action_type": CASHComponent.HYPERPARAMETER,
                         "name": hname,
-                        "choices": hchoices,
-                        "exclude_masks": exclude_masks
+                        "exclude_masks": exclude_masks,
+                        "hyperparameter_type": h_meta["type"],
+                        **action_meta,
                     }
                     self.action_index["algo_to_hp"][acomponent].append(hp_key)
 
-    def _exclusion_condition_to_mask(self, hp_state_space, exclude):
+    def _exclusion_condition_to_mask(
+        self, hp_state_space, hyperparam_meta, exclude
+    ):
         """
         Create a mask of the action space to prevent selecting invalid states
         given previous choices. A mask value 1 means to exclude the value from
@@ -187,17 +238,35 @@ class MetaLearnController(nn.Module):
         exclude_masks = defaultdict(dict)
         for choice, exclude_conditions in exclude.items():
             for hname, exclude_values in exclude_conditions.items():
-                if exclude_values == EXCLUDE_ALL:
-                    mask = [1 for _ in hp_state_space[hname]]
-                else:
-                    mask = [
-                        int(i in exclude_values) for i in hp_state_space[hname]
-                    ]
-                exclude_masks[choice].update({hname: torch.ByteTensor(mask)})
+
+                if hp_state_space[hname]["type"] is HyperparamType.CATEGORICAL:
+                    mask = (
+                        [1 for _ in hp_state_space[hname]["choices"]]
+                        if exclude_values == EXCLUDE_ALL
+                        else [
+                            int(i in exclude_values) for i in
+                            hp_state_space[hname]["choices"]
+                        ]
+                    )
+                    mask = torch.ByteTensor(mask)
+                elif (
+                    hp_state_space[hname]["type"]
+                    in CONTINUOUS_HYPERPARAM_TYPES
+                ):
+                    if exclude_values == EXCLUDE_ALL:
+                        mask = torch.tensor(float("nan"))
+                    else:
+                        raise ValueError(
+                            "can only EXCLUDE_ALL on continuous "
+                            "hyperparameters"
+                        )
+                exclude_masks[choice].update({hname: mask})
 
         return exclude_masks
 
-    def get_policy_dist(self, action, hidden, action_modules, mask=None):
+    def get_policy_dist(
+        self, action, hidden, action_modules, action_meta, mask=None
+    ):
         """Get action distribution from policy."""
         rnn_output, hidden = self.micro_action_rnn(action, hidden)
         rnn_output = self.micro_action_dropout(
@@ -205,15 +274,25 @@ class MetaLearnController(nn.Module):
 
         # obtain action probability distribution
         rnn_output = rnn_output.view(rnn_output.shape[0], -1)
-        logits = action_modules["dense"](rnn_output)
-        if mask is not None:
-            logger.warning(
-                "applying mask %s to action_classifier %s" %
-                (mask, action_modules)
+
+        if "softmax" in action_modules:
+            logits = action_modules["dense"](rnn_output)
+            if mask is not None:
+                logger.warning(
+                    "applying mask %s to action_classifier %s" %
+                    (mask, action_modules)
+                )
+                logits[mask] = float("-inf")
+            action_prob_dist = Categorical(action_modules["softmax"](logits))
+        elif all(x in action_modules for x in ["mu", "sigma"]):
+            activations = action_modules["dense"](rnn_output).squeeze(0)
+            action_prob_dist = Normal(
+                action_modules["mu"](activations),
+                action_modules["sigma"](activations),
             )
-            logits[mask] = float("-inf")
-        action_probs = action_modules["softmax"](logits)
-        return action_probs, hidden
+        else:
+            raise ValueError(f"action module not recognized: {action_modules}")
+        return action_prob_dist, hidden
 
     def get_value(self, state):
         """Get value estimate from state.
@@ -311,59 +390,80 @@ class MetaLearnController(nn.Module):
 
     def _get_exclusion_mask(self, action_name):
         if action_name in self._exclude_masks:
-            return (
-                self._exclude_masks[action_name]
-                .view(1, -1).type(torch.bool)
-            )
+            exclude_mask = self._exclude_masks[action_name]
+            return exclude_mask.view(1, -1).type(torch.bool)
         else:
             return None
 
     def _accumulate_exclusion_mask(self, masks):
         for action_name, m in masks.items():
             mask = self._exclude_masks.get(action_name, None)
-            if mask is None:
-                self._exclude_masks[action_name] = m
-            else:
-                acc_mask = (m.int() + mask.int()) > 0
-                acc_mask = acc_mask.type(torch.ByteTensor)
-                self._exclude_masks[action_name] = acc_mask
+            try:
+                if mask is None or torch.isnan(mask).all():
+                    self._exclude_masks[action_name] = m
+                else:
+                    acc_mask = (m.int() + mask.int()) > 0
+                    acc_mask = acc_mask.type(torch.ByteTensor)
+                    self._exclude_masks[action_name] = acc_mask
+            except:
+                import ipdb; ipdb.set_trace()
 
     def _decode_action(
         self, action_tensor, hidden, action_index
     ):
-
         action_modules = self.action_modules[action_index]
         action_meta = self.action_meta[action_index]
 
         mask = self._get_exclusion_mask(action_meta["name"])
-        if mask is not None and (mask == 1).all():
+        if mask is not None and ((mask == 1).all() or torch.isnan(mask).all()):
             # If all actions are masked, then don't select any choice
             logger.warning(
                 f"all actions are masked for action {action_meta}"
             )
             return None, action_tensor, hidden
 
-        action_probs, hidden = self.get_policy_dist(
-            action_tensor, hidden, action_modules, mask
+        action_prob_dist, hidden = self.get_policy_dist(
+            action_tensor, hidden, action_modules, action_meta, mask
         )
-        action = self._select_action(action_probs, action_meta, mask)
+        action = self._select_action(action_prob_dist, action_meta, mask)
         if action is None:
             return None, action_tensor, hidden
 
-        # TODO: this embedding will serve as the previous action in the next
-        # step. Perhaps the action embedding should be the action_probs vector.
         action_tensor = self.encode_embedding(
-            action_index, action["choice_index"]
+            action_index, action["choice_tensor"]
         )
         return action, action_tensor, hidden
 
-    def _select_action(self, action_probs, action_meta, mask):
+    def _select_action(self, action_prob_dist, action_meta, mask):
         """Select action based on action probability distribution."""
         # compute unmasked log probabilitises.
-        policy_dist = Categorical(action_probs)
-        choice_index = policy_dist.sample()
-        _choice_index = choice_index.data.item()
-        choice = action_meta["choices"][_choice_index]
+        if isinstance(action_prob_dist, Categorical):
+            sampled = action_prob_dist.sample()
+            choice_index = sampled.data.item()
+            choice = action_meta["choices"][choice_index]
+            choice_tensor = action_prob_dist.probs
+            choice_meta = {"choices": action_meta["choices"]}
+        elif isinstance(action_prob_dist, Normal):
+            sampled = action_prob_dist.sample()
+            sampled = torch.clamp(sampled, -1, 1)
+            choice_index = None
+            choice = sampled.data.item()
+            # project sampled choice into min and max range
+            mid = (action_meta["max"] - action_meta["min"]) / 2
+            choice = mid + (mid * choice)
+            if action_meta["hyperparameter_type"] is HyperparamType.INTEGER:
+                choice = int(choice)
+            choice_tensor = torch.cat(
+                [action_prob_dist.loc, action_prob_dist.scale]
+            ).unsqueeze(0)
+            choice_meta = {k: action_meta[k] for k in ["min", "max"]}
+            # if action_meta["name"].split("__")[-1] == "min_samples_leaf":
+                # import ipdb; ipdb.set_trace()
+        else:
+            raise ValueError(
+                f"action probability distribution {type(action_prob_dist)} "
+                "not recognized."
+            )
 
         # for current choice, accumulate exclusion masks if any
         if action_meta["exclude_masks"] is not None and \
@@ -374,19 +474,21 @@ class MetaLearnController(nn.Module):
         return {
             "action_type": action_meta["action_type"],
             "action_name": action_meta["name"],
-            "choices": action_meta["choices"],
-            "choice_index": _choice_index,
             "choice": choice,
-            "log_prob": policy_dist.log_prob(choice_index),
-            "entropy": policy_dist.entropy(),
+            "choice_index": choice_index,
+            "choice_tensor": choice_tensor,
+            "log_prob": action_prob_dist.log_prob(sampled),
+            "entropy": action_prob_dist.entropy(),
+            **choice_meta,
         }
 
-    def encode_embedding(self, action_index, choice_index):
+    def encode_embedding(self, action_index, choice_tensor):
         """Encode action choice into embedding at input for next action."""
         embedding = self.action_modules[action_index]["embedding"]
-        action_embedding = embedding(torch.LongTensor([choice_index]))
+        action_embedding = embedding(choice_tensor)
         return action_embedding.view(
-            1, action_embedding.shape[0], action_embedding.shape[1])
+            1, action_embedding.shape[0], action_embedding.shape[1]
+        )
 
     def init_hidden(self):
         """Initialize hidden layer with zeros."""
@@ -407,6 +509,8 @@ class MetaLearnController(nn.Module):
             "a_space": self.a_space,
             "dropout_rate": self.dropout_rate,
             "num_rnn_layers": self.num_rnn_layers,
+            "action_meta": self.action_meta,
+            "action_index": self.action_index,
         }
 
     def save(self, path):

@@ -14,6 +14,13 @@ class AlgorithmType(Enum):
     ESTIMATOR = "estimator"
 
 
+class HyperparamType(Enum):
+
+    CATEGORICAL = 1
+    INTEGER = 2
+    REAL = 3
+
+
 class FeatureType(Enum):
     """Feature type definition, effects the MLF proposal path."""
 

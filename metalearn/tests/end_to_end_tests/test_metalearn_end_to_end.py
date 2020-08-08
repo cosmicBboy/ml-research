@@ -42,6 +42,11 @@ def _algorithm_space(classifiers=None, regressors=None):
     return AlgorithmSpace(
         classifiers=classifiers,
         regressors=regressors,
+        data_preprocessors=[
+            components.data_preprocessors.simple_imputer(),
+            components.data_preprocessors.one_hot_encoder(),
+            components.data_preprocessors.standard_scaler(),
+        ],
         with_end_token=False,
         hyperparam_with_start_token=False,
         hyperparam_with_none_token=False,
@@ -79,7 +84,7 @@ def _fit_kwargs():
 
 def test_metalearn_reinforce_fit():
     """Ensure MetaLearn training routine executes."""
-    n_episodes = 10
+    n_episodes = 20
     t_env = _task_environment()
     a_space = _algorithm_space()
     controller = _metalearn_controller(a_space, t_env)
@@ -176,9 +181,10 @@ def test_cash_missing_data():
             assert (~np.isnan(X_impute)).all()
 
 
+@pytest.mark.skip(reason="run-time too long")
 def test_kaggle_regression_data():
     """Test regression dataset from kaggle."""
-    n_episodes = 10
+    n_episodes = 20
     a_space = _algorithm_space()
     for dataset_name in [
         "kaggle.restaurant_revenue_prediction",
@@ -202,6 +208,7 @@ def test_kaggle_regression_data():
         assert history["n_successful_mlfs"].sum() > 0
 
 
+@pytest.mark.skip(reason="run-time too long")
 def test_kaggle_classification_data():
     """Test classification dataset from kaggle."""
     torch.manual_seed(100)
@@ -229,8 +236,9 @@ def test_kaggle_classification_data():
         assert history["n_successful_mlfs"].sum() > 0
 
 
+@pytest.mark.skip(reason="run-time too long")
 def test_openml_regression_data():
-    n_episodes = 10
+    n_episodes = 20
     a_space = _algorithm_space()
     datasets = openml_api.regression_envs(
         n=openml_api.N_REGRESSION_ENVS)
@@ -250,6 +258,7 @@ def test_openml_regression_data():
         assert history["n_successful_mlfs"].sum() > 0
 
 
+@pytest.mark.skip(reason="run-time too long")
 def test_openml_classification_data():
     n_episodes = 20
     a_space = _algorithm_space()
@@ -305,7 +314,10 @@ def _exclusion_mask_test_harness(n_episodes, a_space_kwargs, t_env_kwargs):
             if action["action_name"] in controller._exclude_masks:
                 exclude_mask = controller._exclude_masks[
                     action["action_name"]].tolist()
-                assert any(i == 0 for i in exclude_mask)
+                try:
+                    assert any(i == 0 for i in exclude_mask)
+                except:
+                    import ipdb; ipdb.set_trace()
                 # make sure that the chosen action is not masked
                 assert exclude_mask[action["choice_index"]] == 0
 
@@ -313,7 +325,7 @@ def _exclusion_mask_test_harness(n_episodes, a_space_kwargs, t_env_kwargs):
 def test_cash_classifier_exclusion_masks():
     """Test classifier exclusion mask logic."""
     _exclusion_mask_test_harness(
-        200,
+        100,
         a_space_kwargs={
             "feature_preprocessors": [components.feature_preprocessors.pca()],
             "classifiers": [
@@ -330,7 +342,7 @@ def test_cash_classifier_exclusion_masks():
 def test_cash_regressor_exclusion_masks():
     """Test regression exclusion mask logic."""
     _exclusion_mask_test_harness(
-        200,
+        100,
         a_space_kwargs={
             "feature_preprocessors": [components.feature_preprocessors.pca()],
             "regressors": [
@@ -346,7 +358,7 @@ def test_cash_regressor_exclusion_masks():
 def test_cash_feature_processor_exclusion_masks():
     """Test feature processor exclusion mask logic."""
     _exclusion_mask_test_harness(
-        200,
+        100,
         a_space_kwargs={
             "feature_preprocessors": [
                 components.feature_preprocessors.kernel_pca(),
@@ -368,5 +380,5 @@ def test_random_search():
     cash_random = CASHRandomSearch(
         _algorithm_space(),
         _task_environment())
-    cash_random.fit(n_episodes=10, n_iter=20)
-    assert all([len(x) == 10 for x in cash_random.history.values()])
+    cash_random.fit(n_episodes=5, n_iter=5)
+    assert all([len(x) == 5 for x in cash_random.history.values()])

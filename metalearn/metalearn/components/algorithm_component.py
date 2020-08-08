@@ -6,9 +6,9 @@ import numpy as np
 
 from collections import OrderedDict
 from sklearn.base import BaseEstimator
-from typing import List, Tuple, Any, Union
+from typing import List, Tuple, Any, Union, Dict
 
-from ..data_types import AlgorithmType
+from ..data_types import AlgorithmType, HyperparamType
 
 
 Hyperparameters = List[List[Tuple[str, Any]]]
@@ -18,10 +18,20 @@ EXCLUDE_ALL = "ALL"
 
 
 def _check_hyperparameters(
-        hyperparameters: Hyperparameters,
-        exclusion_conditions: dict) -> Union[dict, None]:
+    hyperparameters: Hyperparameters,
+    exclusion_conditions: dict,
+    continuous_state_ranges: dict,
+) -> Union[dict, None]:
     exclude_cases = {}
+    out_hyperparams = {}
     for key, value in hyperparameters:
+        if callable(value):
+            random_fn = value
+            out_hyperparams[key] = random_fn(
+                *continuous_state_ranges[key]
+            )
+        else:
+            out_hyperparams[key] = value
 
         if key in exclude_cases and value in exclude_cases[key]:
             # early return: the hyperparameter setting is invalid if any of
@@ -35,7 +45,7 @@ def _check_hyperparameters(
             continue
         exclude_cases.update(exclude_dict[value])
 
-    return dict(hyperparameters)
+    return out_hyperparams
 
 
 class AlgorithmComponent(object):
@@ -167,11 +177,32 @@ class AlgorithmComponent(object):
         """Return a generator of all possible hyperparameter combinations."""
 
         expanded_state_space = []
-        for key, values in self.hyperparameter_state_space().items():
-            expanded_state_space.append([(key, v) for v in values])
+        continuous_state_ranges = {}
+        for key, state_space in self.hyperparameter_state_space().items():
+            if "choices" in state_space:
+                values = state_space["choices"]
+                expanded_state_space.append([(key, v) for v in values])
+            elif all(x in state_space for x in ["max", "min"]):
+                random_fn = (
+                    np.random.randint
+                    if state_space["type"] is HyperparamType.INTEGER
+                    else np.random.uniform
+                )
+                expanded_state_space.append([(key, random_fn)])
+                continuous_state_ranges[key] = (
+                    state_space["min"], state_space["max"]
+                )
+            else:
+                raise ValueError(
+                    f"state_space {state_space} cannot randomly sampled"
+                )
+
         return filter(None, (
             _check_hyperparameters(
-                hsetting, self.hyperparameter_exclusion_conditions())
+                hsetting,
+                self.hyperparameter_exclusion_conditions(),
+                continuous_state_ranges
+            )
             for hsetting in itertools.product(*expanded_state_space)))
 
     def hyperparameter_exclusion_conditions(self):
@@ -195,8 +226,23 @@ class AlgorithmComponent(object):
         # TODO: incorporate the exclusion criteria in sampling the state space
         # such that only valid combinations of hyperparameters are given.
         settings = {}
-        for key, values in self.hyperparameter_state_space().items():
-            settings[key] = values[np.random.randint(len(values))]
+        for key, state_space in self.hyperparameter_state_space().items():
+            if "choices" in state_space:
+                values = state_space["choices"]
+                settings[key] = values[np.random.randint(len(values))]
+            elif all(x in state_space for x in ["max", "min"]):
+                random_fn = (
+                    np.random.randint
+                    if state_space["type"] is HyperparamType.INTEGER
+                    else np.random.uniform
+                )
+                settings[key] = random_fn(
+                    state_space["min"], state_space["max"]
+                )
+            else:
+                raise ValueError(
+                    f"state_space {state_space} cannot randomly sampled"
+                )
         return settings
 
     def __repr__(self):

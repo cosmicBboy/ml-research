@@ -162,19 +162,22 @@ class AlgorithmSpace(object):
         :rtype: dict[str -> list]
         """
         hyperparam_states = OrderedDict()
-        for c in components:
-            if c not in SPECIAL_TOKENS and c.hyperparameters is not None:
+        for component in components:
+            if (
+                component not in SPECIAL_TOKENS and
+                component.hyperparameters is not None
+            ):
                 hyperparam_states.update(
-                    c.hyperparameter_state_space(with_none_token))
+                    component.hyperparameter_state_space(with_none_token))
         return hyperparam_states
 
     def h_exclusion_conditions(self, components):
         """Get the conditional map of which hyperparameters go together."""
         exclude_conditions = OrderedDict()
-        for c in components:
-            if c and c.hyperparameters is not None:
+        for component in components:
+            if component and component.hyperparameters is not None:
                 exclude_conditions.update(
-                    c.hyperparameter_exclusion_conditions())
+                    component.hyperparameter_exclusion_conditions())
         return exclude_conditions
 
     def sample_component(self, component_type):
@@ -309,7 +312,7 @@ def get_feature_preprocessors():
 def get_classifiers():
     """Get all classifiers in structured algorithm space."""
     return [
-        components.classifiers.adaboost(),
+        # components.classifiers.adaboost(),
         components.classifiers.decision_tree(),
         components.classifiers.gaussian_naive_bayes(),
         components.classifiers.gradient_boosting(),
@@ -326,7 +329,7 @@ def get_classifiers():
 def get_regressors():
     """Get all classifiers in structured algorithm space."""
     return [
-        components.regressors.adaboost_regression(),
+        # components.regressors.adaboost_regression(),
         components.regressors.ard_regression(),
         components.regressors.bayesian_ridge_regression(),
         components.regressors.decision_tree_regression(),

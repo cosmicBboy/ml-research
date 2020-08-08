@@ -43,11 +43,15 @@ def test_controller_equality():
     assert utils.models_are_equal(controller, controller)
 
     torch.manual_seed(1000)
-    assert utils.models_are_equal(controller, _metalearn_controller(_a_space()))
+    assert utils.models_are_equal(
+        controller, _metalearn_controller(_a_space())
+    )
 
     # changing the random seed will lead to different weights
     torch.manual_seed(1001)
-    assert not utils.models_are_equal(controller, _metalearn_controller(_a_space()))
+    assert not utils.models_are_equal(
+        controller, _metalearn_controller(_a_space())
+    )
 
     # changing the algorithm space will lead to inequality
     torch.manual_seed(1000)

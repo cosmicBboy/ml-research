@@ -2,15 +2,21 @@
 
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import (
-    QuantileTransformer, OneHotEncoder, MinMaxScaler,
-    StandardScaler, RobustScaler, Normalizer)
+    OneHotEncoder,
+    MinMaxScaler,
+    StandardScaler,
+    RobustScaler,
+    Normalizer,
+)
 from sklearn.impute import SimpleImputer
 
 from .algorithm_component import AlgorithmComponent
 from .hyperparameter import (
-    CategoricalHyperparameter, UniformIntHyperparameter,
-    UniformFloatHyperparameter, TuplePairHyperparameter,
-    BaseEstimatorHyperparameter, EmbeddedEstimatorHyperparameter)
+    CategoricalHyperparameter,
+    UniformFloatHyperparameter,
+    TuplePairHyperparameter,
+    EmbeddedEstimatorHyperparameter,
+)
 from ..data_types import AlgorithmType
 
 
@@ -127,9 +133,13 @@ def robust_scaler():
             TuplePairHyperparameter(
                 "quantile_range", [
                     UniformFloatHyperparameter(
-                        "q_min", 0.001, 0.3, default=0.001),
+                        "q_min", 0.001, 0.3, default=0.001,
+                        as_categorical=True,
+                    ),
                     UniformFloatHyperparameter(
-                        "q_max", 0.7, 0.999, default=0.7)
+                        "q_max", 0.7, 0.999, default=0.7,
+                        as_categorical=True,
+                    )
                 ], default=(0.25, 0.75))
         ])
 

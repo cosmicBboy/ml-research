@@ -9,8 +9,10 @@ from sklearn.tree import DecisionTreeRegressor
 
 from .algorithm_component import AlgorithmComponent, EXCLUDE_ALL
 from .hyperparameter import (
-    CategoricalHyperparameter, UniformIntHyperparameter,
-    UniformFloatHyperparameter, BaseEstimatorHyperparameter)
+    CategoricalHyperparameter,
+    UniformIntHyperparameter,
+    UniformFloatHyperparameter,
+)
 from ..data_types import AlgorithmType
 
 
@@ -27,14 +29,6 @@ def adaboost_regression():
         component_class=AdaBoostRegressor,
         component_type=AlgorithmType.REGRESSOR,
         hyperparameters=[
-            BaseEstimatorHyperparameter(
-                hname="base_estimator",
-                base_estimator=DecisionTreeRegressor,
-                hyperparameters=[
-                    UniformIntHyperparameter("max_depth", 1, 10, default=1)
-                ],
-                default=DecisionTreeRegressor(max_depth=1)
-            ),
             UniformIntHyperparameter(
                 "n_estimators", 50, 500, default=50, n=10),
             UniformFloatHyperparameter(
@@ -66,8 +60,8 @@ def random_forest_regression():
                 "max_features", 0.1, 1.0, default=1.0),
             UniformIntHyperparameter(
                 "min_samples_split", 2, 20, default=2),
-            UniformIntHyperparameter(
-                "min_samples_leaf", 1, 20, default=1),
+            UniformFloatHyperparameter(
+                "min_samples_leaf", 0.01, 0.5, default=0.1),
             CategoricalHyperparameter(
                 "bootstrap", [True, False], default=True),
         ],
@@ -381,8 +375,8 @@ def decision_tree_regression():
             UniformIntHyperparameter("max_depth", 1, 4, default=1, n=4),
             UniformIntHyperparameter(
                 "min_samples_split", 2, 20, default=2, n=10),
-            UniformIntHyperparameter(
-                "min_samples_leaf", 1, 20, default=1, n=10),
+            UniformFloatHyperparameter(
+                "min_samples_leaf", 0.01, 0.5, default=0.1),
         ],
         constant_hyperparameters={
             "min_weight_fraction_leaf": 0.0,

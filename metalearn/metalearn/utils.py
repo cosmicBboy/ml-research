@@ -99,11 +99,39 @@ def freeze_model(model):
 
 
 def models_are_equal(x, y):
-    return x.config == y.config and \
-        len(x.state_dict()) == len(y.state_dict()) and \
-        all((
-            k1 == k2 and (v1 == v2).all() for (k1, v1), (k2, v2) in
-            zip(x.state_dict().items(), y.state_dict().items())))
+    x_action_meta = x.config["action_meta"]
+    y_action_meta = y.config["action_meta"]
+
+    configs_are_equal = (
+        {k: v for k, v in x.config.items() if k != "action_meta"}
+        == {k: v for k, v in y.config.items() if k != "action_meta"}
+    )
+    action_meta_are_equal = True
+    for key in x_action_meta:
+        if x_action_meta[key]["exclude_masks"] is not None:
+            if (
+                key not in y_action_meta or
+                set(x_action_meta[key]["exclude_masks"]) !=
+                set(y_action_meta[key]["exclude_masks"])
+            ):
+                action_meta_are_equal = False
+                break
+
+    out = (
+        configs_are_equal and
+        # keys are identical
+        set(x_action_meta) == set(y_action_meta) and
+        action_meta_are_equal and
+        len(x.state_dict()) == len(y.state_dict()) and
+        all(
+            k1 == k2 and (v1 == v2).all()
+            for (k1, v1), (k2, v2) in
+            zip(x.state_dict().items(), y.state_dict().items())
+        )
+    )
+    # if not out:
+    #     import ipdb; ipdb.set_trace()
+    return out
 
 
 def aux_tensor(prev_reward):

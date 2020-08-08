@@ -3,7 +3,7 @@ import pytest
 from collections import OrderedDict
 from itertools import product
 from metalearn.components.algorithm_component import AlgorithmComponent
-from metalearn.data_types import AlgorithmType
+from metalearn.data_types import AlgorithmType, HyperparamType
 from sklearn.base import BaseEstimator
 
 
@@ -24,7 +24,10 @@ class MockHyperparameter(object):
         self.state_space = state_space
 
     def get_state_space(self, *args, **kwargs):
-        return self.state_space
+        return {
+            "type": HyperparamType.CATEGORICAL,
+            "choices": self.state_space,
+        }
 
 
 MOCK_HYPERPARAMS = [
@@ -84,8 +87,13 @@ def test_hyperparameter_state_space():
     algorithm_component = _algorithm_component(
         hyperparameters=MOCK_HYPERPARAMS)
     state_space = algorithm_component.hyperparameter_state_space()
-    assert state_space["TestComponent__hyperparameter1"] == [1, 2, 3]
-    assert state_space["TestComponent__hyperparameter2"] == ["a", "b", "c"]
+    assert (
+        state_space["TestComponent__hyperparameter1"]["choices"] == [1, 2, 3]
+    )
+    assert (
+        state_space["TestComponent__hyperparameter2"]["choices"]
+        == ["a", "b", "c"]
+    )
     assert _algorithm_component(
         hyperparameters=None).hyperparameter_state_space() == OrderedDict()
 
