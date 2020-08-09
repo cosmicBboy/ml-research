@@ -262,7 +262,7 @@ def support_vector_regression_nonlinear():
                 "kernel", ["rbf", "poly", "sigmoid"], default="rbf"),
             UniformIntHyperparameter("degree", 2, 5, default=3),
             UniformFloatHyperparameter(
-                "gamma", 3.0517578125e-05, 8, default=0.1, log=True),
+                "gamma", 1e-04, 8, default=0.1, log=True),
             UniformFloatHyperparameter("coef0", -1, -1, default=0),
             CategoricalHyperparameter(
                 "shrinking", [True, False], default=True),
@@ -293,7 +293,7 @@ def _libsvm_hyperparameters():
         UniformFloatHyperparameter(
             "epsilon", 0.001, 1, default=0.1, log=True),
         UniformFloatHyperparameter(
-            "gamma", 3.0517578125e-05, 8, default=0.1, log=True),
+            "gamma", 1e-4, 8, default=0.1, log=True),
         CategoricalHyperparameter(
             "shrinking", [True, False], default=True),
         UniformFloatHyperparameter(

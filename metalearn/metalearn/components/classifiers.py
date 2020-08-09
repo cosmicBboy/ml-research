@@ -195,7 +195,7 @@ def support_vector_classifier_nonlinear():
                 "kernel", ["rbf", "poly", "sigmoid"], default="rbf"),
             UniformIntHyperparameter("degree", 2, 5, default=3),
             UniformFloatHyperparameter(
-                "gamma", 3.0517578125e-05, 8, default=0.1, log=True),
+                "gamma", 1.0e-04, 8, default=0.1, log=True),
             UniformFloatHyperparameter("coef0", -1, 1, default=0),
             CategoricalHyperparameter(
                 "shrinking", [True, False], default=True),

@@ -34,8 +34,7 @@ from ..data_types import AlgorithmType
 
 
 # constant used for rbf kernel
-# https://github.com/automl/auto-sklearn/blob/master/autosklearn/pipeline/components/feature_preprocessing/kitchen_sinks.py
-GAMMA_MIN = 3.0517578125e-05
+GAMMA_MIN = 1e-4
 
 
 def extra_trees_classification_preprocessor():
