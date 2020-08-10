@@ -24,7 +24,7 @@ extras_require["all"] = sorted(
 
 setup(
     name="meta-ml",
-    version="0.0.23",
+    version="0.0.24",
     description="MetaRL-based Estimator using Task-encodings for AutoML",
     long_description=long_description,
     long_description_content_type='text/markdown',
