@@ -148,12 +148,8 @@ class MetaLearnController(nn.Module):
             algo_type_key = f"algo_{atype.value}"
             self.action_modules[algo_type_key] = nn.ModuleDict({
                 "dense": nn.Linear(self.output_size, len(acomponents)),
-                # the continuous-valued action outputs should be handled
-                # with a mu and sigma output (linear -> softplus).
                 "softmax": nn.Softmax(1),
-                "embedding": nn.Linear(
-                    len(acomponents), self.input_size
-                ),
+                "embedding": nn.Linear(len(acomponents), self.input_size),
             })
             self.action_meta[algo_type_key] = {
                 "action_type": CASHComponent.ALGORITHM,
@@ -445,6 +441,7 @@ class MetaLearnController(nn.Module):
             sampled = torch.clamp(sampled, -1, 1)
             choice_index = None
             choice = sampled.data.item()
+
             # project sampled choice into min and max range
             mid = (action_meta["max"] - action_meta["min"]) / 2
             choice = mid + (mid * choice)
@@ -529,9 +526,14 @@ class MetaLearnController(nn.Module):
             pickle_module=dill)
 
     @classmethod
-    def load(cls, path):
+    def load(cls, path, **kwargs):
         """Load saved controller."""
         model_config = torch.load(path, pickle_module=dill)
-        rnn = cls(**model_config["config"])
-        rnn.load_state_dict(model_config["weights"])
-        return rnn
+        controller = cls(**model_config["config"], **kwargs)
+        state_dict = controller.state_dict()
+        state_dict.update({
+            k: v for k, v in model_config["weights"].items()
+            if k in state_dict
+        })
+        controller.load_state_dict(state_dict)
+        return controller
