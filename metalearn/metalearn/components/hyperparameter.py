@@ -103,7 +103,7 @@ class NumericalHyperparameter(HyperparameterBase):
 class UniformIntHyperparameter(NumericalHyperparameter):
 
     def __init__(
-        self, hname, min, max, default, log=False, n=N_VALUES,
+        self, hname, min, max, default=None, log=False, n=N_VALUES,
         as_categorical=False
     ):
         super().__init__(
@@ -119,7 +119,7 @@ class UniformIntHyperparameter(NumericalHyperparameter):
 class UniformFloatHyperparameter(NumericalHyperparameter):
 
     def __init__(
-        self, hname, min, max, default, log=False, n=N_VALUES,
+        self, hname, min, max, default=None, log=False, n=N_VALUES,
         as_categorical=False
     ):
         super().__init__(

@@ -398,15 +398,12 @@ class MetaLearnController(nn.Module):
     def _accumulate_exclusion_mask(self, masks):
         for action_name, m in masks.items():
             mask = self._exclude_masks.get(action_name, None)
-            try:
-                if mask is None or torch.isnan(mask).all():
-                    self._exclude_masks[action_name] = m
-                else:
-                    acc_mask = (m.int() + mask.int()) > 0
-                    acc_mask = acc_mask.type(torch.ByteTensor)
-                    self._exclude_masks[action_name] = acc_mask
-            except:
-                import ipdb; ipdb.set_trace()
+            if mask is None or torch.isnan(mask).all():
+                self._exclude_masks[action_name] = m
+            else:
+                acc_mask = (m.int() + mask.int()) > 0
+                acc_mask = acc_mask.type(torch.ByteTensor)
+                self._exclude_masks[action_name] = acc_mask
 
     def _decode_action(
         self, action_tensor, hidden, action_index
@@ -444,21 +441,29 @@ class MetaLearnController(nn.Module):
             choice_tensor = action_prob_dist.probs
             choice_meta = {"choices": action_meta["choices"]}
         elif isinstance(action_prob_dist, Normal):
-            sampled = action_prob_dist.sample()
+            sampled = action_prob_dist.rsample()
             sampled = torch.clamp(sampled, -1, 1)
             choice_index = None
             choice = sampled.data.item()
             # project sampled choice into min and max range
             mid = (action_meta["max"] - action_meta["min"]) / 2
             choice = mid + (mid * choice)
+
+            # ugly hack, need to figure out more elegant way of handling this
+            choice = (
+                action_meta["min"]
+                if choice < action_meta["min"]
+                else action_meta["max"]
+                if choice > action_meta["max"]
+                else choice
+            )
+
             if action_meta["hyperparameter_type"] is HyperparamType.INTEGER:
                 choice = int(choice)
             choice_tensor = torch.cat(
                 [action_prob_dist.loc, action_prob_dist.scale]
             ).unsqueeze(0)
             choice_meta = {k: action_meta[k] for k in ["min", "max"]}
-            # if action_meta["name"].split("__")[-1] == "min_samples_leaf":
-                # import ipdb; ipdb.set_trace()
         else:
             raise ValueError(
                 f"action probability distribution {type(action_prob_dist)} "
