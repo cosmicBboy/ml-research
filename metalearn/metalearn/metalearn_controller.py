@@ -42,8 +42,7 @@ class MetaLearnController(nn.Module):
         aux_reward_size=1,
         dropout_rate=0.1,
         num_rnn_layers=1,
-        action_meta=None,
-        action_index=None,
+        pretrained_controller=None,
     ):
         """Initialize Cash Controller.
 
@@ -56,10 +55,8 @@ class MetaLearnController(nn.Module):
         :param int metafeature_encoding_size: dim of metafeatures embedding
         :param float dropout_rate:
         :param int num_rnn_layers:
-        :param action_meta: dictionary of action metadata for pre-trained
-            controller
-        :param action_index: dictionary of action pointers for pre-trained
-            controller
+        :param pretrained_controller: transfer action modules and metadata
+            from a pretrained model.
         :ivar int aux_size: dimensionality of auxiliary inputs (reward and
             action from previous time-step).
         :ivar list[dict] action_classifiers:
@@ -127,14 +124,17 @@ class MetaLearnController(nn.Module):
         # softmax classifier over the number of unique components/hyperparam
         # values.
         self.mlf_signature = mlf_signature
-          # map action keys to nn.Modules
+        # map action keys to nn.Modules
         self.action_modules = nn.ModuleDict()
-         # map action keys to action metadata
-        self.action_meta = {} if action_meta is None else action_meta
+        # map action keys to action metadata
+        self.action_meta = (
+            {} if pretrained_controller is None
+            else pretrained_controller.action_meta
+        )
         self.action_index = {
             # map algorithm type to algorithm components
             "algo_type": {},
-            # map algorithm component to list of keys of its hyperparameters
+            # map algorithm component to list of hyperparameter keys
             "algo_to_hp": defaultdict(list),
         }
 
@@ -142,7 +142,7 @@ class MetaLearnController(nn.Module):
             self.a_space.ALL_COMPONENTS if self.mlf_signature is None
             else self.mlf_signature)
 
-        # TODO: make sure values of `all_components` can't be empty lists
+        # TODO: use batch normalization to stabilize training
         for atype, acomponents in all_components.items():
             # action classifier
             algo_type_key = f"algo_{atype.value}"
@@ -186,15 +186,15 @@ class MetaLearnController(nn.Module):
                             ),
                             "mu": nn.Sequential(
                                 nn.Linear(self.hidden_size, 1),
-                                nn.Softplus()
+                                nn.Sigmoid(),
                             ),
                             "sigma": nn.Sequential(
                                 nn.Linear(self.hidden_size, 1),
-                                nn.Softplus()
+                                nn.Sigmoid(),
                             ),
                             "embedding": nn.Linear(
                                 # one input unit per estimated parameter
-                                2, self.input_size,
+                                self.hidden_size + 1, self.input_size,
                             )
                         }
                         action_meta = {
@@ -218,6 +218,21 @@ class MetaLearnController(nn.Module):
                         **action_meta,
                     }
                     self.action_index["algo_to_hp"][acomponent].append(hp_key)
+
+        if pretrained_controller is not None:
+            for name, module in pretrained_controller.action_modules.items():
+                if name.startswith("hp_") and name not in self.action_modules:
+                    print(
+                        f"adding module '{name}' from pre-trained controller"
+                    )
+                    self.action_modules.update({name: module})
+                else:
+                    print(f"module '{name}' already exists")
+
+            self.load_state_dict({
+                **pretrained_controller.state_dict(),
+                **self.state_dict(),
+            })
 
     def _exclusion_condition_to_mask(
         self, hp_state_space, hyperparam_meta, exclude
@@ -272,23 +287,27 @@ class MetaLearnController(nn.Module):
         rnn_output = rnn_output.view(rnn_output.shape[0], -1)
 
         if "softmax" in action_modules:
-            logits = action_modules["dense"](rnn_output)
+            action_activations = action_modules["dense"](rnn_output)
             if mask is not None:
                 logger.warning(
                     "applying mask %s to action_classifier %s" %
                     (mask, action_modules)
                 )
-                logits[mask] = float("-inf")
-            action_prob_dist = Categorical(action_modules["softmax"](logits))
+                action_activations[mask] = float("-inf")
+            action_prob_dist = Categorical(
+                action_modules["softmax"](action_activations)
+            )
         elif all(x in action_modules for x in ["mu", "sigma"]):
-            activations = action_modules["dense"](rnn_output).squeeze(0)
+            action_activations = action_modules["dense"](rnn_output).squeeze(0)
             action_prob_dist = Normal(
-                action_modules["mu"](activations),
-                action_modules["sigma"](activations),
+                action_modules["mu"](action_activations),
+                # scale sigma down to encourage mu to adapt
+                # action_modules["sigma"](action_activations),
+                0.1,
             )
         else:
             raise ValueError(f"action module not recognized: {action_modules}")
-        return action_prob_dist, hidden
+        return action_prob_dist, action_activations, hidden
 
     def get_value(self, state):
         """Get value estimate from state.
@@ -332,6 +351,7 @@ class MetaLearnController(nn.Module):
                 dim=2
             ),
             hidden)
+
         action_tensor = state = self.meta_dropout(
             self.meta_decoder(state))
 
@@ -372,7 +392,7 @@ class MetaLearnController(nn.Module):
             for hp_action_index in (
                 self.action_index["algo_to_hp"][algo_action["choice"]]
             ):
-                hp_action, action_tensor, hidden = self._decode_action(
+                hp_action, hp_action_tensor, hidden = self._decode_action(
                     action_tensor, hidden, action_index=hp_action_index)
                 if hp_action is None:
                     logger.warning(
@@ -381,6 +401,7 @@ class MetaLearnController(nn.Module):
                         f"{algo_action['choice']}"
                     )
                     continue
+                action_tensor = hp_action_tensor
                 actions.append(hp_action)
         return value, actions, action_tensor, hidden
 
@@ -415,19 +436,25 @@ class MetaLearnController(nn.Module):
             )
             return None, action_tensor, hidden
 
-        action_prob_dist, hidden = self.get_policy_dist(
+        action_prob_dist, action_activations, hidden = self.get_policy_dist(
             action_tensor, hidden, action_modules, action_meta, mask
         )
-        action = self._select_action(action_prob_dist, action_meta, mask)
+
+        action = self._select_action(
+            action_prob_dist, action_activations, action_meta, mask
+        )
         if action is None:
             return None, action_tensor, hidden
 
         action_tensor = self.encode_embedding(
             action_index, action["choice_tensor"]
         )
+        # print(action_prob_dist)
         return action, action_tensor, hidden
 
-    def _select_action(self, action_prob_dist, action_meta, mask):
+    def _select_action(
+        self, action_prob_dist, action_activations, action_meta, mask
+    ):
         """Select action based on action probability distribution."""
         # compute unmasked log probabilitises.
         if isinstance(action_prob_dist, Categorical):
@@ -438,29 +465,25 @@ class MetaLearnController(nn.Module):
             choice_meta = {"choices": action_meta["choices"]}
         elif isinstance(action_prob_dist, Normal):
             sampled = action_prob_dist.rsample()
-            sampled = torch.clamp(sampled, -1, 1)
+            sampled = torch.clamp(sampled, 0, 1)
             choice_index = None
             choice = sampled.data.item()
 
             # project sampled choice into min and max range
-            mid = (action_meta["max"] - action_meta["min"]) / 2
-            choice = mid + (mid * choice)
-
-            # ugly hack, need to figure out more elegant way of handling this
             choice = (
+                choice * (action_meta["max"] - action_meta["min"]) +
                 action_meta["min"]
-                if choice < action_meta["min"]
-                else action_meta["max"]
-                if choice > action_meta["max"]
-                else choice
             )
 
             if action_meta["hyperparameter_type"] is HyperparamType.INTEGER:
-                choice = int(choice)
+                choice = round(choice)
+
+            assert action_meta["min"] <= choice <= action_meta["max"]
             choice_tensor = torch.cat(
-                [action_prob_dist.loc, action_prob_dist.scale]
+                [action_activations, sampled]
             ).unsqueeze(0)
             choice_meta = {k: action_meta[k] for k in ["min", "max"]}
+            # print(action_meta["name"], action_prob_dist)
         else:
             raise ValueError(
                 f"action probability distribution {type(action_prob_dist)} "
@@ -511,8 +534,6 @@ class MetaLearnController(nn.Module):
             "a_space": self.a_space,
             "dropout_rate": self.dropout_rate,
             "num_rnn_layers": self.num_rnn_layers,
-            "action_meta": self.action_meta,
-            "action_index": self.action_index,
         }
 
     def save(self, path):
@@ -530,10 +551,5 @@ class MetaLearnController(nn.Module):
         """Load saved controller."""
         model_config = torch.load(path, pickle_module=dill)
         controller = cls(**model_config["config"], **kwargs)
-        state_dict = controller.state_dict()
-        state_dict.update({
-            k: v for k, v in model_config["weights"].items()
-            if k in state_dict
-        })
-        controller.load_state_dict(state_dict)
+        controller.load_state_dict(model_config["weights"])
         return controller

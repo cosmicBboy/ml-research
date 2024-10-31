@@ -36,7 +36,7 @@ results can be reproduced by running:
 
 ```
 cd gan_gaussian
-python basic_gan.py
+python gan_gaussian.py
 ```
 
 Running the script produces a few artifacts that are meant to help build some

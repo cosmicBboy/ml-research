@@ -249,7 +249,9 @@ class AlgorithmComponent(object):
         return "<AlgorithmComponent: \"%s\">" % self.name
 
     def __hash__(self):
-        return hash((self.name, self.component_class, self.component_type))
+        return hash(
+            (self.name, self.component_class.__name__, self.component_type)
+        )
 
     def __eq__(self, other):
         return hash(self) == hash(other)
